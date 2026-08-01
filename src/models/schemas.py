@@ -1,10 +1,39 @@
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=5000, description="Tin nhắn từ user")
+    message: str = Field(..., min_length=1, max_length=5000, description="User query message")
+    session_id: str | None = Field(default=None, description="Optional existing chat session ID")
+    user_id: str = Field(default="default_user", description="User identifier")
 
 
 class ChatResponse(BaseModel):
-    response: str = Field(..., description="Phản hồi từ agent")
-    analysis: str = Field(default="", description="Phân tích nội bộ")
+    session_id: str = Field(..., description="Chat session ID")
+    response: str = Field(..., description="Agent AI response")
+    analysis: str = Field(default="", description="Internal analysis trace")
+
+
+class SessionCreate(BaseModel):
+    user_id: str = Field(default="default_user", description="User identifier")
+    title: str = Field(default="New Chat", description="Session title")
+
+
+class SessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    user_id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    session_id: str
+    role: str
+    content: str
+    created_at: datetime

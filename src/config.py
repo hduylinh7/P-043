@@ -18,15 +18,18 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000, ge=1, le=65535)
     app_host: str = "0.0.0.0"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # LLM
     openai_api_key: str = ""
     model_name: str = "gpt-4o-mini"
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
-    # Database
-    database_url: str = "sqlite:///./data/app.db"
+    # Database (PostgreSQL default, falls back to SQLite if sqlite specified)
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/p043_db"
+
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
 
     # Vector Store
     chroma_persist_dir: str = "./data/chroma"
@@ -35,3 +38,4 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
