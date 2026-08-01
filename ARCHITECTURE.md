@@ -32,7 +32,9 @@ graph TB
     Tools --> DB
     API --> DB
 ```
+```
 
+```
 ## Components
 
 ### 1. Frontend (React/Next.js)
