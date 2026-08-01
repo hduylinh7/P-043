@@ -1,4 +1,4 @@
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END, StateGraph, START
 
 from src.agents.nodes.example_node import analyze_node, respond_node
 from src.agents.state import AgentState
@@ -11,7 +11,7 @@ def should_continue(state: AgentState) -> str:
     return "respond"
 
 
-def build_graph() -> StateGraph:
+def build_graph():
     graph = StateGraph(AgentState)
 
     # Add nodes
@@ -19,7 +19,7 @@ def build_graph() -> StateGraph:
     graph.add_node("respond", respond_node)
 
     # Add edges
-    graph.set_entry_point("analyze")
+    graph.add_edge(START, "analyze")
     graph.add_conditional_edges("analyze", should_continue)
     graph.add_edge("respond", END)
 
