@@ -1,11 +1,11 @@
-import os
 import logging
+import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
 
 from src.config import get_settings
+from src.db.base import Base
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -15,10 +15,6 @@ if db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 elif db_url.startswith("sqlite://"):
     db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 def _create_engine_and_session(url: str):
@@ -45,6 +41,9 @@ engine, AsyncSessionLocal = _create_engine_and_session(db_url)
 async def init_db() -> None:
     """Initialize database tables, falling back to SQLite if PostgreSQL is unreachable."""
     global engine, AsyncSessionLocal
+    # Import all models to ensure metadata is populated
+    import src.db.models  # noqa: F401
+
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
