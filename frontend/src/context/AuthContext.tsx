@@ -3,6 +3,7 @@ import { authService } from '../services/authService';
 import {
   AuthTokens,
   ForgotPasswordPayload,
+  GoogleAuthPayload,
   LoginPayload,
   RegisterPayload,
   ResendVerificationPayload,
@@ -17,6 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<AuthTokens>;
+  loginWithGoogle: (payload: GoogleAuthPayload) => Promise<AuthTokens>;
   register: (payload: RegisterPayload) => Promise<User>;
   verifyEmail: (payload: VerifyEmailPayload) => Promise<string>;
   resendVerificationCode: (payload: ResendVerificationPayload) => Promise<string>;
@@ -58,6 +60,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user);
     return data;
   };
+
+  const loginWithGoogle = async (payload: GoogleAuthPayload): Promise<AuthTokens> => {
+    const data = await authService.loginWithGoogle(payload);
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    setUser(data.user);
+    return data;
+  };
+
 
   const register = async (payload: RegisterPayload): Promise<User> => {
     const newUser = await authService.register(payload);
@@ -107,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGoogle,
         register,
         verifyEmail,
         resendVerificationCode,

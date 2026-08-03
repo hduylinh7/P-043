@@ -60,3 +60,10 @@ class TokenResponse(BaseModel):
 class AuthMessageResponse(BaseModel):
     message: str
     details: str | None = None
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str | None = Field(default=None, description="Google ID Token from Google Identity Services")
+    id_token: str | None = Field(default=None, description="Google ID Token alias")
+    code: str | None = Field(default=None, description="Authorization code from Google OAuth flow")
+    redirect_uri: str | None = Field(default="postmessage", description="Redirect URI used when exchanging code")

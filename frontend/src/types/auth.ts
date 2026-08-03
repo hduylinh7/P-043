@@ -52,3 +52,10 @@ export interface ApiMessageResponse {
   message: string;
   details?: string;
 }
+
+export interface GoogleAuthPayload {
+  id_token?: string;
+  credential?: string;
+  code?: string;
+}
+

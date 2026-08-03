@@ -23,8 +23,8 @@ class UserRepository:
     async def create_user(
         db: AsyncSession,
         email: str,
-        hashed_password: str,
-        full_name: str,
+        hashed_password: str | None = None,
+        full_name: str = "",
         is_verified: bool = False,
     ) -> User:
         """Create and persist new User instance."""

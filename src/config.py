@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # Vector Store
     chroma_persist_dir: str = "./data/chroma"
 
+    # Google OAuth
+    google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
+
 
 @lru_cache
 def get_settings() -> Settings:

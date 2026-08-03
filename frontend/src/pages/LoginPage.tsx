@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Lock, Mail, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,6 +17,33 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError(null);
+    setSuccess(null);
+
+    if (!credentialResponse.credential) {
+      setError('Không nhận được thông tin xác thực từ Google.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await loginWithGoogle({ id_token: credentialResponse.credential });
+      setSuccess('Đăng nhập thành công bằng Google! Đang chuyển hướng...');
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 800);
+    } catch (err: any) {
+      console.error('Google Login error:', err);
+      const msg =
+        err.response?.data?.detail ||
+        'Đăng nhập bằng Google thất bại. Vui lòng thử lại sau.';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,6 +174,27 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
+        {/* Divider */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-800"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-slate-900 px-2 text-slate-500 font-medium">Hoặc đăng nhập bằng</span>
+          </div>
+        </div>
+
+        {/* Google Login Button */}
+        <div className="flex justify-center w-full">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Đăng nhập bằng Google không thành công')}
+            theme="filled_black"
+            shape="pill"
+            text="signin_with"
+          />
+        </div>
+
         <div className="mt-8 text-center border-t border-slate-800/80 pt-6 text-sm text-slate-400">
           Chưa có tài khoản?{' '}
           <Link to="/register" className="font-semibold text-indigo-400 hover:text-indigo-300">
@@ -156,3 +205,4 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
+

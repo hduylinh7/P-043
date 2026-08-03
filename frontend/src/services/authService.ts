@@ -3,6 +3,7 @@ import {
   ApiMessageResponse,
   AuthTokens,
   ForgotPasswordPayload,
+  GoogleAuthPayload,
   LoginPayload,
   RegisterPayload,
   ResendVerificationPayload,
@@ -13,6 +14,11 @@ import {
 } from '../types/auth';
 
 export const authService = {
+  async loginWithGoogle(payload: GoogleAuthPayload): Promise<AuthTokens> {
+    const response = await api.post<AuthTokens>('/auth/google', payload);
+    return response.data;
+  },
+
   async register(payload: RegisterPayload): Promise<User> {
     const response = await api.post<User>('/auth/register', payload);
     return response.data;

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import router
+from src.routers import router
 from src.config import get_settings
 from src.db.database import init_db
 from src.services.redis_service import close_redis, init_redis

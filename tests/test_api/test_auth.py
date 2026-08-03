@@ -140,3 +140,47 @@ async def test_3_step_forgot_and_reset_password_flow(client: AsyncClient):
     )
     assert new_login.status_code == 200
     assert "access_token" in new_login.json()
+
+
+@pytest.mark.asyncio
+async def test_google_auth_missing_credentials_fails(client: AsyncClient):
+    res = await client.post("/api/v1/auth/google", json={})
+    assert res.status_code == 400
+    assert "vui lòng cung cấp" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_google_auth_mocked_success(client: AsyncClient, monkeypatch):
+    import httpx
+
+    fake_google_user = {
+        "email": "googleuser@example.com",
+        "name": "Google User Test",
+        "sub": "google-sub-12345",
+        "email_verified": True,
+    }
+
+    class MockResponse:
+        def __init__(self, status_code, json_data):
+            self.status_code = status_code
+            self._json = json_data
+
+        def json(self):
+            return self._json
+
+    async def mock_get(self, url, params=None, **kwargs):
+        if "tokeninfo" in url:
+            return MockResponse(200, fake_google_user)
+        return MockResponse(404, {})
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
+
+    res = await client.post("/api/v1/auth/google", json={"id_token": "valid-fake-google-token"})
+    assert res.status_code == 200
+    data = res.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["user"]["email"] == "googleuser@example.com"
+    assert data["user"]["full_name"] == "Google User Test"
+    assert data["user"]["is_verified"] is True
+

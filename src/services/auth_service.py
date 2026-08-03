@@ -1,3 +1,4 @@
+import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +13,7 @@ from src.core.security import (
     verify_password,
 )
 from src.models.auth import (
+    GoogleAuthRequest,
     RegisterRequest,
     TokenResponse,
     UserResponse,
@@ -331,3 +333,129 @@ class AuthService:
         """Logout user by invalidating profile cache in Redis."""
         await delete_cache(f"user_cache:{user_id}")
         return {"message": "Đăng xuất thành công"}
+
+    @staticmethod
+    async def google_auth(db: AsyncSession, payload: GoogleAuthRequest) -> TokenResponse:
+        """Authenticate or register user using Google OAuth ID Token or Authorization Code."""
+        token_str = payload.id_token or payload.credential
+        google_user_info = None
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            if token_str:
+                # 1. Verify Google ID token
+                resp = await client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": token_str},
+                )
+                if resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Google ID Token không hợp lệ hoặc đã hết hạn",
+                    )
+                google_user_info = resp.json()
+            elif payload.code:
+                # 2. Exchange authorization code for tokens
+                token_resp = await client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "client_id": settings.google_client_id,
+                        "client_secret": settings.google_client_secret,
+                        "code": payload.code,
+                        "grant_type": "authorization_code",
+                        "redirect_uri": payload.redirect_uri or "postmessage",
+                    },
+                )
+                if token_resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Google Authorization Code không hợp lệ hoặc đã hết hạn",
+                    )
+                token_data = token_resp.json()
+                id_token = token_data.get("id_token")
+                access_token = token_data.get("access_token")
+
+                if id_token:
+                    info_resp = await client.get(
+                        "https://oauth2.googleapis.com/tokeninfo",
+                        params={"id_token": id_token},
+                    )
+                    if info_resp.status_code == 200:
+                        google_user_info = info_resp.json()
+
+                if not google_user_info and access_token:
+                    userinfo_resp = await client.get(
+                        "https://www.googleapis.com/oauth2/v3/userinfo",
+                        headers={"Authorization": f"Bearer {access_token}"},
+                    )
+                    if userinfo_resp.status_code == 200:
+                        google_user_info = userinfo_resp.json()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Vui lòng cung cấp Google credential, id_token hoặc code",
+                )
+
+        if not google_user_info:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Không thể xác thực thông tin tài khoản Google",
+            )
+
+        email = google_user_info.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Không lấy được địa chỉ email từ tài khoản Google",
+            )
+
+        clean_email = email.lower().strip()
+        full_name = (
+            google_user_info.get("name")
+            or google_user_info.get("given_name")
+            or clean_email.split("@")[0]
+        )
+
+        # Check if user exists in database
+        user = await UserRepository.get_by_email(db, clean_email)
+        if user:
+            if not user.is_verified:
+                await UserRepository.mark_user_verified(db, user.id)
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Tài khoản đã bị vô hiệu hóa",
+                )
+        else:
+            # Create new user registered via Google
+            user = await UserRepository.create_user(
+                db=db,
+                email=clean_email,
+                hashed_password=None,
+                full_name=full_name,
+                is_verified=True,
+            )
+
+        # Issue JWT Access and Refresh Tokens
+        token_payload = {"sub": user.id, "email": user.email}
+        access_token = create_access_token(token_payload)
+        refresh_token = create_refresh_token(token_payload)
+
+        decoded_rt = decode_token(refresh_token)
+        jti = decoded_rt.get("jti", "")
+
+        user_dto = UserResponse.model_validate(user)
+        redis_client = await get_redis()
+        if redis_client:
+            rt_key = f"refresh_token:{user.id}:{jti}"
+            await set_cache(
+                rt_key, "valid", expire_seconds=settings.refresh_token_expire_days * 86400
+            )
+            user_cache_key = f"user_cache:{user.id}"
+            await set_cache(user_cache_key, user_dto.model_dump_json(), expire_seconds=1800)
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user_dto,
+        )
