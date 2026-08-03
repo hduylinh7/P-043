@@ -23,8 +23,10 @@ class User(Base, TimestampMixin):
         String(255), unique=True, index=True, nullable=True
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     user_roles: Mapped[list["UserRole"]] = relationship(
         "UserRole", back_populates="user", cascade="all, delete-orphan"

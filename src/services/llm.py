@@ -7,7 +7,7 @@ def get_llm(model_name: str | None = None, temperature: float | None = None) -> 
     """Get initialized ChatOpenAI instance using gpt-4o-mini API."""
     settings = get_settings()
     api_key = settings.openai_api_key or "sk-dummy-key-for-test"
-    
+
     return ChatOpenAI(
         model=model_name or settings.model_name,
         api_key=api_key,

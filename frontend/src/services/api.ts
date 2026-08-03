@@ -1,52 +1,159 @@
-import axios from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
 export interface ChatMessage {
-  id?: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   content: string;
-  created_at?: string;
 }
 
 export interface ChatSession {
   id: string;
-  user_id: string;
+  user_id?: string;
   title: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
 }
 
 export interface ChatResponse {
   session_id: string;
   response: string;
-  analysis: string;
+  analysis?: string;
 }
 
-export const api = {
-  async sendMessage(message: string, sessionId?: string, userId: string = 'default_user'): Promise<ChatResponse> {
-    const res = await axios.post<ChatResponse>(`${API_BASE_URL}/api/v1/chat`, {
-      message,
-      session_id: sessionId,
-      user_id: userId,
-    });
-    return res.data;
-  },
+export interface SystemStatus {
+  status: string;
+  agent: string;
+  redis_connected: boolean;
+}
 
-  async getSessions(userId: string = 'default_user'): Promise<ChatSession[]> {
-    const res = await axios.get<ChatSession[]>(`${API_BASE_URL}/api/v1/sessions`, {
-      params: { user_id: userId },
-    });
-    return res.data;
-  },
+export interface ApiClientInstance extends AxiosInstance {
+  checkStatus: () => Promise<SystemStatus>;
+  getSessions: (userId?: string) => Promise<ChatSession[]>;
+  getMessages: (sessionId: string) => Promise<ChatMessage[]>;
+  sendMessage: (message: string, sessionId?: string, userId?: string) => Promise<ChatResponse>;
+}
 
-  async getMessages(sessionId: string): Promise<ChatMessage[]> {
-    const res = await axios.get<ChatMessage[]>(`${API_BASE_URL}/api/v1/sessions/${sessionId}/messages`);
-    return res.data;
-  },
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-  async checkStatus(): Promise<{ status: string; agent: string; redis_connected: boolean }> {
-    const res = await axios.get(`${API_BASE_URL}/api/v1/status`);
-    return res.data;
+const instance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
   },
+});
+
+// Request Interceptor: Attach Access Token
+instance.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken && config.headers) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Auto Refresh Token on 401
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+instance.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register')) {
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return instance(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      if (!refreshToken) {
+        localStorage.clear();
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      try {
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          refresh_token: refreshToken,
+        });
+
+        const { access_token, refresh_token: new_refresh_token } = response.data;
+
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', new_refresh_token);
+
+        instance.defaults.headers.common.Authorization = `Bearer ${access_token}`;
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+        processQueue(null, access_token);
+        return instance(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        localStorage.clear();
+        window.location.href = '/login';
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export const api = instance as ApiClientInstance;
+
+// Attach chat helper methods to api instance
+api.checkStatus = async () => {
+  const res = await api.get<SystemStatus>('/status');
+  return res.data;
+};
+
+api.getSessions = async (userId = 'default_user') => {
+  const res = await api.get<ChatSession[]>('/sessions', { params: { user_id: userId } });
+  return res.data;
+};
+
+api.getMessages = async (sessionId: string) => {
+  const res = await api.get<ChatMessage[]>(`/sessions/${sessionId}/messages`);
+  return res.data;
+};
+
+api.sendMessage = async (message: string, sessionId?: string, userId = 'default_user') => {
+  const res = await api.post<ChatResponse>('/chat', {
+    message,
+    session_id: sessionId,
+    user_id: userId,
+  });
+  return res.data;
 };

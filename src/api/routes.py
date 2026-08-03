@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.graph import agent
+from src.api.auth import router as auth_router
 from src.db.database import get_db
 from src.models.schemas import (
     ChatRequest,
@@ -20,6 +21,7 @@ from src.services.db_service import (
 from src.services.redis_service import get_cache, get_redis, set_cache
 
 router = APIRouter()
+router.include_router(auth_router)
 
 
 @router.post("/chat", response_model=ChatResponse)

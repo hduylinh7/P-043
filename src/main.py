@@ -13,7 +13,7 @@ from src.services.redis_service import close_redis, init_redis
 async def lifespan(app: FastAPI):
     settings = get_settings()
     print(f"Starting {settings.app_name} in {settings.app_env} mode")
-    
+
     # Initialize DB & Redis
     try:
         await init_db()

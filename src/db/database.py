@@ -47,6 +47,12 @@ async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # Ensure is_verified column exists if users table was created in an earlier DB volume
+            try:
+                from sqlalchemy import text
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE NOT NULL;"))
+            except Exception as col_err:
+                logger.debug(f"is_verified column check notice: {col_err}")
         logger.info(f"Database tables initialized using {engine.url.drivername}")
     except Exception as e:
         logger.warning(f"Failed to connect to primary DB ({db_url}): {e}. Falling back to SQLite...")

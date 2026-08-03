@@ -1,4 +1,4 @@
-from langgraph.graph import END, StateGraph, START
+from langgraph.graph import END, START, StateGraph
 
 from src.agents.nodes.example_node import analyze_node, respond_node
 from src.agents.state import AgentState

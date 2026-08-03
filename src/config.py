@@ -31,6 +31,21 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
+    # JWT Authentication
+    jwt_secret_key: str = Field(default="change-in-production-secret-key", validation_alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(default=15, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_token_expire_days: int = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    reset_token_expire_seconds: int = Field(default=3600, validation_alias="RESET_TOKEN_EXPIRE_SECONDS")
+
+    # SMTP / Email (Nodemailer)
+    smtp_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtp_user: str = Field(default="", validation_alias="SMTP_USER")
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    smtp_from: str = Field(default="noreply@ailearningcompanion.com", validation_alias="SMTP_FROM")
+    smtp_tls: bool = Field(default=True, validation_alias="SMTP_TLS")
+
     # Vector Store
     chroma_persist_dir: str = "./data/chroma"
 

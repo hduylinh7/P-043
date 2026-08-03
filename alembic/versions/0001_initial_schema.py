@@ -25,8 +25,10 @@ def upgrade() -> None:
         sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('canvas_user_id', sa.String(length=255), nullable=True),
         sa.Column('email', sa.String(length=255), nullable=False),
+        sa.Column('hashed_password', sa.String(length=255), nullable=True),
         sa.Column('full_name', sa.String(length=255), nullable=False),
         sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('is_verified', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint('id')
