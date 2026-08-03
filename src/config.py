@@ -19,20 +19,43 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8000, ge=1, le=65535)
     app_host: str = "0.0.0.0"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # LLM
     openai_api_key: str = ""
     model_name: str = "gpt-4o-mini"
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
-    # Database
-    database_url: str = "sqlite:///./data/app.db"
+    # Database (PostgreSQL default, falls back to SQLite if sqlite specified)
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/p043_db"
+
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
+
+    # JWT Authentication
+    jwt_secret_key: str = Field(default="change-in-production-secret-key", validation_alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(default=15, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_token_expire_days: int = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    reset_token_expire_seconds: int = Field(default=3600, validation_alias="RESET_TOKEN_EXPIRE_SECONDS")
+
+    # SMTP / Email (Nodemailer)
+    smtp_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtp_user: str = Field(default="", validation_alias="SMTP_USER")
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    smtp_from: str = Field(default="noreply@ailearningcompanion.com", validation_alias="SMTP_FROM")
+    smtp_tls: bool = Field(default=True, validation_alias="SMTP_TLS")
 
     # Vector Store
     chroma_persist_dir: str = "./data/chroma"
+
+    # Google OAuth
+    google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
