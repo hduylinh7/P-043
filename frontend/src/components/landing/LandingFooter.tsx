@@ -22,7 +22,7 @@ export const LandingFooter: React.FC = () => {
                 <BookOutlined className="text-lg" />
               </div>
               <span className={themeMode === 'dark' ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
-                AI Learning <span className="text-indigo-600">Companion</span>
+                Lita <span className="text-indigo-600">Learning</span>
               </span>
             </Link>
             <p className="text-sm leading-relaxed max-w-sm">
@@ -102,7 +102,7 @@ export const LandingFooter: React.FC = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
           <p className="m-0">
-            © {new Date().getFullYear()} AI Learning Companion. All rights reserved.
+            © {new Date().getFullYear()} Lita Learning. All rights reserved.
           </p>
           <p className="m-0 flex items-center gap-1">
             Built with <HeartFilled className="text-rose-500" /> for university students.

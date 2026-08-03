@@ -18,7 +18,7 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl text-indigo-400">
             <BookOpen className="w-6 h-6 text-indigo-500" />
-            <span>AI Learning Companion</span>
+            <span>Lita Learning</span>
           </Link>
 
           <div className="flex items-center gap-4">

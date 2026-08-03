@@ -22,7 +22,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   children,
   title,
   subtitle,
-  badgeText = 'AI Learning Companion',
+  badgeText = 'Lita Learning',
 }) => {
   const { themeMode, toggleTheme } = useTheme();
 
@@ -42,7 +42,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <BookOutlined className="text-lg" />
           </div>
           <span className={themeMode === 'dark' ? 'text-white' : 'text-slate-900'}>
-            AI Learning <span className="text-indigo-600">Companion</span>
+            Lita <span className="text-indigo-600">Learning</span>
           </span>
         </Link>
 

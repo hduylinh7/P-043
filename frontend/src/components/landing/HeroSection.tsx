@@ -20,7 +20,8 @@ export const HeroSection: React.FC = () => {
   return (
     <section className="relative overflow-hidden py-16 lg:py-24">
       {/* Background glow accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -33,8 +34,8 @@ export const HeroSection: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             {/* Badge */}
-            <Tag color="indigo" className="px-3 py-1 text-sm font-semibold rounded-full mb-6 border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 shadow-sm">
-              <StarOutlined className="text-indigo-600 dark:text-indigo-400" />
+            <Tag color="orange" className="px-3 py-1 text-sm font-semibold rounded-full mb-6 border-orange-200 dark:border-orange-900/60 flex items-center gap-1.5 shadow-sm">
+              <StarOutlined className="text-amber-500" />
               <span>Next-Gen AI Powered Learning Platform</span>
             </Tag>
 
@@ -43,10 +44,10 @@ export const HeroSection: React.FC = () => {
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
               Your Personal{' '}
-              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 bg-clip-text text-transparent">
-                AI Learning
+              <span className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-400 bg-clip-text text-transparent">
+                Lita Learning
               </span>{' '}
-              Companion
+              Platform
             </h1>
 
             {/* Subtitle */}
@@ -64,7 +65,7 @@ export const HeroSection: React.FC = () => {
                   size="large"
                   icon={<RocketOutlined />}
                   onClick={() => navigate('/register')}
-                  className="h-13 px-8 text-base font-semibold bg-indigo-600 hover:bg-indigo-500 border-none shadow-lg shadow-indigo-500/25 rounded-xl flex items-center gap-2"
+                  className="h-13 px-8 text-base font-semibold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 border-none shadow-lg shadow-rose-500/25 rounded-xl flex items-center gap-2"
                 >
                   Get Started
                 </Button>

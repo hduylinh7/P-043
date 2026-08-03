@@ -82,7 +82,7 @@ export const LoginPage: React.FC = () => {
   return (
     <AuthLayout
       title="Đăng nhập"
-      subtitle="Chào mừng quay trở lại với AI Learning Companion"
+      subtitle="Chào mừng quay trở lại với Lita Learning"
       badgeText="AI Powered Study Portal"
     >
       {/* Error Alert */}

@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -17,25 +16,18 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <AuthProvider>
           <Routes>
-            {/* Landing Page */}
+            {/* 1. Trang chủ chính: Khách truy cập xem ngay 100% tính năng ban đầu + Sidebar bên trái */}
             <Route path="/" element={<LandingPage />} />
+            
+            {/* 2. Trang Dashboard cá nhân */}
+            <Route path="/dashboard" element={<DashboardPage />} />
 
-            {/* Auth Pages */}
+            {/* 3. Trang Xác thực tài khoản (Tùy chọn cho người dùng) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-
-            {/* Protected Dashboard */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
