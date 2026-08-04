@@ -13,7 +13,7 @@ export const TestimonialsSection: React.FC = () => {
       role: 'Computer Science Major @ VinUniversity',
       avatarBg: 'bg-indigo-600',
       initials: 'HL',
-      content: 'AI Learning Companion completely restructured how I prepare for exams. The AI tutor breaks down complex algorithms in seconds!',
+      content: 'Lita Learning completely restructured how I prepare for exams. The AI tutor breaks down complex algorithms in seconds!',
       rating: 5,
     },
     {

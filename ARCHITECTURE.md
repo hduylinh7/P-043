@@ -34,7 +34,9 @@ graph TB
     Agent -->|Prompt & Inference| LLM
     Agent -->|Execute| Tools
 ```
+```
 
+```
 ## Components
 
 ### 1. Frontend (React / Next.js 14+)

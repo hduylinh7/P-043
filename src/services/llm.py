@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from langchain_openai import ChatOpenAI
 
 from src.config import get_settings

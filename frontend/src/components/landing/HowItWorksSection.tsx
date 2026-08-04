@@ -41,7 +41,7 @@ export const HowItWorksSection: React.FC = () => {
           <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
             themeMode === 'dark' ? 'text-white' : 'text-slate-900'
           }`}>
-            How AI Learning Companion Works
+            How Lita Learning Works
           </h3>
           <p className={`mt-4 text-base sm:text-lg ${
             themeMode === 'dark' ? 'text-slate-400' : 'text-slate-600'

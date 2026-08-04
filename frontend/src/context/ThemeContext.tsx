@@ -43,13 +43,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         theme={{
           algorithm: themeMode === 'dark' ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
           token: {
-            colorPrimary: '#4f46e5',
+            colorPrimary: '#f97316',
             borderRadius: 12,
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            colorBgContainer: themeMode === 'dark' ? '#0f172a' : '#ffffff',
-            colorBgElevated: themeMode === 'dark' ? '#1e293b' : '#ffffff',
+            colorBgContainer: themeMode === 'dark' ? '#0f0d14' : '#ffffff',
+            colorBgElevated: themeMode === 'dark' ? '#181424' : '#ffffff',
             colorText: themeMode === 'dark' ? '#f8fafc' : '#0f172a',
-            colorTextSecondary: themeMode === 'dark' ? '#94a3b8' : '#64748b',
+            colorTextSecondary: themeMode === 'dark' ? '#a1a1aa' : '#64748b',
           },
           components: {
             Button: {
