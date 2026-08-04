@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authService } from '../services/authService';
 import {
+  AssignRolePayload,
   AuthTokens,
   ForgotPasswordPayload,
   GoogleAuthPayload,
@@ -26,6 +27,7 @@ interface AuthContextType {
   forgotPassword: (payload: ForgotPasswordPayload) => Promise<string>;
   verifyResetCode: (payload: VerifyResetCodePayload) => Promise<string>;
   resetPassword: (payload: ResetPasswordPayload) => Promise<string>;
+  assignRole: (payload: AssignRolePayload) => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -111,6 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.message;
   };
 
+  const assignRole = async (payload: AssignRolePayload): Promise<User> => {
+    const updatedUser = await authService.assignRole(payload);
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -126,12 +134,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         forgotPassword,
         verifyResetCode,
         resetPassword,
+        assignRole,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
