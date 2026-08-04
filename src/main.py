@@ -54,4 +54,9 @@ app.include_router(router, prefix="/api/v1")
 
 @app.get("/health")
 async def health():
+    """Health check endpoint updated."""
     return {"status": "ok", "env": settings.app_env}
+
+
+
+
