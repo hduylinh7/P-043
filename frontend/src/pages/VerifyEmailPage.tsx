@@ -205,8 +205,8 @@ export const VerifyEmailPage: React.FC = () => {
                   required
                   className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                     isDark
-                      ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                      ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
                   }`}
                 />
               </div>
@@ -232,8 +232,8 @@ export const VerifyEmailPage: React.FC = () => {
                   onKeyDown={(e) => handleKeyDown(idx, e)}
                   className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-bold rounded-xl transition-all outline-none border ${
                     isDark
-                      ? 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
+                      ? 'bg-slate-950 border-slate-800 text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20'
                   }`}
                 />
               ))}
@@ -243,7 +243,7 @@ export const VerifyEmailPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || digits.join('').length !== 6}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -263,7 +263,7 @@ export const VerifyEmailPage: React.FC = () => {
               type="button"
               onClick={handleResend}
               disabled={cooldown > 0 || isResending}
-              className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline disabled:text-slate-400 flex items-center gap-1.5 transition-colors"
+              className="font-semibold text-amber-600 dark:text-amber-400 hover:underline disabled:text-slate-400 flex items-center gap-1.5 transition-colors"
             >
               {isResending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
