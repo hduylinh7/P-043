@@ -260,11 +260,11 @@ export const RegisterPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          className="w-full bg-[#FFF8ED] hover:bg-[#FFEECB] active:scale-[0.99] text-amber-950 dark:text-amber-900 font-extrabold py-3.5 rounded-xl border border-[#E8D9C8] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin text-amber-900" />
               <span>Đang khởi tạo tài khoản...</span>
             </>
           ) : (
@@ -277,7 +277,7 @@ export const RegisterPage: React.FC = () => {
         isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
       }`}>
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-amber-500 dark:text-amber-400 hover:underline">
+        <Link to="/login" className="font-bold text-amber-700 dark:text-amber-400 hover:underline">
           Đăng nhập
         </Link>
       </div>

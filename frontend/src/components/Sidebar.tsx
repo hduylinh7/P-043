@@ -131,8 +131,8 @@ export const Sidebar: React.FC = () => {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all group relative ${
                 isActive
                   ? isDark
-                    ? 'bg-gradient-to-r from-amber-500/15 to-rose-500/15 text-amber-300 border border-amber-500/30 shadow-lg shadow-amber-500/5'
-                    : 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 border border-amber-200 font-bold shadow-sm'
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
+                    : 'bg-[#FFF8ED] text-amber-950 border border-[#E8D9C8] font-bold shadow-sm'
                   : isDark
                   ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                   : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60'

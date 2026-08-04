@@ -32,20 +32,20 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   return (
     <div
       className={`min-h-screen flex flex-col justify-between relative overflow-hidden transition-colors duration-300 ${
-        isDark ? 'bg-[#0b0d14] text-slate-100' : 'bg-[#f4f1eb] text-slate-900'
+        isDark ? 'bg-[#0b0d14] text-slate-100' : 'bg-[#F6F5F1] text-slate-900'
       }`}
     >
-      {/* Bottom Right Decorative Yellow-Orange Wave Shape */}
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 sm:w-[500px] sm:h-[500px] bg-gradient-to-tr from-amber-400 via-amber-500 to-amber-600 rounded-tl-[240px] pointer-events-none opacity-90" />
+      {/* Bottom Right Decorative Wave Shape (#FFF8ED) */}
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 sm:w-[500px] sm:h-[500px] bg-[#FFF8ED] rounded-tl-[240px] pointer-events-none opacity-90 border-t border-l border-[#F3E5D8]/60 shadow-inner" />
 
       {/* Top Header */}
       <header className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between relative z-20">
         <Link to="/" className="flex items-center gap-2.5 font-extrabold text-lg tracking-tight group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white shadow-md shadow-amber-500/30 group-hover:scale-105 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-[#FFF8ED] border border-[#EBDCCB] flex items-center justify-center text-amber-700 shadow-sm group-hover:scale-105 transition-transform">
             <BookOutlined className="text-lg" />
           </div>
           <span className={isDark ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
-            Lita <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">Learning</span>
+            Lita <span className="text-amber-700 font-extrabold">Learning</span>
           </span>
         </Link>
 
@@ -65,7 +65,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl border transition-all ${
               isDark
                 ? 'border-slate-800 bg-slate-900/80 text-slate-300 hover:text-white'
-                : 'border-slate-200/80 bg-white/80 text-slate-700 hover:text-amber-600 shadow-sm'
+                : 'border-slate-200/80 bg-white/90 text-slate-700 hover:text-amber-700 shadow-sm'
             }`}
           >
             <ArrowLeftOutlined /> Trang chủ
@@ -85,11 +85,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             className={`rounded-[36px] border-0 p-8 sm:p-10 relative overflow-hidden shadow-2xl transition-all ${
               isDark
                 ? 'bg-slate-900/95 shadow-black/60 border border-slate-800/60'
-                : 'bg-white shadow-amber-900/10'
+                : 'bg-white shadow-slate-300/40'
             }`}
           >
-            {/* Top-Right Decorative Yellow-Orange Organic Blob */}
-            <div className="absolute top-0 right-0 w-36 h-28 bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 rounded-bl-[60px] rounded-tr-[36px] opacity-90 pointer-events-none" />
+            {/* Top-Right Soft Organic Blob (#FFF8ED) */}
+            <div className="absolute top-0 right-0 w-36 h-28 bg-[#FFF8ED] border-b border-l border-[#F3E5D8]/80 rounded-bl-[60px] rounded-tr-[36px] pointer-events-none" />
 
             {/* Back Button (if enabled) */}
             {showBack && (
