@@ -8,6 +8,11 @@ class CourseMaterialResponse(BaseModel):
     title: str
     file_name: str
     file_url: str
+    object_key: str | None = None
+    bucket: str | None = None
+    size: int | None = None
+    mime_type: str | None = None
+    presigned_url: str | None = None
     type: str = "document"
     uploaded_by: str | None = None
     uploader_name: str | None = None

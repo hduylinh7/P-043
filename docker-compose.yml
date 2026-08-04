@@ -31,6 +31,39 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: p043_minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-create-bucket:
+    image: minio/mc:latest
+    container_name: p043_minio_setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb --ignore-existing myminio/course-materials;
+      /usr/bin/mc anonymous set download myminio/course-materials;
+      exit 0;
+      "
+
   backend:
     build:
       context: .
@@ -44,10 +77,19 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-""}
       APP_ENV: production
       CORS_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:8000"
+      STORAGE_PROVIDER: minio
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: course-materials
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_REGION: us-east-1
+      S3_SECURE: "false"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -74,3 +116,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
