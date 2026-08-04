@@ -53,6 +53,17 @@ class Settings(BaseSettings):
     # Role & Institution Verification
     instructor_invite_code: str = Field(default="VINUNI-2026-AI", validation_alias="INSTRUCTOR_INVITE_CODE")
 
+    # Object Storage (MinIO / S3)
+    storage_provider: str = Field(default="minio", validation_alias="STORAGE_PROVIDER")
+    s3_endpoint: str = Field(default="http://localhost:9000", validation_alias="S3_ENDPOINT")
+    s3_bucket: str = Field(default="course-materials", validation_alias="S3_BUCKET")
+    s3_access_key: str = Field(default="minioadmin", validation_alias="S3_ACCESS_KEY")
+    s3_secret_key: str = Field(default="minioadmin", validation_alias="S3_SECRET_KEY")
+    s3_region: str = Field(default="us-east-1", validation_alias="S3_REGION")
+    s3_secure: bool = Field(default=False, validation_alias="S3_SECURE")
+    s3_custom_domain: str = Field(default="", validation_alias="S3_CUSTOM_DOMAIN")
+    max_upload_size_mb: int = Field(default=50, validation_alias="MAX_UPLOAD_SIZE_MB")
+
 
 
 @lru_cache

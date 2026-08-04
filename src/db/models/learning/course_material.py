@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base, TimestampMixin, generate_uuid
@@ -20,6 +20,10 @@ class CourseMaterial(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    object_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    bucket: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     type: Mapped[str] = mapped_column(String(50), default="document", nullable=False)
     uploaded_by: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True

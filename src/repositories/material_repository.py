@@ -16,6 +16,10 @@ class MaterialRepository:
         file_url: str,
         material_type: str,
         uploaded_by: str,
+        object_key: str | None = None,
+        bucket: str | None = None,
+        size: int | None = None,
+        mime_type: str | None = None,
     ) -> CourseMaterial:
         """Create and persist a new CourseMaterial instance."""
         material = CourseMaterial(
@@ -23,6 +27,10 @@ class MaterialRepository:
             title=title.strip(),
             file_name=file_name.strip(),
             file_url=file_url.strip(),
+            object_key=object_key,
+            bucket=bucket,
+            size=size,
+            mime_type=mime_type,
             type=material_type.strip() if material_type else "document",
             uploaded_by=uploaded_by,
         )
