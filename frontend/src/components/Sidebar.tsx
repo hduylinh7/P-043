@@ -13,6 +13,7 @@ import {
   Compass,
   Sun,
   Moon,
+  BookOpen,
   LucideIcon
 } from 'lucide-react';
 
@@ -45,6 +46,12 @@ export const Sidebar: React.FC = () => {
       icon: LayoutDashboard,
     },
     {
+      id: 'courses',
+      name: 'Khóa học',
+      path: '/courses',
+      icon: BookOpen,
+    },
+    {
       id: 'chat',
       name: 'AI Chat Assistant',
       path: '/dashboard',
@@ -52,6 +59,7 @@ export const Sidebar: React.FC = () => {
       badge: 'AI',
     },
   ];
+
 
   const handleLogout = async () => {
     await logout();

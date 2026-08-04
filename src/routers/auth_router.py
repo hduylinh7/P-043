@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,17 +27,26 @@ from src.services.auth_service import AuthService
 from src.services.redis_service import get_cache, set_cache
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-security = HTTPBearer(auto_error=True)
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)] = None,
+    token: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
-    """Dependency to retrieve current authenticated user using JWT bearer token & Redis cache."""
-    token = credentials.credentials
+    """Dependency to retrieve current authenticated user using JWT bearer token or query param & Redis cache."""
+    raw_token = token if token else (credentials.credentials if credentials else None)
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Yêu cầu token xác thực",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
-        payload = decode_token(token)
+        payload = decode_token(raw_token)
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
