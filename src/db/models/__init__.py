@@ -10,7 +10,7 @@ from src.db.models.chat import ChatMessage, ChatSession
 from src.db.models.identity import AnonymousProfile, Role, User, UserRole
 from src.db.models.integration import SyncLog
 from src.db.models.knowledge import Document, DocumentChunk
-from src.db.models.learning import Assignment, Course, Enrollment, Submission
+from src.db.models.learning import Assignment, Course, CourseMaterial, Enrollment, Submission
 from src.db.models.planning import Notification, Task, WeeklyGoal
 from src.db.models.reflection import ReflectionMessage, ReflectionSession
 
@@ -22,9 +22,11 @@ __all__ = [
     "AnonymousProfile",
     # Learning
     "Course",
+    "CourseMaterial",
     "Enrollment",
     "Assignment",
     "Submission",
+
     # Planning
     "WeeklyGoal",
     "Task",

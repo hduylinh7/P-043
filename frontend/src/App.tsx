@@ -10,6 +10,9 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoleSelectionPage } from './pages/RoleSelectionPage';
+import { CoursesPage } from './pages/CoursesPage';
+import { CourseDetailPage } from './pages/CourseDetailPage';
+import { MaterialViewerPage } from './pages/MaterialViewerPage';
 
 const ProtectedDashboardRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -72,12 +75,40 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* 4. Trang Xác thực tài khoản */}
+            {/* 4. Quản lý khóa học */}
+            <Route
+              path="/courses"
+              element={
+                <ProtectedDashboardRoute>
+                  <CoursesPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId"
+              element={
+                <ProtectedDashboardRoute>
+                  <CourseDetailPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/materials/:materialId"
+              element={
+                <ProtectedDashboardRoute>
+                  <MaterialViewerPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+
+
+            {/* 5. Trang Xác thực tài khoản */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
