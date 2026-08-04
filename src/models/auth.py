@@ -40,14 +40,21 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(..., description="JWT Refresh Token")
 
 
+class AssignRoleRequest(BaseModel):
+    role: str = Field(..., description="Role to assign: 'student' or 'instructor'")
+    verification_code: str | None = Field(default=None, description="Institution verification code (required for instructor)")
+
+
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
     full_name: str
     is_active: bool
     is_verified: bool = False
+    roles: list[str] = Field(default_factory=list, description="Assigned roles for the user")
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 class TokenResponse(BaseModel):

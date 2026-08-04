@@ -64,7 +64,7 @@ class AuthService:
             code=otp_code,
         )
 
-        return UserResponse.model_validate(user)
+        return await UserRepository.build_user_dto(db, user)
 
     @staticmethod
     async def verify_email(db: AsyncSession, email: str, code: str) -> dict[str, str]:
@@ -175,7 +175,7 @@ class AuthService:
         jti = decoded_rt.get("jti", "")
 
         # Store refresh token & user profile cache in Redis
-        user_dto = UserResponse.model_validate(user)
+        user_dto = await UserRepository.build_user_dto(db, user)
         redis_client = await get_redis()
         if redis_client:
             rt_key = f"refresh_token:{user.id}:{jti}"
@@ -237,7 +237,7 @@ class AuthService:
         new_rt_key = f"refresh_token:{user.id}:{new_jti}"
         await set_cache(new_rt_key, "valid", expire_seconds=settings.refresh_token_expire_days * 86400)
 
-        user_dto = UserResponse.model_validate(user)
+        user_dto = await UserRepository.build_user_dto(db, user)
         return TokenResponse(
             access_token=new_access_token,
             refresh_token=new_refresh_token,
@@ -443,7 +443,7 @@ class AuthService:
         decoded_rt = decode_token(refresh_token)
         jti = decoded_rt.get("jti", "")
 
-        user_dto = UserResponse.model_validate(user)
+        user_dto = await UserRepository.build_user_dto(db, user)
         redis_client = await get_redis()
         if redis_client:
             rt_key = f"refresh_token:{user.id}:{jti}"
@@ -459,3 +459,42 @@ class AuthService:
             token_type="bearer",
             user=user_dto,
         )
+
+    @staticmethod
+    async def assign_role(
+        db: AsyncSession,
+        user_id: str,
+        role_name: str,
+        verification_code: str | None = None,
+    ) -> UserResponse:
+        """Assign student or instructor role to user. Require verification code for instructor role."""
+        clean_role = role_name.lower().strip()
+        if clean_role not in ["student", "instructor"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Vai trò không hợp lệ. Vui lòng chọn 'student' hoặc 'instructor'.",
+            )
+
+        if clean_role == "instructor":
+            expected_code = settings.instructor_invite_code.strip()
+            provided_code = (verification_code or "").strip()
+            if not provided_code or provided_code.upper() != expected_code.upper():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Mã xác thực học viện không chính xác. Vui lòng kiểm tra lại.",
+                )
+
+        user = await UserRepository.get_by_id(db, user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy người dùng",
+            )
+
+        await UserRepository.assign_role(db, user_id, clean_role)
+        user_dto = await UserRepository.build_user_dto(db, user)
+
+        # Invalidate profile cache so new roles take effect immediately
+        await delete_cache(f"user_cache:{user_id}")
+        return user_dto
+

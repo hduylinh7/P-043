@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.security import decode_token
 from src.db.database import get_db
 from src.models.auth import (
+    AssignRoleRequest,
     AuthMessageResponse,
     ForgotPasswordRequest,
     GoogleAuthRequest,
@@ -20,6 +21,7 @@ from src.models.auth import (
     VerifyEmailRequest,
     VerifyResetCodeRequest,
 )
+
 from src.repositories.user_repository import UserRepository
 from src.services.auth_service import AuthService
 from src.services.redis_service import get_cache, set_cache
@@ -76,9 +78,10 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_dto = UserResponse.model_validate(user)
+    user_dto = await UserRepository.build_user_dto(db, user)
     await set_cache(user_cache_key, user_dto.model_dump_json(), expire_seconds=1800)
     return user_dto
+
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -172,4 +175,20 @@ async def google_auth(
 async def get_me(current_user: Annotated[UserResponse, Depends(get_current_user)]):
     """Get authenticated user profile."""
     return current_user
+
+
+@router.post("/assign-role", response_model=UserResponse)
+async def assign_role(
+    payload: AssignRoleRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Assign student or instructor role to current user during onboarding."""
+    return await AuthService.assign_role(
+        db=db,
+        user_id=current_user.id,
+        role_name=payload.role,
+        verification_code=payload.verification_code,
+    )
+
 

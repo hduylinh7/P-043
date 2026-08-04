@@ -1,6 +1,7 @@
 import { api } from './api';
 import {
   ApiMessageResponse,
+  AssignRolePayload,
   AuthTokens,
   ForgotPasswordPayload,
   GoogleAuthPayload,
@@ -12,6 +13,7 @@ import {
   VerifyEmailPayload,
   VerifyResetCodePayload,
 } from '../types/auth';
+
 
 export const authService = {
   async loginWithGoogle(payload: GoogleAuthPayload): Promise<AuthTokens> {
@@ -63,4 +65,10 @@ export const authService = {
     const response = await api.get<User>('/auth/me');
     return response.data;
   },
+
+  async assignRole(payload: AssignRolePayload): Promise<User> {
+    const response = await api.post<User>('/auth/assign-role', payload);
+    return response.data;
+  },
 };
+
