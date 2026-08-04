@@ -32,10 +32,14 @@ export const LoginPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await loginWithGoogle({ id_token: credentialResponse.credential });
+      const res = await loginWithGoogle({ id_token: credentialResponse.credential });
       setSuccess('Đăng nhập thành công bằng Google! Đang chuyển hướng...');
       setTimeout(() => {
-        navigate(from, { replace: true });
+        if (!res.user.roles || res.user.roles.length === 0) {
+          navigate('/onboarding/role-select', { replace: true });
+        } else {
+          navigate(from, { replace: true });
+        }
       }, 800);
     } catch (err: any) {
       console.error('Google Login error:', err);
@@ -61,11 +65,16 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login({ email, password });
+      const res = await login({ email, password });
       setSuccess('Đăng nhập thành công! Đang chuyển hướng...');
       setTimeout(() => {
-        navigate(from, { replace: true });
+        if (!res.user.roles || res.user.roles.length === 0) {
+          navigate('/onboarding/role-select', { replace: true });
+        } else {
+          navigate(from, { replace: true });
+        }
       }, 800);
+
     } catch (err: any) {
       console.error('Login error:', err);
       const msg =

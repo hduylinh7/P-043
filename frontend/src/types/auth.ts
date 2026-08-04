@@ -4,7 +4,14 @@ export interface User {
   full_name: string;
   is_active: boolean;
   is_verified?: boolean;
+  roles?: string[];
 }
+
+export interface AssignRolePayload {
+  role: 'student' | 'instructor';
+  verification_code?: string;
+}
+
 
 export interface AuthTokens {
   access_token: string;
