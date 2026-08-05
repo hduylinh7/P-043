@@ -24,6 +24,7 @@ class CourseMaterial(Base, TimestampMixin):
     bucket: Mapped[str | None] = mapped_column(String(255), nullable=True)
     size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="completed", nullable=False)
     type: Mapped[str] = mapped_column(String(50), default="document", nullable=False)
     uploaded_by: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True

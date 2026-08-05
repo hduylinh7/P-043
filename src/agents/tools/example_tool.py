@@ -18,17 +18,28 @@ _SAFE_OPERATORS = {
 
 
 @tool
-def search_knowledge(query: str) -> str:
-    """Tìm kiếm thông tin trong knowledge base.
+def search_knowledge(query: str, course_id: str = "") -> str:
+    """Tìm kiếm thông tin trong tài liệu khóa học (Vector DB RAG).
 
     Args:
-        query: Câu hỏi cần tìm kiếm
+        query: Câu hỏi hoặc từ khóa cần tìm kiếm
+        course_id: ID của khóa học cần giới hạn tìm kiếm (tùy chọn)
 
     Returns:
-        Kết quả tìm kiếm
+        Nội dung trích dẫn từ tài liệu môn học
     """
-    # TODO: Implement actual search logic (e.g., RAG with vector store)
-    return f"Kết quả tìm kiếm cho: {query}"
+    from src.services.rag_service import RAGService
+
+    results = RAGService.search_course_materials(course_id=course_id, query=query, top_k=4)
+    if not results:
+        return f"Không tìm thấy tài liệu phù hợp trong hệ thống cho từ khóa: {query}"
+
+    snippets = []
+    for item in results:
+        file_name = item.get("metadata", {}).get("file_name", "Tài liệu")
+        snippets.append(f"--- Nguồn ({file_name}) ---\n{item['content']}")
+
+    return "\n\n".join(snippets)
 
 
 @tool
