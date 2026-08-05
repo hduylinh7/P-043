@@ -1,13 +1,23 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
+export interface Citation {
+  file_name: string;
+  material_id: string;
+  chunk_index: number;
+  score: number;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  citations?: Citation[];
+  sources?: string[];
 }
 
 export interface ChatSession {
   id: string;
   user_id?: string;
+  course_id?: string;
   title: string;
   created_at?: string;
 }
@@ -16,6 +26,8 @@ export interface ChatResponse {
   session_id: string;
   response: string;
   analysis?: string;
+  citations?: Citation[];
+  sources?: string[];
 }
 
 export interface SystemStatus {
@@ -28,7 +40,7 @@ export interface ApiClientInstance extends AxiosInstance {
   checkStatus: () => Promise<SystemStatus>;
   getSessions: (userId?: string) => Promise<ChatSession[]>;
   getMessages: (sessionId: string) => Promise<ChatMessage[]>;
-  sendMessage: (message: string, sessionId?: string, userId?: string) => Promise<ChatResponse>;
+  sendMessage: (message: string, sessionId?: string, userId?: string, courseId?: string) => Promise<ChatResponse>;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -149,11 +161,13 @@ api.getMessages = async (sessionId: string) => {
   return res.data;
 };
 
-api.sendMessage = async (message: string, sessionId?: string, userId = 'default_user') => {
+api.sendMessage = async (message: string, sessionId?: string, userId = 'default_user', courseId?: string) => {
   const res = await api.post<ChatResponse>('/chat', {
     message,
     session_id: sessionId,
     user_id: userId,
+    course_id: courseId,
   });
   return res.data;
 };
+

@@ -22,12 +22,17 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # LLM & Embeddings
+    llm_provider: str = Field(default="gemini", validation_alias="LLM_PROVIDER")
     openai_api_key: str = ""
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     google_api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
     embedding_model_name: str = Field(default="models/gemini-embedding-2", validation_alias="EMBEDDING_MODEL_NAME")
-    model_name: str = "gpt-4o-mini"
+    model_name: str = Field(default="gemini-2.5-flash", validation_alias="MODEL_NAME")
+
+
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    rag_top_k: int = Field(default=4, ge=1, le=20, validation_alias="RAG_TOP_K")
+    chat_history_limit: int = Field(default=10, ge=1, le=50, validation_alias="CHAT_HISTORY_LIMIT")
 
     # Database (PostgreSQL default, falls back to SQLite if sqlite specified)
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/p043_db"
