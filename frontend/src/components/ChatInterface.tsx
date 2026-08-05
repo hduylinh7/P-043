@@ -134,7 +134,7 @@ export default function ChatInterface() {
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5"><HardDrive size={13} /> Redis Cache</span>
-            <span className={`w-2 h-2 rounded-full ${status?.redis_connected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            <span className={`w-2 h-2 rounded-full ${status?.redis_connected ? 'bg-emerald-500' : 'bg-blue-500'}`}></span>
           </div>
         </div>
       </div>

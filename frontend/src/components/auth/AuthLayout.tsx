@@ -22,7 +22,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   children,
   title,
   subtitle,
-  badgeText = 'Lita Learning',
+  badgeText,
 }) => {
   const { themeMode, toggleTheme } = useTheme();
 
@@ -86,10 +86,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             
             {/* Header Text inside card */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50">
-                <StarOutlined />
-                <span>{badgeText}</span>
-              </div>
+              {badgeText && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50">
+                  <StarOutlined />
+                  <span>{badgeText}</span>
+                </div>
+              )}
               <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${
                 themeMode === 'dark' ? 'text-white' : 'text-slate-900'
               }`}>

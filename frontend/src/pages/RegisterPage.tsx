@@ -92,7 +92,6 @@ export const RegisterPage: React.FC = () => {
       <AuthLayout
         title="Đăng ký thành công!"
         subtitle="Vui lòng kiểm tra hộp thư email của bạn"
-        badgeText="Step 2 of 2"
       >
         <div className="text-center">
           <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400">
@@ -130,7 +129,6 @@ export const RegisterPage: React.FC = () => {
     <AuthLayout
       title="Tạo tài khoản"
       subtitle="Bắt đầu trải nghiệm học tập cùng AI Companion"
-      badgeText="Create Free Account"
     >
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
