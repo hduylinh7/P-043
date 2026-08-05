@@ -1,15 +1,19 @@
-import os
+import logging
+import mimetypes
 import uuid
 from fastapi import HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import get_settings
 from src.models.auth import UserResponse
 from src.models.material import CourseMaterialResponse
 from src.repositories.course_repository import CourseRepository
 from src.repositories.material_repository import MaterialRepository
+from src.services.storage.base import StorageService
+from src.services.storage.factory import get_storage_service
 
-UPLOAD_BASE_DIR = "./data/uploads/courses"
+logger = logging.getLogger(__name__)
 
 
 class MaterialService:
@@ -21,8 +25,12 @@ class MaterialService:
         title: str,
         material_type: str,
         current_user: UserResponse,
+        storage_service: StorageService | None = None,
     ) -> CourseMaterialResponse:
-        """Upload learning material for a course (Instructor only)."""
+        """Upload learning material for a course to object storage (Instructor only)."""
+        settings = get_settings()
+        storage = storage_service or get_storage_service()
+
         course = await CourseRepository.get_by_id(db, course_id)
         if not course:
             raise HTTPException(
@@ -42,21 +50,35 @@ class MaterialService:
                 detail="Tập tin tải lên không hợp lệ.",
             )
 
-        # Ensure upload directory exists
-        course_upload_dir = os.path.join(UPLOAD_BASE_DIR, course_id)
-        os.makedirs(course_upload_dir, exist_ok=True)
-
-        # Unique file naming
-        file_ext = os.path.splitext(file.filename)[1]
-        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-        file_path = os.path.join(course_upload_dir, unique_filename)
-
-        # Save file to disk
         contents = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
+        max_bytes = settings.max_upload_size_mb * 1024 * 1024
+        if len(contents) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Dung lượng tập tin vượt quá giới hạn tối đa ({settings.max_upload_size_mb} MB).",
+            )
 
-        relative_file_url = f"/api/v1/courses/{course_id}/materials/download/{unique_filename}"
+        # Unique Object Key structure: course/{course_id}/materials/{uuid}_{original_filename}
+        unique_prefix = uuid.uuid4().hex
+        clean_filename = file.filename.replace(" ", "_")
+        object_key = f"course/{course_id}/materials/{unique_prefix}_{clean_filename}"
+
+        content_type = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
+
+        try:
+            upload_result = await storage.upload_file(
+                file_data=contents,
+                object_key=object_key,
+                content_type=content_type,
+            )
+        except Exception as e:
+            logger.error(f"Failed to upload object {object_key} to storage: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Lỗi trong quá trình tải tệp lên hệ thống lưu trữ.",
+            )
+
+        relative_file_url = f"/api/v1/courses/{course_id}/materials/download/{unique_prefix}_{clean_filename}"
 
         material = await MaterialRepository.create_material(
             db=db,
@@ -66,7 +88,17 @@ class MaterialService:
             file_url=relative_file_url,
             material_type=material_type,
             uploaded_by=current_user.id,
+            object_key=object_key,
+            bucket=str(upload_result.get("bucket", "")),
+            size=int(upload_result.get("size", len(contents))),
+            mime_type=content_type,
         )
+
+        presigned_url = None
+        try:
+            presigned_url = await storage.generate_presigned_url(object_key, filename=file.filename)
+        except Exception as e:
+            logger.warning(f"Could not generate presigned URL after upload: {e}")
 
         return CourseMaterialResponse(
             id=material.id,
@@ -74,6 +106,11 @@ class MaterialService:
             title=material.title,
             file_name=material.file_name,
             file_url=material.file_url,
+            object_key=material.object_key,
+            bucket=material.bucket,
+            size=material.size,
+            mime_type=material.mime_type,
+            presigned_url=presigned_url,
             type=material.type,
             uploaded_by=current_user.id,
             uploader_name=current_user.full_name,
@@ -82,9 +119,14 @@ class MaterialService:
 
     @staticmethod
     async def get_course_materials(
-        db: AsyncSession, course_id: str, current_user: UserResponse
+        db: AsyncSession,
+        course_id: str,
+        current_user: UserResponse,
+        storage_service: StorageService | None = None,
     ) -> list[CourseMaterialResponse]:
-        """Fetch list of materials for a course (Instructor or Enrolled Student)."""
+        """Fetch list of materials for a course with presigned URLs (Instructor or Enrolled Student)."""
+        storage = storage_service or get_storage_service()
+
         course = await CourseRepository.get_by_id(db, course_id)
         if not course:
             raise HTTPException(
@@ -108,6 +150,15 @@ class MaterialService:
         res = []
         for item in items:
             mat = item["material"]
+            presigned_url = None
+            if mat.object_key:
+                try:
+                    presigned_url = await storage.generate_presigned_url(
+                        mat.object_key, filename=mat.file_name
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to generate presigned URL for {mat.id}: {e}")
+
             res.append(
                 CourseMaterialResponse(
                     id=mat.id,
@@ -115,6 +166,11 @@ class MaterialService:
                     title=mat.title,
                     file_name=mat.file_name,
                     file_url=mat.file_url,
+                    object_key=mat.object_key,
+                    bucket=mat.bucket,
+                    size=mat.size,
+                    mime_type=mat.mime_type,
+                    presigned_url=presigned_url,
                     type=mat.type,
                     uploaded_by=mat.uploaded_by,
                     uploader_name=item["uploader_name"],
@@ -130,8 +186,11 @@ class MaterialService:
         material_id: str,
         current_user: UserResponse,
         inline: bool = False,
-    ) -> FileResponse:
-        """Stream/download material file for authorized users."""
+        storage_service: StorageService | None = None,
+    ) -> RedirectResponse:
+        """Generate presigned download URL and redirect (Instructor or Enrolled Student)."""
+        storage = storage_service or get_storage_service()
+
         material = await MaterialRepository.get_by_id(db, material_id)
         if not material or material.course_id != course_id:
             raise HTTPException(
@@ -158,42 +217,36 @@ class MaterialService:
                 detail="Bạn chưa đăng ký hoặc không có quyền tải tài liệu này.",
             )
 
-
-        # Determine physical file path
-        filename_on_disk = os.path.basename(material.file_url)
-        file_path = os.path.join(UPLOAD_BASE_DIR, course_id, filename_on_disk)
-
-        if not os.path.exists(file_path):
+        if not material.object_key:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tập tin không còn tồn tại trên máy chủ.",
+                detail="Tập tin không có thông tin lưu trữ Object Storage.",
             )
 
-        # Detect MIME type
-        ext = os.path.splitext(material.file_name)[1].lower()
-        media_type = "application/octet-stream"
-        if ext == ".pdf":
-            media_type = "application/pdf"
-        elif ext in [".png", ".jpg", ".jpeg"]:
-            media_type = f"image/{ext.replace('.', '')}"
-        elif ext in [".txt", ".md"]:
-            media_type = "text/plain; charset=utf-8"
-
-        disposition = "inline" if inline else "attachment"
-
-        return FileResponse(
-            path=file_path,
-            filename=material.file_name,
-            media_type=media_type,
-            headers={"Content-Disposition": f'{disposition}; filename="{material.file_name}"'},
-        )
-
+        try:
+            filename_arg = None if inline else material.file_name
+            presigned_url = await storage.generate_presigned_url(
+                material.object_key, filename=filename_arg
+            )
+            return RedirectResponse(url=presigned_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+        except Exception as e:
+            logger.error(f"Error generating presigned download URL for {material.id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Không thể tạo liên kết tải tài liệu từ Object Storage.",
+            )
 
     @staticmethod
     async def delete_material(
-        db: AsyncSession, course_id: str, material_id: str, current_user: UserResponse
+        db: AsyncSession,
+        course_id: str,
+        material_id: str,
+        current_user: UserResponse,
+        storage_service: StorageService | None = None,
     ) -> dict[str, str]:
-        """Delete material record and file from disk (Instructor only)."""
+        """Delete material record and file object from storage (Instructor only)."""
+        storage = storage_service or get_storage_service()
+
         material = await MaterialRepository.get_by_id(db, material_id)
         if not material or material.course_id != course_id:
             raise HTTPException(
@@ -208,14 +261,11 @@ class MaterialService:
                 detail="Chỉ có giảng viên tạo khóa học mới có quyền xóa tài liệu.",
             )
 
-        # Delete physical file from disk if exists
-        filename_on_disk = os.path.basename(material.file_url)
-        file_path = os.path.join(UPLOAD_BASE_DIR, course_id, filename_on_disk)
-        if os.path.exists(file_path):
+        if material.object_key:
             try:
-                os.remove(file_path)
-            except Exception:
-                pass
+                await storage.delete_file(material.object_key)
+            except Exception as e:
+                logger.warning(f"Could not delete storage object {material.object_key}: {e}")
 
         await MaterialRepository.delete_material(db, material_id)
         return {"message": "Đã xóa tài liệu môn học thành công"}

@@ -71,7 +71,7 @@ async def init_db() -> None:
         except Exception as col_err:
             logger.debug(f"enrollment constraint notice: {col_err}")
 
-        # 4. Ensure course_materials table exists
+        # 4. Ensure course_materials table exists and has storage metadata columns
         try:
             async with engine.begin() as conn:
                 await conn.execute(text("""
@@ -81,6 +81,10 @@ async def init_db() -> None:
                         title VARCHAR(255) NOT NULL,
                         file_name VARCHAR(255) NOT NULL,
                         file_url VARCHAR(500) NOT NULL,
+                        object_key VARCHAR(500),
+                        bucket VARCHAR(255),
+                        size INTEGER,
+                        mime_type VARCHAR(100),
                         type VARCHAR(50) NOT NULL DEFAULT 'document',
                         uploaded_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
                         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -89,8 +93,14 @@ async def init_db() -> None:
                 """))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_course_materials_course_id ON course_materials(course_id);"))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_course_materials_uploaded_by ON course_materials(uploaded_by);"))
+
+                # Alter existing table if columns were added later
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS object_key VARCHAR(500);"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS bucket VARCHAR(255);"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS size INTEGER;"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);"))
         except Exception as table_err:
-            logger.error(f"course_materials table creation error: {table_err}")
+            logger.error(f"course_materials table creation/alteration error: {table_err}")
 
         logger.info(f"Database tables initialized using {engine.url.drivername}")
 
@@ -104,6 +114,13 @@ async def init_db() -> None:
             from sqlalchemy import text
             try:
                 await conn.execute(text("ALTER TABLE courses ADD COLUMN instructor_id VARCHAR(36);"))
+            except Exception:
+                pass
+            try:
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN object_key VARCHAR(500);"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN bucket VARCHAR(255);"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN size INTEGER;"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN mime_type VARCHAR(100);"))
             except Exception:
                 pass
         logger.info("Database tables initialized using fallback SQLite database.")
