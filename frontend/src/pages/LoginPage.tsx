@@ -92,7 +92,6 @@ export const LoginPage: React.FC = () => {
     <AuthLayout
       title="Đăng nhập"
       subtitle="Chào mừng quay trở lại với Lita Learning"
-      badgeText="AI Powered Study Portal"
     >
       {/* Error Alert */}
       {error && (

@@ -20,6 +20,7 @@ class MaterialRepository:
         bucket: str | None = None,
         size: int | None = None,
         mime_type: str | None = None,
+        status: str = "completed",
     ) -> CourseMaterial:
         """Create and persist a new CourseMaterial instance."""
         material = CourseMaterial(
@@ -31,6 +32,7 @@ class MaterialRepository:
             bucket=bucket,
             size=size,
             mime_type=mime_type,
+            status=status,
             type=material_type.strip() if material_type else "document",
             uploaded_by=uploaded_by,
         )
@@ -38,6 +40,16 @@ class MaterialRepository:
         await db.commit()
         await db.refresh(material)
         return material
+
+    @staticmethod
+    async def update_material_status(db: AsyncSession, material_id: str, new_status: str) -> bool:
+        """Update processing status of a course material."""
+        material = await MaterialRepository.get_by_id(db, material_id)
+        if not material:
+            return False
+        material.status = new_status
+        await db.commit()
+        return True
 
     @staticmethod
     async def get_by_id(db: AsyncSession, material_id: str) -> CourseMaterial | None:

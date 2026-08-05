@@ -79,8 +79,8 @@ export const Sidebar: React.FC = () => {
       {/* 1. Sidebar Header (Sunset Amber Theme) */}
       <div className={`flex items-center justify-between h-16 px-4 border-b ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
         {!isCollapsed && (
-          <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-amber-500">
-            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-blue-500">
+            <Sparkles className="w-4 h-4 text-blue-500 shrink-0" />
             <span>Menu Navigation</span>
           </div>
         )}
@@ -103,9 +103,9 @@ export const Sidebar: React.FC = () => {
       {isAuthenticated && user && (
         <div className={`p-3 border-b ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
           <div className={`flex items-center gap-3 p-2 rounded-xl border ${
-            isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-amber-50/50 border-amber-200/60'
+            isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-blue-50/50 border-blue-200/60'
           } ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-rose-500 text-white font-bold flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-bold flex items-center justify-center shrink-0 shadow-md">
               {user.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
             </div>
             {!isCollapsed && (
@@ -139,21 +139,21 @@ export const Sidebar: React.FC = () => {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all group relative ${
                 isActive
                   ? isDark
-                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm'
-                    : 'bg-[#FFF8ED] text-amber-950 border border-[#E8D9C8] font-bold shadow-sm'
+                    ? 'bg-gradient-to-r from-blue-500/15 to-indigo-500/15 text-blue-300 border border-blue-500/30 shadow-lg shadow-blue-500/5'
+                    : 'bg-gradient-to-r from-blue-50 to-blue-50 text-blue-800 border border-blue-200 font-bold shadow-sm'
                   : isDark
                   ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                  : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60'
+                  : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/60'
               } ${isCollapsed ? 'justify-center' : ''}`}
             >
               <Icon className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
-                isActive ? 'text-amber-500' : 'text-slate-400'
+                isActive ? 'text-blue-500' : 'text-slate-400'
               }`} />
 
               {!isCollapsed && <span className="truncate">{item.name}</span>}
 
               {!isCollapsed && item.badge && (
-                <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full">
+                <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
                   {item.badge}
                 </span>
               )}
@@ -178,15 +178,15 @@ export const Sidebar: React.FC = () => {
           onClick={toggleTheme}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
             isDark
-              ? 'text-amber-400 hover:bg-amber-400/10'
-              : 'text-amber-700 hover:bg-amber-50'
+              ? 'text-blue-400 hover:bg-blue-400/10'
+              : 'text-blue-700 hover:bg-blue-50'
           } ${isCollapsed ? 'justify-center' : ''}`}
           title={isDark ? 'Chuyển sang Chế độ Sáng' : 'Chuyển sang Chế độ Tối'}
         >
           {isDark ? (
-            <Sun className="w-5 h-5 shrink-0 text-amber-400" />
+            <Sun className="w-5 h-5 shrink-0 text-blue-400" />
           ) : (
-            <Moon className="w-5 h-5 shrink-0 text-amber-600" />
+            <Moon className="w-5 h-5 shrink-0 text-blue-600" />
           )}
           {!isCollapsed && (
             <span>{isDark ? 'Chế độ Sáng' : 'Chế độ Tối'}</span>
@@ -197,12 +197,12 @@ export const Sidebar: React.FC = () => {
         {isAuthenticated && (
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors ${
               isCollapsed ? 'justify-center' : ''
             }`}
             title="Đăng xuất"
           >
-            <LogOut className="w-5 h-5 shrink-0 text-slate-400 hover:text-rose-500" />
+            <LogOut className="w-5 h-5 shrink-0 text-slate-400 hover:text-indigo-500" />
             {!isCollapsed && <span>Đăng xuất</span>}
           </button>
         )}

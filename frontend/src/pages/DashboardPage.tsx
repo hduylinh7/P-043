@@ -25,7 +25,7 @@ export const DashboardPage: React.FC = () => {
           <div>
             <h1 className={`text-2xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               <span>Bảng điều khiển (Dashboard)</span>
-              <Sparkles className="w-5 h-5 text-amber-500" />
+              <Sparkles className="w-5 h-5 text-blue-500" />
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               Quản lý phiên làm việc, trạng thái hệ thống & trợ lý AI Agent.
@@ -38,8 +38,8 @@ export const DashboardPage: React.FC = () => {
           isDark ? 'bg-[#0f0d14] border-slate-800/80' : 'bg-white border-slate-200 shadow-slate-200/50'
         }`}>
           <div className={`flex items-center gap-4 pb-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/30 rounded-2xl flex items-center justify-center">
-              <UserCheck className="w-8 h-8 text-amber-500" />
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 rounded-2xl flex items-center justify-center">
+              <UserCheck className="w-8 h-8 text-blue-500" />
             </div>
             <div>
               <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -51,7 +51,7 @@ export const DashboardPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2 text-amber-500 text-sm font-semibold mb-2">
+              <div className="flex items-center gap-2 text-blue-500 text-sm font-semibold mb-2">
                 <ShieldCheck className="w-5 h-5" />
                 <span>Trạng thái Tài khoản</span>
               </div>
@@ -60,7 +60,7 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2 text-amber-500 text-sm font-semibold mb-2">
+              <div className="flex items-center gap-2 text-blue-500 text-sm font-semibold mb-2">
                 <Key className="w-5 h-5" />
                 <span>Cơ chế Xác thực</span>
               </div>
@@ -73,7 +73,7 @@ export const DashboardPage: React.FC = () => {
                 <Database className="w-5 h-5" />
                 <span>Redis Caching</span>
               </div>
-              <p className="text-xl font-bold text-amber-500">Redis TTL Store</p>
+              <p className="text-xl font-bold text-blue-500">Redis TTL Store</p>
               <p className="text-xs text-slate-400 mt-1">Reset token (1h) & Profile cache</p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,6 +92,7 @@ async def get_enrolled_students(
 @router.post("/{course_id}/materials", response_model=CourseMaterialResponse, status_code=status.HTTP_201_CREATED)
 async def upload_course_material(
     course_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(""),
     material_type: str = Form("document"),
@@ -106,6 +107,7 @@ async def upload_course_material(
         title=title,
         material_type=material_type,
         current_user=current_user,
+        background_tasks=background_tasks,
     )
 
 

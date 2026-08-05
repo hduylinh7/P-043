@@ -99,6 +99,7 @@ async def init_db() -> None:
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS bucket VARCHAR(255);"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS size INTEGER;"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'completed';"))
         except Exception as table_err:
             logger.error(f"course_materials table creation/alteration error: {table_err}")
 
@@ -121,6 +122,7 @@ async def init_db() -> None:
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN bucket VARCHAR(255);"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN size INTEGER;"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN mime_type VARCHAR(100);"))
+                await conn.execute(text("ALTER TABLE course_materials ADD COLUMN status VARCHAR(50);"))
             except Exception:
                 pass
         logger.info("Database tables initialized using fallback SQLite database.")

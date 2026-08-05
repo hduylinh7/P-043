@@ -13,6 +13,7 @@ class CourseMaterialResponse(BaseModel):
     size: int | None = None
     mime_type: str | None = None
     presigned_url: str | None = None
+    status: str = "completed"
     type: str = "document"
     uploaded_by: str | None = None
     uploader_name: str | None = None

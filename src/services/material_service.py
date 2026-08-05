@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 import uuid
-from fastapi import HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, HTTPException, UploadFile, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from src.models.auth import UserResponse
 from src.models.material import CourseMaterialResponse
 from src.repositories.course_repository import CourseRepository
 from src.repositories.material_repository import MaterialRepository
+from src.services.rag_service import RAGService
 from src.services.storage.base import StorageService
 from src.services.storage.factory import get_storage_service
 
@@ -26,6 +27,7 @@ class MaterialService:
         material_type: str,
         current_user: UserResponse,
         storage_service: StorageService | None = None,
+        background_tasks: BackgroundTasks | None = None,
     ) -> CourseMaterialResponse:
         """Upload learning material for a course to object storage (Instructor only)."""
         settings = get_settings()
@@ -92,7 +94,19 @@ class MaterialService:
             bucket=str(upload_result.get("bucket", "")),
             size=int(upload_result.get("size", len(contents))),
             mime_type=content_type,
+            status="pending",
         )
+
+        if background_tasks:
+            background_tasks.add_task(
+                RAGService.ingest_document_background,
+                course_id=course_id,
+                material_id=material.id,
+                file_bytes=contents,
+                file_name=file.filename,
+                object_key=object_key,
+                mime_type=content_type,
+            )
 
         presigned_url = None
         try:
@@ -111,6 +125,7 @@ class MaterialService:
             size=material.size,
             mime_type=material.mime_type,
             presigned_url=presigned_url,
+            status=material.status,
             type=material.type,
             uploaded_by=current_user.id,
             uploader_name=current_user.full_name,
@@ -171,6 +186,7 @@ class MaterialService:
                     size=mat.size,
                     mime_type=mat.mime_type,
                     presigned_url=presigned_url,
+                    status=getattr(mat, "status", "completed"),
                     type=mat.type,
                     uploaded_by=mat.uploaded_by,
                     uploader_name=item["uploader_name"],
@@ -266,6 +282,12 @@ class MaterialService:
                 await storage.delete_file(material.object_key)
             except Exception as e:
                 logger.warning(f"Could not delete storage object {material.object_key}: {e}")
+
+        # Delete RAG vectors from ChromaDB
+        try:
+            RAGService.delete_material_vectors(material_id)
+        except Exception as e:
+            logger.warning(f"Could not delete vectors for material {material_id}: {e}")
 
         await MaterialRepository.delete_material(db, material_id)
         return {"message": "Đã xóa tài liệu môn học thành công"}

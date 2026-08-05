@@ -4,7 +4,7 @@
 Dự án là một hệ thống **AI Agent System** hoàn chỉnh (thuộc dự án **VinUni AI20K Build Phase - Team P-043**), bao gồm các thành phần cốt lõi:
 - **Backend:** FastAPI (Python 3.11+) xử lý RESTful APIs, xác thực JWT, quản lý phiên chat và kết nối cơ sở dữ liệu.
 - **AI Agent Engine:** LangGraph + OpenAI (`gpt-4o-mini`), hỗ trợ StateGraph, nodes, custom tools và khả năng suy luận linh hoạt.
-- **Cơ sở dữ liệu (Database):** PostgreSQL (Async SQLAlchemy 2.0 + Alembic migration) lưu trữ dữ liệu người dùng, phiên trò chuyện, phản hồi và cấu hình agent.
+- **Cơ sở dữ liệu (Database):** PostgreSQL / SQLite (Async SQLAlchemy 2.0 + Alembic migration) lưu trữ dữ liệu người dùng, phiên trò chuyện, phản hồi và cấu hình agent. Mới bổ sung thêm tích hợp Vector Store (Chroma).
 - **Bộ nhớ đệm (Cache):** Redis hỗ trợ caching phản hồi, rate limiting và lưu trữ session tạm thời.
 - **Frontend:** React 18 / Next.js + TypeScript + Tailwind CSS cung cấp giao diện chat thời gian thực.
 - **AI Usage Logging:** Hệ thống script tự động ghi log prompt AI tuân thủ quy định của BTC VinUni AI20K.
@@ -35,7 +35,7 @@ Thư mục trung tâm chứa toàn bộ mã nguồn phía server (FastAPI + Lang
 - **`src/main.py`**:
   - Điểm khởi chạy ứng dụng FastAPI (Entry Point). Định nghĩa app, đăng ký CORS middleware, include các API routers và cấu hình startup/shutdown events.
 - **`src/config.py`**:
-  - Quản lý tập trung toàn bộ biến môi trường (Database URL, Redis URL, JWT Secret Key, API Keys, App Environment) bằng Pydantic `BaseSettings`.
+  - Quản lý tập trung toàn bộ biến môi trường (Database URL, Redis URL, JWT Secret Key, API Keys, App Environment, Vector Store paths) bằng Pydantic `BaseSettings`.
 - **`src/agents/`**: *Module quản lý AI Agent bằng LangGraph*
   - `graph.py`: Khởi tạo và compile StateGraph của Agent (kết nối giữa các Node và Edge).
   - `state.py`: Định nghĩa Pydantic/TypedDict schema quản lý trạng thái agent (`AgentState`).
@@ -45,8 +45,8 @@ Thư mục trung tâm chứa toàn bộ mã nguồn phía server (FastAPI + Lang
   - Chứa các endpoint API wrapper / phiên bản cũ, hỗ trợ tích hợp routing bổ sung.
 - **`src/core/`**:
   - `security.py`: Chứa các hàm mã hóa mật khẩu (`bcrypt`), tạo và xác thực JWT token (AccessToken, RefreshToken), kiểm tra quyền người dùng.
-- **`src/db/`**: *Tầng Quản lý Cơ sở dữ liệu (PostgreSQL)*
-  - `database.py`: Cấu hình SQLAlchemy Async Engine (`asyncpg`), SessionLocal factory và dependency injection `get_db()`.
+- **`src/db/`**: *Tầng Quản lý Cơ sở dữ liệu (PostgreSQL/SQLite)*
+  - `database.py`: Cấu hình SQLAlchemy Async Engine (`asyncpg`/`aiosqlite`), SessionLocal factory và dependency injection `get_db()`.
   - `base.py`: Đóng vai trò làm `DeclarativeBase` cha cho tất cả các SQLAlchemy Models.
   - `enums.py`: Định nghĩa các kiểu dữ liệu dạng Enum dùng trong DB (UserRole, SessionStatus, MessageType...).
   - `models/`: Chứa danh sách các bảng database được chia nhóm theo domain nghiệp vụ:
@@ -70,12 +70,14 @@ Thư mục trung tâm chứa toàn bộ mã nguồn phía server (FastAPI + Lang
   - `redis_service.py`: Quản lý kết nối và thao tác với Redis Cache (lưu đệm response, rate limit counter).
   - `db_service.py`: Hỗ trợ thao tác kết nối DB tổng quát.
   - `llm.py`: Khởi tạo đối tượng kết nối LLM (OpenAI ChatOpenAI).
+- **`src/__pycache__/`**: Thư mục sinh tự động khi Python biên dịch các script (chứa các file `.pyc`).
 
 ---
 
 ### 3. 🎨 Thư mục Giao diện Người dùng (`frontend/`)
 Ứng dụng Web Single-Page Application (SPA) xây dựng bằng React 18 / Next.js, Vite, TypeScript và Tailwind CSS.
 
+- **`frontend/dist/`**: Thư mục chứa code sản phẩm (build production) sau khi compile Vite, dùng để triển khai lên server (Nginx/Vercel/...).
 - `frontend/src/main.tsx` & `App.tsx`: Điểm khởi tạo và router chính của ứng dụng React.
 - `frontend/src/components/`: Các thành phần giao diện nhỏ tái sử dụng (ChatBox, MessageList, Sidebar, Header, LoadingSpinner).
 - `frontend/src/pages/`: Các màn hình trang chính (Trang đăng nhập, Trang đăng ký, Màn hình Dashboard Chat chính).
@@ -86,30 +88,36 @@ Thư mục trung tâm chứa toàn bộ mã nguồn phía server (FastAPI + Lang
 
 ---
 
-### 4. 🗄️ Thư mục Database Migrations (`alembic/`)
+### 4. 🗄️ Thư mục Dữ liệu Local (`data/`) *(Mới)*
+- **`app.db`**: File database SQLite local, thường được dùng trong môi trường phát triển (development) hoặc khi không dùng PostgreSQL.
+- **`chroma/`**: (Cấu hình) Thư mục lưu trữ Vector Store cục bộ phục vụ cho tác vụ Knowledge Base / RAG của Agent.
+
+---
+
+### 5. 🗄️ Thư mục Database Migrations (`alembic/`)
 - Quản lý việc theo dõi và thay đổi cấu trúc bảng cơ sở dữ liệu (Database Schema Version Control).
   - `env.py`: Cấu hình kết nối Alembic với SQLAlchemy Models trong `src/db/`.
   - `versions/`: Chứa danh sách các file script migration SQL được sinh tự động hoặc viết tay.
 
 ---
 
-### 5. 📖 Thư mục Tài liệu & Hướng dẫn (`docs/`)
+### 6. 📖 Thư mục Tài liệu & Hướng dẫn (`docs/`)
 - `architecture_diagram.md`: Mô tả sơ đồ thiết kế hệ thống và luồng dữ liệu giữa các thành phần.
 - `guide/`: Các bài viết hướng dẫn kỹ thuật chi tiết dành cho thành viên phát triển dự án.
 
 ---
 
-### 6. 📊 Thư mục Đánh giá AI (`eval/`)
+### 7. 📊 Thư mục Đánh giá AI (`eval/`)
 - `results/`: Nơi lưu trữ tập trung dữ liệu đánh giá (evaluation metrics, benchmark logs) nhằm đo lường hiệu năng và chất lượng phản hồi của AI Agent.
 
 ---
 
-### 7. 🎤 Thư mục Thuyết trình (`presentation/`)
+### 8. 🎤 Thư mục Thuyết trình (`presentation/`)
 - `README.md`: Hướng dẫn chuẩn bị tài liệu, slide trình chiếu và sản phẩm cho Demo Day dự án.
 
 ---
 
-### 8. 🛠️ Thư mục Scripts Tự động hóa (`scripts/`)
+### 9. 🛠️ Thư mục Scripts Tự động hóa (`scripts/`)
 - Chứa toàn bộ các script hỗ trợ lập trình viên cài đặt môi trường và tuân thủ AI Usage Logging của BTC AI20K VinUni.
   - `setup_hooks.sh` & `setup_hooks.ps1`: Script cài đặt Git Hook tự động trên Linux/macOS và Windows.
   - `log_hook.py`: Hook ghi nhận prompt từ Claude Code, Cursor, Codex, Copilot.
@@ -119,7 +127,7 @@ Thư mục trung tâm chứa toàn bộ mã nguồn phía server (FastAPI + Lang
 
 ---
 
-### 9. 🧪 Thư mục Kiểm thử Tự động (`tests/`)
+### 10. 🧪 Thư mục Kiểm thử Tự động (`tests/`)
 - Chứa toàn bộ bộ kiểm thử tự động (Unit test và Integration test) chạy bằng `pytest`.
   - `conftest.py`: Khai báo các test fixtures (mock DB session, test client, mock Redis).
   - `test_agents/`: Kiểm thử các nút (nodes), công cụ (tools) và đồ thị (graph) của LangGraph Agent.
@@ -128,7 +136,7 @@ Thư mục trung tâm chứa toàn bộ mã nguồn phía server (FastAPI + Lang
 
 ---
 
-### 10. 📄 Các File Cấu Hình & Tài liệu Gốc (Root Level Files)
+### 11. 📄 Các File Cấu Hình & Tài liệu Gốc (Root Level Files)
 - `ARCHITECTURE.md`: Tài liệu tổng quan kiến trúc hệ thống bằng Tiếng Việt.
 - `README.md`: Tài liệu giới thiệu dự án, hướng dẫn cài đặt và các bước phát triển nhanh.
 - `Dockerfile` & `docker-compose.yml`: File đóng gói container Docker cho Backend, Frontend, Postgres, Redis.

@@ -14,7 +14,6 @@ interface AuthLayoutProps {
   children: React.ReactNode;
   title: string;
   subtitle?: string;
-  badgeText?: string;
   showBack?: boolean;
   backTo?: string;
 }
