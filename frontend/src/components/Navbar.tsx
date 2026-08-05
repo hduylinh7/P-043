@@ -31,7 +31,7 @@ export const Navbar: React.FC = () => {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800 px-3 py-1.5 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-indigo-900/40 text-slate-300 hover:text-indigo-300 border border-slate-700 hover:border-indigo-800 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Đăng xuất</span>

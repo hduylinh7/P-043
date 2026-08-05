@@ -121,7 +121,7 @@ export const HeroSection: React.FC = () => {
               {/* Header inside mockup */}
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
                     <RobotOutlined className="text-xl" />
                   </div>
                   <div>
@@ -132,7 +132,7 @@ export const HeroSection: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Tag color="purple" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                <Tag color="blue" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   GPT-4o Agent
                 </Tag>
               </div>
@@ -158,7 +158,7 @@ export const HeroSection: React.FC = () => {
                   <span className="font-bold text-indigo-600 dark:text-indigo-400">85% Completed</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full w-[85%]" />
+                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full w-[85%]" />
                 </div>
               </div>
             </div>

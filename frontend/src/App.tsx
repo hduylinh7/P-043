@@ -13,6 +13,7 @@ import { RoleSelectionPage } from './pages/RoleSelectionPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { MaterialViewerPage } from './pages/MaterialViewerPage';
+import { AIChatPage } from './pages/AIChatPage';
 
 const ProtectedDashboardRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -97,6 +98,14 @@ export const App: React.FC = () => {
               element={
                 <ProtectedDashboardRoute>
                   <MaterialViewerPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
+              path="/ai-chat"
+              element={
+                <ProtectedDashboardRoute>
+                  <AIChatPage />
                 </ProtectedDashboardRoute>
               }
             />
