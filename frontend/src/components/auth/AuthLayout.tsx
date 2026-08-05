@@ -16,6 +16,7 @@ interface AuthLayoutProps {
   subtitle?: string;
   showBack?: boolean;
   backTo?: string;
+  badgeText?: string;
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
