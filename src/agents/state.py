@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Annotated, TypedDict
+
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 
 class AgentState(TypedDict, total=False):
-    """State schema cho LangGraph agent.
+    """State schema for LangGraph agent.
 
-    Mỗi node đọc và ghi vào state này.
-    total=False cho phép tất cả fields là optional.
+    Uses add_messages reducer to handle conversational chat history seamlessly.
     """
 
+    messages: Annotated[list[BaseMessage], add_messages]
     query: str
+    session_id: str
+    user_id: str
     context: str
     analysis: str
     response: str
