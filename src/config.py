@@ -21,8 +21,11 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
-    # LLM
+    # LLM & Embeddings
     openai_api_key: str = ""
+    gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
+    google_api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
+    embedding_model_name: str = Field(default="models/gemini-embedding-2", validation_alias="EMBEDDING_MODEL_NAME")
     model_name: str = "gpt-4o-mini"
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
