@@ -157,7 +157,7 @@ export const CourseDetailPage: React.FC = () => {
     if (ext === 'pdf') return <FilePdfOutlined className="text-red-500 text-xl" />;
     if (['doc', 'docx'].includes(ext || '')) return <FileWordOutlined className="text-blue-500 text-xl" />;
     if (['txt', 'md'].includes(ext || '')) return <FileTextOutlined className="text-emerald-500 text-xl" />;
-    return <FileUnknownOutlined className="text-amber-500 text-xl" />;
+    return <FileUnknownOutlined className="text-blue-500 text-xl" />;
   };
 
   if (loading) {
@@ -301,7 +301,7 @@ export const CourseDetailPage: React.FC = () => {
                   <span>{students.length} sinh viên</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500">
-                  <CalendarOutlined className="text-amber-500" />
+                  <CalendarOutlined className="text-blue-500" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Học kỳ:</span>
                   <span>{course.term || 'Fall 2026'}</span>
                 </div>

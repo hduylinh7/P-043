@@ -31,7 +31,7 @@ export const FeaturesSection: React.FC = () => {
       description: 'Set manageable target milestones each week with intelligent progress tracking and adaptive push notifications.',
     },
     {
-      icon: <FileDoneOutlined className="text-3xl text-amber-600 dark:text-amber-400" />,
+      icon: <FileDoneOutlined className="text-3xl text-blue-600 dark:text-blue-400" />,
       title: 'Assignment Tracking',
       description: 'Stay ahead of deadlines with centralized submission timelines, priority tags, and automated reminder alerts.',
     },
@@ -41,7 +41,7 @@ export const FeaturesSection: React.FC = () => {
       description: 'Engage in natural conversations with an AI study buddy that answers course questions and summarizes dense documents.',
     },
     {
-      icon: <LineChartOutlined className="text-3xl text-rose-600 dark:text-rose-400" />,
+      icon: <LineChartOutlined className="text-3xl text-indigo-600 dark:text-indigo-400" />,
       title: 'Learning Analytics',
       description: 'Gain clear data insights into your study habits, retention metrics, time allocation, and academic performance.',
     },

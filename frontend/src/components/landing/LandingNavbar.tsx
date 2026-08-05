@@ -43,11 +43,11 @@ export const LandingNavbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <Link to="/" className="flex items-center gap-2.5 font-bold text-xl tracking-tight transition-transform hover:scale-105">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-rose-500/25">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
               <BookOutlined className="text-xl" />
             </div>
             <span className={themeMode === 'dark' ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
-              Lita <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-rose-500">Learning</span>
+              Lita <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500">Learning</span>
             </span>
           </Link>
 
@@ -57,7 +57,7 @@ export const LandingNavbar: React.FC = () => {
               <button
                 key={link.id}
                 onClick={() => scrollToSection(link.id)}
-                className={`text-sm font-medium transition-colors hover:text-amber-500 ${
+                className={`text-sm font-medium transition-colors hover:text-blue-500 ${
                   themeMode === 'dark' ? 'text-slate-300' : 'text-slate-600'
                 }`}
               >
@@ -72,7 +72,7 @@ export const LandingNavbar: React.FC = () => {
               <Button
                 type="text"
                 shape="circle"
-                icon={themeMode === 'dark' ? <SunOutlined className="text-amber-400 text-lg" /> : <MoonOutlined className="text-slate-700 text-lg" />}
+                icon={themeMode === 'dark' ? <SunOutlined className="text-blue-400 text-lg" /> : <MoonOutlined className="text-slate-700 text-lg" />}
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
                 className="flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -85,7 +85,7 @@ export const LandingNavbar: React.FC = () => {
                 size="large"
                 icon={<RocketOutlined />}
                 onClick={() => navigate('/dashboard')}
-                className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 shadow-md shadow-rose-500/25 border-none font-semibold"
+                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 shadow-md shadow-indigo-500/25 border-none font-semibold"
               >
                 Go to Dashboard
               </Button>
@@ -96,7 +96,7 @@ export const LandingNavbar: React.FC = () => {
                   size="large"
                   icon={<LoginOutlined />}
                   onClick={() => navigate('/login')}
-                  className={themeMode === 'dark' ? 'text-slate-200 hover:text-amber-400' : 'text-slate-700 hover:text-amber-600'}
+                  className={themeMode === 'dark' ? 'text-slate-200 hover:text-blue-400' : 'text-slate-700 hover:text-blue-600'}
                 >
                   Sign In
                 </Button>
@@ -105,7 +105,7 @@ export const LandingNavbar: React.FC = () => {
                   size="large"
                   icon={<RocketOutlined />}
                   onClick={() => navigate('/register')}
-                  className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 shadow-md shadow-rose-500/25 border-none font-semibold"
+                  className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 shadow-md shadow-indigo-500/25 border-none font-semibold"
                 >
                   Get Started
                 </Button>
@@ -118,7 +118,7 @@ export const LandingNavbar: React.FC = () => {
             <Button
               type="text"
               shape="circle"
-              icon={themeMode === 'dark' ? <SunOutlined className="text-amber-400" /> : <MoonOutlined />}
+              icon={themeMode === 'dark' ? <SunOutlined className="text-blue-400" /> : <MoonOutlined />}
               onClick={toggleTheme}
             />
             <Button

@@ -6,7 +6,6 @@ import {
   SunOutlined,
   MoonOutlined,
   ArrowLeftOutlined,
-  StarOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
@@ -14,44 +13,47 @@ import { useTheme } from '../../context/ThemeContext';
 interface AuthLayoutProps {
   children: React.ReactNode;
   title: string;
-  subtitle: string;
-  badgeText?: string;
+  subtitle?: string;
+  showBack?: boolean;
+  backTo?: string;
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   children,
   title,
   subtitle,
-  badgeText = 'Lita Learning',
+  showBack = false,
+  backTo = '/',
 }) => {
   const { themeMode, toggleTheme } = useTheme();
+  const isDark = themeMode === 'dark';
 
   return (
-    <div className={`min-h-screen flex flex-col justify-between relative overflow-hidden transition-colors duration-300 ${
-      themeMode === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
-    }`}>
-      {/* Background Decorative Gradients & Grid */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] pointer-events-none" />
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 right-10 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div
+      className={`min-h-screen flex flex-col justify-between relative overflow-hidden transition-colors duration-300 ${
+        isDark ? 'bg-[#0b0d14] text-slate-100' : 'bg-[#F6F5F1] text-slate-900'
+      }`}
+    >
+      {/* Bottom Right Decorative Wave Shape (#FFF8ED) */}
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 sm:w-[500px] sm:h-[500px] bg-[#FFF8ED] rounded-tl-[240px] pointer-events-none opacity-90 border-t border-l border-[#F3E5D8]/60 shadow-inner" />
 
       {/* Top Header */}
-      <header className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between relative z-10">
+      <header className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between relative z-20">
         <Link to="/" className="flex items-center gap-2.5 font-extrabold text-lg tracking-tight group">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-[#FFF8ED] border border-[#EBDCCB] flex items-center justify-center text-amber-700 shadow-sm group-hover:scale-105 transition-transform">
             <BookOutlined className="text-lg" />
           </div>
-          <span className={themeMode === 'dark' ? 'text-white' : 'text-slate-900'}>
-            Lita <span className="text-indigo-600">Learning</span>
+          <span className={isDark ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
+            Lita <span className="text-amber-700 font-extrabold">Learning</span>
           </span>
         </Link>
 
         <div className="flex items-center gap-3">
-          <Tooltip title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+          <Tooltip title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
             <Button
               type="text"
               shape="circle"
-              icon={themeMode === 'dark' ? <SunOutlined className="text-amber-400 text-lg" /> : <MoonOutlined className="text-slate-700 text-lg" />}
+              icon={isDark ? <SunOutlined className="text-amber-400 text-lg" /> : <MoonOutlined className="text-slate-700 text-lg" />}
               onClick={toggleTheme}
               aria-label="Toggle theme"
               className="hover:bg-slate-200/50 dark:hover:bg-slate-800"
@@ -60,57 +62,66 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           <Link
             to="/"
             className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl border transition-all ${
-              themeMode === 'dark'
-                ? 'border-slate-800 bg-slate-900/80 text-slate-300 hover:text-white hover:border-slate-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:text-indigo-600 hover:border-indigo-200 shadow-sm'
+              isDark
+                ? 'border-slate-800 bg-slate-900/80 text-slate-300 hover:text-white'
+                : 'border-slate-200/80 bg-white/90 text-slate-700 hover:text-amber-700 shadow-sm'
             }`}
           >
-            <ArrowLeftOutlined /> Back to Home
+            <ArrowLeftOutlined /> Trang chủ
           </Link>
         </div>
       </header>
 
       {/* Main Card Container */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8 relative z-10">
+      <main className="flex-1 flex items-center justify-center px-4 py-8 relative z-20">
         <motion.div
-          className="w-full max-w-md"
-          initial={{ opacity: 0, y: 20 }}
+          className="w-full max-w-[420px]"
+          initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
         >
-          <div className={`rounded-3xl border p-8 sm:p-10 shadow-2xl relative backdrop-blur-xl ${
-            themeMode === 'dark'
-              ? 'bg-slate-900/90 border-slate-800/80 shadow-slate-950/60'
-              : 'bg-white/95 border-slate-200/80 shadow-slate-200/60'
-          }`}>
-            
-            {/* Header Text inside card */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50">
-                <StarOutlined />
-                <span>{badgeText}</span>
-              </div>
-              <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${
-                themeMode === 'dark' ? 'text-white' : 'text-slate-900'
-              }`}>
+          <div
+            className={`rounded-[36px] border-0 p-8 sm:p-10 relative overflow-hidden shadow-2xl transition-all ${
+              isDark
+                ? 'bg-slate-900/95 shadow-black/60 border border-slate-800/60'
+                : 'bg-white shadow-slate-300/40'
+            }`}
+          >
+            {/* Top-Right Soft Organic Blob (#FFF8ED) */}
+            <div className="absolute top-0 right-0 w-36 h-28 bg-[#FFF8ED] border-b border-l border-[#F3E5D8]/80 rounded-bl-[60px] rounded-tr-[36px] pointer-events-none" />
+
+            {/* Back Button (if enabled) */}
+            {showBack && (
+              <Link
+                to={backTo}
+                className="inline-flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-4 transition-colors relative z-10"
+                title="Quay lại"
+              >
+                <ArrowLeftOutlined className="text-base" />
+              </Link>
+            )}
+
+            {/* Header Text inside card - Left aligned */}
+            <div className="text-left mb-8 relative z-10">
+              <h1 className={`text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {title}
               </h1>
-              <p className={`text-sm mt-2 leading-relaxed ${
-                themeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
-              }`}>
-                {subtitle}
-              </p>
+              {subtitle && (
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1.5 leading-relaxed">
+                  {subtitle}
+                </p>
+              )}
             </div>
 
             {/* Form Content */}
-            {children}
+            <div className="relative z-10">{children}</div>
           </div>
         </motion.div>
       </main>
 
-      {/* Footer Disclaimer */}
-      <footer className="py-4 text-center text-xs text-slate-400 dark:text-slate-600 relative z-10">
-        © {new Date().getFullYear()} AI Learning Companion. Secure 256-bit Encrypted Session.
+      {/* Footer */}
+      <footer className="py-4 text-center text-xs text-slate-400 dark:text-slate-600 relative z-20">
+        © {new Date().getFullYear()} Lita Learning. Secure Authentication Session.
       </footer>
     </div>
   );

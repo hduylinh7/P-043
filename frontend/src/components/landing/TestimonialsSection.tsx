@@ -75,7 +75,7 @@ export const TestimonialsSection: React.FC = () => {
                 bodyStyle={{ padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}
               >
                 <div>
-                  <Rate disabled defaultValue={t.rating} className="text-amber-400 text-sm mb-4" />
+                  <Rate disabled defaultValue={t.rating} className="text-blue-400 text-sm mb-4" />
                   <p className={`text-sm leading-relaxed italic mb-6 ${
                     themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'
                   }`}>
