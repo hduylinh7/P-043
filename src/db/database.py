@@ -103,6 +103,14 @@ async def init_db() -> None:
         except Exception as table_err:
             logger.error(f"course_materials table creation/alteration error: {table_err}")
 
+        # 5. Ensure course_id column exists on chat_sessions
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS course_id VARCHAR(36) REFERENCES courses(id) ON DELETE CASCADE;"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_sessions_course_id ON chat_sessions(course_id);"))
+        except Exception as col_err:
+            logger.debug(f"course_id column check notice for chat_sessions: {col_err}")
+
         logger.info(f"Database tables initialized using {engine.url.drivername}")
 
 
@@ -118,6 +126,10 @@ async def init_db() -> None:
             except Exception:
                 pass
             try:
+                await conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN course_id VARCHAR(36);"))
+            except Exception:
+                pass
+            try:
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN object_key VARCHAR(500);"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN bucket VARCHAR(255);"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN size INTEGER;"))
@@ -125,6 +137,7 @@ async def init_db() -> None:
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN status VARCHAR(50);"))
             except Exception:
                 pass
+
         logger.info("Database tables initialized using fallback SQLite database.")
 
 

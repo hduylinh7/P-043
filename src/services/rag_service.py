@@ -154,23 +154,35 @@ class RAGService:
             logger.warning(f"Could not delete vectors for material {material_id}: {e}")
 
     @staticmethod
-    def search_course_materials(course_id: str, query: str, top_k: int = 4) -> list[dict[str, Any]]:
-        """Perform similarity search scoped strictly to course_id."""
+    def search_course_materials(
+        course_id: str | None = None,
+        query: str = "",
+        top_k: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Perform similarity search on vector store (scoped to course_id if provided)."""
+        if not query.strip():
+            return []
+
+        settings = get_settings()
+        k = top_k if top_k is not None else settings.rag_top_k
+        filter_dict = {"course_id": course_id} if course_id else None
+
         try:
             vector_store = _get_vector_store()
             results = vector_store.similarity_search_with_score(
                 query=query,
-                k=top_k,
-                filter={"course_id": course_id},
+                k=k,
+                filter=filter_dict,
             )
             formatted_results = []
             for doc, score in results:
                 formatted_results.append({
                     "content": doc.page_content,
-                    "metadata": doc.metadata,
+                    "metadata": doc.metadata or {},
                     "score": float(score),
                 })
             return formatted_results
         except Exception as e:
-            logger.error(f"Error searching course materials for course {course_id}: {e}")
+            logger.error(f"Error searching course materials (course_id={course_id}): {e}")
             return []
+

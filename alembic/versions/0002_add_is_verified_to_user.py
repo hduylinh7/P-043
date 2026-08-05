@@ -13,9 +13,10 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '0002_add_is_verified_to_user'
-down_revision: Union[str, None] = '0001_initial_schema'
+down_revision: Union[str, None] = '0002_add_hashed_password'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
 
 
 def upgrade() -> None:

@@ -7,6 +7,7 @@ import {
   message,
   Input,
   Tooltip,
+  Drawer,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -18,24 +19,32 @@ import {
   ThunderboltOutlined,
   SendOutlined,
   RobotOutlined,
-
   UserOutlined,
+  HistoryOutlined,
+  PlusOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { materialService } from '../services/materialService';
+import { api, ChatSession } from '../services/api';
 import { CourseMaterial } from '../types/material';
+
 
 interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
+  sources?: string[];
 }
 
 export const MaterialViewerPage: React.FC = () => {
   const { courseId, materialId } = useParams<{ courseId: string; materialId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { themeMode } = useTheme();
+
 
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [currentMaterial, setCurrentMaterial] = useState<CourseMaterial | null>(null);
@@ -54,6 +63,10 @@ export const MaterialViewerPage: React.FC = () => {
   const [aiThinking, setAiThinking] = useState<boolean>(false);
 
   const isDark = themeMode === 'dark';
+
+  const [courseSessions, setCourseSessions] = useState<ChatSession[]>([]);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState<boolean>(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!courseId || !materialId) return;
@@ -75,9 +88,63 @@ export const MaterialViewerPage: React.FC = () => {
     }
   };
 
+  const loadChatHistory = async () => {
+    if (!courseId) return;
+    try {
+      const userSessions = await api.getSessions(user?.id || 'default_user');
+      const filtered = userSessions.filter((s) => !s.course_id || s.course_id === courseId);
+      setCourseSessions(filtered);
+
+      if (filtered.length > 0) {
+        const latestSession = filtered[0];
+        setSessionId(latestSession.id);
+        const history = await api.getMessages(latestSession.id);
+        if (history && history.length > 0) {
+          const mapped: ChatMessage[] = history.map((m) => ({
+            sender: m.role === 'user' ? 'user' : 'ai',
+            text: m.content,
+            sources: m.sources,
+          }));
+          setChatMessages(mapped);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load course chat history:', err);
+    }
+  };
+
+  const switchSession = async (sId: string) => {
+    setSessionId(sId);
+    setHistoryDrawerOpen(false);
+    try {
+      const history = await api.getMessages(sId);
+      const mapped: ChatMessage[] = history.map((m) => ({
+        sender: m.role === 'user' ? 'user' : 'ai',
+        text: m.content,
+        sources: m.sources,
+      }));
+      setChatMessages(mapped);
+    } catch (err) {
+      console.error('Failed to switch session:', err);
+    }
+  };
+
+  const handleNewChatSession = () => {
+    setSessionId(null);
+    setHistoryDrawerOpen(false);
+    setChatMessages([
+      {
+        sender: 'ai',
+        text: 'Xin chào! Tôi là Trợ Lý AI Học Tập. Bạn có câu hỏi nào về bài giảng này không? Tôi có thể giúp bạn tóm tắt, trích xuất điểm chính hoặc giải thích các khái niệm khó!',
+      },
+    ]);
+  };
+
   useEffect(() => {
     loadData();
+    loadChatHistory();
   }, [courseId, materialId]);
+
 
   const handleDownload = async () => {
     if (!courseId || !currentMaterial) return;
@@ -93,27 +160,49 @@ export const MaterialViewerPage: React.FC = () => {
     }
   };
 
-  const handleAskAi = (questionText?: string) => {
+
+
+  const handleAskAi = async (questionText?: string) => {
     const q = (questionText || inputQuestion).trim();
-    if (!q) return;
+    if (!q || aiThinking) return;
 
     const userMsg: ChatMessage = { sender: 'user', text: q };
     setChatMessages((prev) => [...prev, userMsg]);
     setInputQuestion('');
     setAiThinking(true);
 
-    setTimeout(() => {
-      let responseText = 'Dựa trên nội dung bài giảng này, điểm quan trọng nhất là bạn cần nắm vững cấu trúc kiến thức cơ bản và áp dụng vào các bài tập thực hành.';
-      if (q.includes('tóm tắt')) {
-        responseText = `📌 **Tóm Tắt Bài Giảng (${currentMaterial?.title || 'Tài liệu'}):**\n1. Tổng quan khái niệm & định nghĩa cốt lõi.\n2. Phương pháp phân tích & quy trình thực hiện.\n3. Các ví dụ minh họa và bài tập vận dụng.`;
-      } else if (q.includes('câu hỏi') || q.includes('ôn tập')) {
-        responseText = `❓ **3 Câu Hỏi Ôn Tập Gợi Ý:**\n1. Định nghĩa chính của bài giảng này là gì?\n2. Sự khác biệt giữa các phương pháp được trình bày là gì?\n3. Ứng dụng thực tế của kiến thức này như thế nào?`;
+    try {
+      const res = await api.sendMessage(
+        q,
+        sessionId || undefined,
+        user?.id || 'default_user',
+        courseId
+      );
+      if (res.session_id) {
+        setSessionId(res.session_id);
       }
-
-      setChatMessages((prev) => [...prev, { sender: 'ai', text: responseText }]);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: res.response,
+          sources: res.sources,
+        },
+      ]);
+    } catch (err: any) {
+      console.error('AI Chat error:', err);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: '❌ Không thể kết nối tới AI Learning Companion backend.',
+        },
+      ]);
+    } finally {
       setAiThinking(false);
-    }, 1000);
+    }
   };
+
 
   const getMaterialTypeTag = (type: string) => {
     switch (type) {
@@ -270,7 +359,7 @@ export const MaterialViewerPage: React.FC = () => {
               }`}
             >
               {/* AI Header */}
-              <div className={`p-4 border-b flex items-center justify-between ${
+              <div className={`p-3.5 border-b flex items-center justify-between ${
                 isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'
               }`}>
                 <div className="flex items-center gap-2">
@@ -282,7 +371,79 @@ export const MaterialViewerPage: React.FC = () => {
                     <div className="text-[11px] text-slate-400 mt-1">Đồng hành cùng bài giảng</div>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Tooltip title="Xem các phiên hội thoại cũ">
+                    <Button
+                      size="small"
+                      icon={<HistoryOutlined />}
+                      onClick={() => setHistoryDrawerOpen(true)}
+                      className="rounded-lg text-xs"
+                    >
+                      Lịch sử
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Tạo cuộc hội thoại mới">
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={handleNewChatSession}
+                      className="rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500"
+                    >
+                      Mới
+                    </Button>
+                  </Tooltip>
+                </div>
               </div>
+
+              {/* History Drawer */}
+              <Drawer
+                title="📜 Lịch sử cuộc hội thoại AI"
+                placement="right"
+                onClose={() => setHistoryDrawerOpen(false)}
+                open={historyDrawerOpen}
+                width={320}
+              >
+                <div className="space-y-2">
+                  <Button
+                    type="primary"
+                    block
+                    icon={<PlusOutlined />}
+                    onClick={handleNewChatSession}
+                    className="mb-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl"
+                  >
+                    Bắt đầu cuộc trò chuyện mới
+                  </Button>
+
+                  {courseSessions.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">Chưa có lịch sử hội thoại nào.</p>
+                  ) : (
+                    courseSessions.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => switchSession(s.id)}
+                        className={`w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
+                          sessionId === s.id
+                            ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 font-semibold'
+                            : isDark
+                            ? 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <MessageOutlined className="text-indigo-400" />
+                          <span className="truncate">{s.title || 'Untitled Chat'}</span>
+                        </div>
+                        {sessionId === s.id && (
+                          <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </Drawer>
+
 
 
               {/* Quick AI Prompts */}
@@ -315,24 +476,41 @@ export const MaterialViewerPage: React.FC = () => {
                     }`}>
                       {msg.sender === 'user' ? <UserOutlined /> : <RobotOutlined />}
                     </div>
-                    <div
-                      className={`p-3 rounded-2xl text-xs leading-relaxed max-w-[80%] whitespace-pre-line ${
-                        msg.sender === 'user'
-                          ? 'bg-indigo-600 text-white rounded-tr-none'
-                          : isDark
-                          ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                          : 'bg-slate-100 text-slate-800 rounded-tl-none'
-                      }`}
-                    >
-                      {msg.text}
+                    <div className="flex flex-col gap-1 max-w-[80%]">
+                      <div
+                        className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
+                          msg.sender === 'user'
+                            ? 'bg-indigo-600 text-white rounded-tr-none'
+                            : isDark
+                            ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+
+                      {msg.sender === 'ai' && msg.sources && msg.sources.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap text-[10px] text-slate-400 pl-1">
+                          <span className="font-semibold text-indigo-400">📚 Tài liệu:</span>
+                          {msg.sources.map((src, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded"
+                            >
+                              {src}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
 
+
                 {aiThinking && (
                   <div className="flex items-center gap-2 text-xs text-purple-400">
                     <Spin size="small" />
-                    <span>AI đang phân tích bài giảng...</span>
+                    <span>AI đang suy nghĩ...</span>
                   </div>
                 )}
               </div>
