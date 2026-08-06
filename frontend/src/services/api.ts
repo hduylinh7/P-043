@@ -12,6 +12,7 @@ export interface ChatMessage {
   content: string;
   citations?: Citation[];
   sources?: string[];
+  analysis?: string;
 }
 
 export interface ChatSession {

@@ -54,9 +54,9 @@ export const Sidebar: React.FC = () => {
     {
       id: 'chat',
       name: 'AI Chat Assistant',
-      path: '/dashboard',
+      path: '/ai-chat',
       icon: MessageSquare,
-      badge: 'AI',
+      badge: 'RAG',
     },
   ];
 
@@ -76,7 +76,7 @@ export const Sidebar: React.FC = () => {
           : 'bg-white border-slate-200 text-slate-800 shadow-lg'
       } ${isCollapsed ? 'w-20' : 'w-64'}`}
     >
-      {/* 1. Sidebar Header (Sunset Amber Theme) */}
+      {/* 1. Sidebar Header (Ocean Blue Theme) */}
       <div className={`flex items-center justify-between h-16 px-4 border-b ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
         {!isCollapsed && (
           <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-blue-500">

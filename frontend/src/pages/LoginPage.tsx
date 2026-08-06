@@ -96,17 +96,17 @@ export const LoginPage: React.FC = () => {
       {/* Error Alert */}
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${isDark
-          ? 'bg-rose-950/60 border-rose-800/80 text-rose-200'
-          : 'bg-rose-50 border-rose-200 text-rose-800'
+          ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
+          : 'bg-indigo-50 border-indigo-200 text-indigo-800'
           }`}>
-          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="m-0 leading-relaxed font-medium">{error}</p>
             {error.toLowerCase().includes('chưa được xác thực') && (
               <button
                 type="button"
                 onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-                className="mt-2 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline block"
+                className="mt-2 text-xs font-semibold text-blue-800 dark:text-blue-300 hover:underline block"
               >
                 Xác thực email ngay bây giờ →
               </button>
@@ -142,8 +142,8 @@ export const LoginPage: React.FC = () => {
               placeholder="name@example.com"
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${isDark
-                ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400'
-                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-amber-400 focus:ring-1 focus:ring-amber-400'
+                ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
                 }`}
             />
           </div>
@@ -157,7 +157,7 @@ export const LoginPage: React.FC = () => {
             </label>
             <Link
               to="/forgot-password"
-              className="text-xs font-bold text-amber-800 dark:text-amber-300 hover:underline transition-colors"
+              className="text-xs font-bold text-blue-800 dark:text-blue-300 hover:underline transition-colors"
             >
               Quên mật khẩu?
             </Link>
@@ -171,8 +171,8 @@ export const LoginPage: React.FC = () => {
               placeholder="••••••••"
               required
               className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${isDark
-                ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400'
-                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-amber-400 focus:ring-1 focus:ring-amber-400'
+                ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
                 }`}
             />
             <button
@@ -188,11 +188,11 @@ export const LoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#FFF8ED] hover:bg-[#FFEECB] active:scale-[0.99] text-amber-950 dark:text-amber-900 font-extrabold py-3.5 rounded-xl border border-[#E8D9C8] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+          className="w-full bg-[#eff6ff] hover:bg-[#dbeafe] active:scale-[0.99] text-blue-950 dark:text-blue-900 font-extrabold py-3.5 rounded-xl border border-[#bfdbfe] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-3"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin text-amber-900" />
+              <Loader2 className="w-5 h-5 animate-spin text-blue-900" />
               <span>Đang xử lý...</span>
             </>
           ) : (
@@ -228,7 +228,7 @@ export const LoginPage: React.FC = () => {
       <div className={`mt-8 text-center border-t pt-6 text-sm ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
         }`}>
         Chưa có tài khoản?{' '}
-        <Link to="/register" className="font-bold text-amber-700 dark:text-amber-400 hover:underline">
+        <Link to="/register" className="font-bold text-blue-700 dark:text-blue-400 hover:underline">
           Đăng ký ngay
         </Link>
       </div>
