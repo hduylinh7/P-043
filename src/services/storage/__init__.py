@@ -1,5 +1,5 @@
 from src.services.storage.base import StorageService
 from src.services.storage.factory import get_storage_service
-from src.services.storage.minio_storage import MinIOStorageService
+from src.services.storage.local_storage import LocalStorageService
 
-__all__ = ["StorageService", "MinIOStorageService", "get_storage_service"]
+__all__ = ["StorageService", "LocalStorageService", "get_storage_service"]
