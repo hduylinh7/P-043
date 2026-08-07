@@ -176,9 +176,23 @@ async def init_db() -> None:
                         updated_at TIMESTAMP WITH TIME ZONE NOT NULL
                     );
                 """))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_personal_tasks_student_id ON personal_tasks(student_id);"))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS goals (
+                        id VARCHAR(36) PRIMARY KEY,
+                        student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        category VARCHAR(50) NOT NULL DEFAULT 'LEARNING',
+                        priority VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+                        status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+                        target_date TIMESTAMP WITH TIME ZONE,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    );
+                """))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_goals_student_id ON goals(student_id);"))
         except Exception as assign_err:
-            logger.debug(f"assignments / checklists / submissions / personal_tasks check notice: {assign_err}")
+            logger.debug(f"assignments / checklists / submissions / personal_tasks / goals check notice: {assign_err}")
 
         logger.info(f"Database tables initialized using {engine.url.drivername}")
 

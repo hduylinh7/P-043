@@ -20,7 +20,7 @@ from src.db.models.learning import (
     StudentChecklistProgress,
     Submission,
 )
-from src.db.models.planning import Notification, PersonalTask, Task, WeeklyGoal
+from src.db.models.planning import Goal, Notification, PersonalTask, Task, WeeklyGoal
 from src.db.models.reflection import ReflectionMessage, ReflectionSession
 
 __all__ = [
@@ -42,6 +42,7 @@ __all__ = [
 
 
     # Planning
+    "Goal",
     "WeeklyGoal",
     "Task",
     "PersonalTask",

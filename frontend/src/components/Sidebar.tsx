@@ -15,6 +15,7 @@ import {
   Moon,
   BookOpen,
   CheckSquare,
+  Target,
   LucideIcon
 } from 'lucide-react';
 
@@ -56,6 +57,12 @@ export const Sidebar: React.FC = () => {
     },
     ...(isStudent
       ? [
+          {
+            id: 'goals',
+            name: 'Mục tiêu cá nhân',
+            path: '/goals',
+            icon: Target,
+          },
           {
             id: 'tasks',
             name: 'Nhiệm vụ cá nhân',
