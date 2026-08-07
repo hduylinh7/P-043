@@ -20,8 +20,8 @@ export const HeroSection: React.FC = () => {
   return (
     <section className="relative overflow-hidden py-16 lg:py-24">
       {/* Background glow accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -34,8 +34,8 @@ export const HeroSection: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             {/* Badge */}
-            <Tag color="orange" className="px-3 py-1 text-sm font-semibold rounded-full mb-6 border-orange-200 dark:border-orange-900/60 flex items-center gap-1.5 shadow-sm">
-              <StarOutlined className="text-amber-500" />
+            <Tag color="blue" className="px-3 py-1 text-sm font-semibold rounded-full mb-6 border-blue-200 dark:border-blue-900/60 flex items-center gap-1.5 shadow-sm">
+              <StarOutlined className="text-blue-500" />
               <span>Next-Gen AI Powered Learning Platform</span>
             </Tag>
 
@@ -44,7 +44,7 @@ export const HeroSection: React.FC = () => {
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
               Your Personal{' '}
-              <span className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 bg-clip-text text-transparent">
                 Lita Learning
               </span>{' '}
               Platform
@@ -65,7 +65,7 @@ export const HeroSection: React.FC = () => {
                   size="large"
                   icon={<RocketOutlined />}
                   onClick={() => navigate('/register')}
-                  className="h-13 px-8 text-base font-semibold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 border-none shadow-lg shadow-rose-500/25 rounded-xl flex items-center gap-2"
+                  className="h-13 px-8 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border-none shadow-lg shadow-blue-500/25 rounded-xl flex items-center gap-2"
                 >
                   Get Started
                 </Button>
@@ -121,7 +121,7 @@ export const HeroSection: React.FC = () => {
               {/* Header inside mockup */}
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
                     <RobotOutlined className="text-xl" />
                   </div>
                   <div>
@@ -132,7 +132,7 @@ export const HeroSection: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Tag color="purple" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                <Tag color="blue" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   GPT-4o Agent
                 </Tag>
               </div>
@@ -158,7 +158,7 @@ export const HeroSection: React.FC = () => {
                   <span className="font-bold text-indigo-600 dark:text-indigo-400">85% Completed</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full w-[85%]" />
+                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full w-[85%]" />
                 </div>
               </div>
             </div>

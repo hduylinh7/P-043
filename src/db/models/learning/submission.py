@@ -31,6 +31,10 @@ class Submission(Base, TimestampMixin):
     )
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     grade: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    file_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    object_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    submission_text: Mapped[str | None] = mapped_column(String(5000), nullable=True)
     status: Mapped[SubmissionStatusEnum] = mapped_column(
         SQLEnum(SubmissionStatusEnum, native_enum=False),
         default=SubmissionStatusEnum.UNSUBMITTED,

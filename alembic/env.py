@@ -7,11 +7,20 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Import Base and models for metadata autogenerate
+from src.config import get_settings
 from src.db.base import Base
 import src.db.models  # noqa: F401
 
 config = context.config
+
+settings = get_settings()
+db_url = settings.database_url
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("sqlite://"):
+    db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+
+config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -22,6 +31,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -44,8 +54,11 @@ async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
     """
+    ini_section = config.get_section(config.config_ini_section, {})
+    ini_section["sqlalchemy.url"] = config.get_main_option("sqlalchemy.url")
+    
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        ini_section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

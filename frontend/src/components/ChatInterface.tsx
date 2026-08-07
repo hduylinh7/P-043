@@ -79,7 +79,12 @@ export default function ChatInterface() {
         setCurrentSessionId(res.session_id);
         loadSessions();
       }
-      const assistantMsg: ChatMessage = { role: 'assistant', content: res.response };
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: res.response,
+        citations: res.citations,
+        sources: res.sources,
+      };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
       console.error(err);
@@ -134,7 +139,7 @@ export default function ChatInterface() {
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5"><HardDrive size={13} /> Redis Cache</span>
-            <span className={`w-2 h-2 rounded-full ${status?.redis_connected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            <span className={`w-2 h-2 rounded-full ${status?.redis_connected ? 'bg-emerald-500' : 'bg-blue-500'}`}></span>
           </div>
         </div>
       </div>
@@ -145,9 +150,9 @@ export default function ChatInterface() {
         <div className="h-14 border-b border-slate-800 px-6 flex items-center justify-between bg-slate-900/30">
           <div className="flex items-center gap-2">
             <Bot size={20} className="text-indigo-400" />
-            <h1 className="font-semibold text-slate-200">AI Agent (P-043)</h1>
+            <h1 className="font-semibold text-slate-200">AI Learning Companion</h1>
             <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
-              LangGraph + GPT-4o-mini
+              LangGraph RAG Agent
             </span>
           </div>
           <button onClick={checkHealth} title="Refresh status" className="text-slate-400 hover:text-slate-200">
@@ -160,7 +165,7 @@ export default function ChatInterface() {
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-3">
               <Bot size={48} className="text-indigo-500/40" />
-              <p className="text-sm">Start a conversation with the AI Agent</p>
+              <p className="text-sm">Start a conversation with the AI Learning Companion</p>
             </div>
           ) : (
             messages.map((m, idx) => (
@@ -180,14 +185,30 @@ export default function ChatInterface() {
                   {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                 </div>
 
-                <div
-                  className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    m.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                  }`}
-                >
-                  {m.content}
+                <div className="space-y-2">
+                  <div
+                    className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                      m.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-tr-none'
+                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+
+                  {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 pl-1">
+                      <span className="font-semibold text-indigo-400">📚 Reference Materials:</span>
+                      {m.sources.map((src, sIdx) => (
+                        <span
+                          key={sIdx}
+                          className="bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-md"
+                        >
+                          {src}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))
@@ -198,10 +219,11 @@ export default function ChatInterface() {
                 <Bot size={16} />
               </div>
               <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl text-sm text-slate-400 animate-pulse">
-                Agent thinking...
+                RAG Agent searching materials & generating response...
               </div>
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 

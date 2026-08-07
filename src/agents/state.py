@@ -7,7 +7,7 @@ from langgraph.graph.message import add_messages
 
 
 class AgentState(TypedDict, total=False):
-    """State schema for LangGraph agent.
+    """State schema for LangGraph RAG Agent.
 
     Uses add_messages reducer to handle conversational chat history seamlessly.
     """
@@ -15,9 +15,14 @@ class AgentState(TypedDict, total=False):
     messages: Annotated[list[BaseMessage], add_messages]
     query: str
     session_id: str
+    course_id: str | None
     user_id: str
-    context: str
+    recent_messages: list[BaseMessage]
+    retrieved_docs: list[dict]
+    context_text: str
+    citations: list[dict]
     analysis: str
     response: str
-    error: str
+    error: str | None
     metadata: dict
+

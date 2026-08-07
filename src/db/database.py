@@ -103,6 +103,83 @@ async def init_db() -> None:
         except Exception as table_err:
             logger.error(f"course_materials table creation/alteration error: {table_err}")
 
+        # 5. Ensure course_id column exists on chat_sessions
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS course_id VARCHAR(36) REFERENCES courses(id) ON DELETE CASCADE;"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_sessions_course_id ON chat_sessions(course_id);"))
+        except Exception as col_err:
+            logger.debug(f"course_id column check notice for chat_sessions: {col_err}")
+
+        # 6. Ensure assignments columns exist and student_assignment_progress table exists
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS estimated_hours FLOAT;"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS priority VARCHAR(50) DEFAULT 'MEDIUM';"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS created_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL;"))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS student_assignment_progress (
+                        id VARCHAR(36) PRIMARY KEY,
+                        assignment_id VARCHAR(36) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+                        student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        progress_status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED',
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        CONSTRAINT uq_student_assignment_progress UNIQUE (assignment_id, student_id)
+                    );
+                """))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS assignment_checklists (
+                        id VARCHAR(36) PRIMARY KEY,
+                        assignment_id VARCHAR(36) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        display_order INTEGER NOT NULL DEFAULT 0,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    );
+                """))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_assignment_checklists_assignment_id ON assignment_checklists(assignment_id);"))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS student_checklist_progress (
+                        id VARCHAR(36) PRIMARY KEY,
+                        checklist_id VARCHAR(36) NOT NULL REFERENCES assignment_checklists(id) ON DELETE CASCADE,
+                        student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        completed BOOLEAN NOT NULL DEFAULT FALSE,
+                        completed_at TIMESTAMP WITH TIME ZONE,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        CONSTRAINT uq_student_checklist_progress UNIQUE (checklist_id, student_id)
+                    );
+                """))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_student_checklist_progress_checklist_id ON student_checklist_progress(checklist_id);"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS attachment_file_name VARCHAR(255);"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS attachment_file_url VARCHAR(500);"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS attachment_object_key VARCHAR(500);"))
+                await conn.execute(text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);"))
+                await conn.execute(text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS file_url VARCHAR(500);"))
+                await conn.execute(text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS object_key VARCHAR(500);"))
+                await conn.execute(text("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS submission_text TEXT;"))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS personal_tasks (
+                        id VARCHAR(36) PRIMARY KEY,
+                        student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        category VARCHAR(50) NOT NULL DEFAULT 'STUDY',
+                        priority VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+                        status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED',
+                        estimated_hours FLOAT,
+                        due_at TIMESTAMP WITH TIME ZONE,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    );
+                """))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_personal_tasks_student_id ON personal_tasks(student_id);"))
+        except Exception as assign_err:
+            logger.debug(f"assignments / checklists / submissions / personal_tasks check notice: {assign_err}")
+
         logger.info(f"Database tables initialized using {engine.url.drivername}")
 
 
@@ -118,6 +195,10 @@ async def init_db() -> None:
             except Exception:
                 pass
             try:
+                await conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN course_id VARCHAR(36);"))
+            except Exception:
+                pass
+            try:
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN object_key VARCHAR(500);"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN bucket VARCHAR(255);"))
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN size INTEGER;"))
@@ -125,7 +206,17 @@ async def init_db() -> None:
                 await conn.execute(text("ALTER TABLE course_materials ADD COLUMN status VARCHAR(50);"))
             except Exception:
                 pass
+            try:
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN estimated_hours FLOAT;"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN status VARCHAR(50) DEFAULT 'ACTIVE';"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN priority VARCHAR(50) DEFAULT 'MEDIUM';"))
+                await conn.execute(text("ALTER TABLE assignments ADD COLUMN created_by VARCHAR(36);"))
+            except Exception:
+                pass
+
         logger.info("Database tables initialized using fallback SQLite database.")
+
+
 
 
 

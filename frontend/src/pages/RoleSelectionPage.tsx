@@ -141,7 +141,7 @@ export const RoleSelectionPage: React.FC = () => {
           }`}
         >
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-purple-500/20">
+            <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
               <ReadOutlined className="text-xl" />
             </div>
             <div className="flex-1 min-w-0">

@@ -41,8 +41,8 @@ export const RegisterPage: React.FC = () => {
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
 
-    if (score <= 1) return { score, label: 'Yếu', color: 'bg-rose-500' };
-    if (score <= 3) return { score, label: 'Trung bình', color: 'bg-amber-500' };
+    if (score <= 1) return { score, label: 'Yếu', color: 'bg-indigo-500' };
+    if (score <= 3) return { score, label: 'Trung bình', color: 'bg-blue-500' };
     return { score, label: 'Mạnh', color: 'bg-emerald-500' };
   };
 
@@ -92,10 +92,9 @@ export const RegisterPage: React.FC = () => {
       <AuthLayout
         title="Đăng ký thành công!"
         subtitle="Vui lòng kiểm tra hộp thư email của bạn"
-        badgeText="Step 2 of 2"
       >
         <div className="text-center">
-          <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400">
+          <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
             <Send className="w-8 h-8" />
           </div>
 
@@ -103,7 +102,7 @@ export const RegisterPage: React.FC = () => {
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
             Hệ thống đã gửi mã OTP xác thực 6 chữ số tới địa chỉ{' '}
-            <strong className="text-indigo-600 dark:text-indigo-400">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
+            <strong className="text-blue-500">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
           </p>
 
           <div className={`p-4 rounded-xl border text-xs mb-6 flex items-center gap-2.5 ${
@@ -117,7 +116,7 @@ export const RegisterPage: React.FC = () => {
 
           <button
             onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 transition-all"
+            className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-500 hover:from-blue-300 hover:to-blue-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all"
           >
             Nhập mã OTP xác thực
           </button>
@@ -130,15 +129,14 @@ export const RegisterPage: React.FC = () => {
     <AuthLayout
       title="Tạo tài khoản"
       subtitle="Bắt đầu trải nghiệm học tập cùng AI Companion"
-      badgeText="Create Free Account"
     >
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
           isDark
-            ? 'bg-rose-950/60 border-rose-800/80 text-rose-200'
-            : 'bg-rose-50 border-rose-200 text-rose-800'
+            ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
+            : 'bg-indigo-50 border-indigo-200 text-indigo-800'
         }`}>
-          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -160,8 +158,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
               }`}
             />
           </div>
@@ -183,8 +181,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
               }`}
             />
           </div>
@@ -206,8 +204,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
               }`}
             />
             <button
@@ -252,8 +250,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
               }`}
             />
           </div>
@@ -262,11 +260,11 @@ export const RegisterPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          className="w-full bg-[#eff6ff] hover:bg-[#dbeafe] active:scale-[0.99] text-blue-950 dark:text-blue-900 font-extrabold py-3.5 rounded-xl border border-[#bfdbfe] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin text-blue-900" />
               <span>Đang khởi tạo tài khoản...</span>
             </>
           ) : (
@@ -279,7 +277,7 @@ export const RegisterPage: React.FC = () => {
         isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
       }`}>
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link to="/login" className="font-bold text-blue-700 dark:text-blue-400 hover:underline">
           Đăng nhập
         </Link>
       </div>

@@ -105,7 +105,7 @@ export const LandingFooter: React.FC = () => {
             © {new Date().getFullYear()} Lita Learning. All rights reserved.
           </p>
           <p className="m-0 flex items-center gap-1">
-            Built with <HeartFilled className="text-rose-500" /> for university students.
+            Built with <HeartFilled className="text-indigo-500" /> for university students.
           </p>
         </div>
 
