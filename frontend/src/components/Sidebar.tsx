@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   BookOpen,
+  CheckSquare,
   LucideIcon
 } from 'lucide-react';
 
@@ -31,6 +32,8 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const { themeMode, toggleTheme } = useTheme();
+
+  const isStudent = user?.roles?.includes('student') || false;
 
   const navItems: NavItem[] = [
     {
@@ -51,6 +54,16 @@ export const Sidebar: React.FC = () => {
       path: '/courses',
       icon: BookOpen,
     },
+    ...(isStudent
+      ? [
+          {
+            id: 'tasks',
+            name: 'Nhiệm vụ cá nhân',
+            path: '/tasks',
+            icon: CheckSquare,
+          },
+        ]
+      : []),
     {
       id: 'chat',
       name: 'AI Chat Assistant',
