@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from src.db.models.identity.anonymous_profile import AnonymousProfile
     from src.db.models.identity.user_role import UserRole
     from src.db.models.learning.enrollment import Enrollment
+    from src.db.models.planning.goal import Goal
     from src.db.models.planning.weekly_goal import WeeklyGoal
 
 
@@ -33,6 +34,9 @@ class User(Base, TimestampMixin):
     )
     enrollments: Mapped[list["Enrollment"]] = relationship(
         "Enrollment", back_populates="user", cascade="all, delete-orphan"
+    )
+    goals: Mapped[list["Goal"]] = relationship(
+        "Goal", back_populates="student", cascade="all, delete-orphan"
     )
     weekly_goals: Mapped[list["WeeklyGoal"]] = relationship(
         "WeeklyGoal", back_populates="student", cascade="all, delete-orphan"
