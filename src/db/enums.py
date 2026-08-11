@@ -29,6 +29,20 @@ class GoalStatusEnum(enum.StrEnum):
     ABANDONED = "abandoned"
 
 
+class WeeklyPlanStatusEnum(enum.StrEnum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
+
+
+class TaskSourceTypeEnum(enum.StrEnum):
+    ASSIGNMENT = "ASSIGNMENT"
+    PERSONAL_TASK = "PERSONAL_TASK"
+    GOAL = "GOAL"
+    MANUAL = "MANUAL"
+
+
 class TaskPriorityEnum(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"

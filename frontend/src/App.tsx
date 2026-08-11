@@ -16,6 +16,7 @@ import { MaterialViewerPage } from './pages/MaterialViewerPage';
 import { AIChatPage } from './pages/AIChatPage';
 import { PersonalTasksPage } from './pages/PersonalTasksPage';
 import { GoalsPage } from './pages/GoalsPage';
+import { WeeklyPlanPage } from './pages/WeeklyPlanPage';
 
 const ProtectedDashboardRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -104,6 +105,14 @@ export const App: React.FC = () => {
               }
             />
             <Route
+              path="/weekly-plan"
+              element={
+                <ProtectedDashboardRoute>
+                  <WeeklyPlanPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
               path="/tasks"
               element={
                 <ProtectedDashboardRoute>
@@ -119,6 +128,7 @@ export const App: React.FC = () => {
                 </ProtectedDashboardRoute>
               }
             />
+
 
 
             {/* 5. Trang Xác thực tài khoản */}

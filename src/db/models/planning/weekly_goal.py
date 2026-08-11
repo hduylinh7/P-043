@@ -6,7 +6,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base, TimestampMixin, generate_uuid, now_utc
-from src.db.enums import GoalStatusEnum
+from src.db.enums import WeeklyPlanStatusEnum
 
 if TYPE_CHECKING:
     from src.db.models.identity.user import User
@@ -24,9 +24,10 @@ class WeeklyGoal(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     week_start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    status: Mapped[GoalStatusEnum] = mapped_column(
-        SQLEnum(GoalStatusEnum, native_enum=False),
-        default=GoalStatusEnum.NOT_STARTED,
+    week_end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50),
+        default=WeeklyPlanStatusEnum.ACTIVE,
         nullable=False,
     )
     generated_by_agent: Mapped[str | None] = mapped_column(String(100), nullable=True)
