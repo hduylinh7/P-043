@@ -84,3 +84,31 @@ export interface UpdateTaskPayload {
   source_id?: string;
   assignment_id?: string;
 }
+
+export interface PlannerAgentRequestPayload {
+  week_start?: string;
+  request?: string;
+}
+
+export interface PlannerAgentTaskResult {
+  id: string;
+  title: string;
+  scheduled_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  priority: string;
+  source_type: string;
+  source_id?: string | null;
+}
+
+export interface PlannerAgentResponseResult {
+  weekly_plan_id?: string | null;
+  week_start: string;
+  week_end: string;
+  summary: string;
+  created_tasks: PlannerAgentTaskResult[];
+  updated_tasks: PlannerAgentTaskResult[];
+  skipped_items: { title?: string; reason?: string }[];
+  warnings: string[];
+}
+
