@@ -16,6 +16,7 @@ import {
   BookOpen,
   CheckSquare,
   Target,
+  Calendar,
   LucideIcon
 } from 'lucide-react';
 
@@ -58,6 +59,12 @@ export const Sidebar: React.FC = () => {
     ...(isStudent
       ? [
           {
+            id: 'weekly-plan',
+            name: 'Kế hoạch tuần',
+            path: '/weekly-plan',
+            icon: Calendar,
+          },
+          {
             id: 'goals',
             name: 'Mục tiêu cá nhân',
             path: '/goals',
@@ -71,6 +78,7 @@ export const Sidebar: React.FC = () => {
           },
         ]
       : []),
+
     {
       id: 'chat',
       name: 'AI Chat Assistant',
