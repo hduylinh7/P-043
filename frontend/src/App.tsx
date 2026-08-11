@@ -97,6 +97,14 @@ export const App: React.FC = () => {
               }
             />
             <Route
+              path="/courses/:courseId/materials/:materialId"
+              element={
+                <ProtectedDashboardRoute>
+                  <MaterialViewerPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
               path="/ai-chat"
               element={
                 <ProtectedDashboardRoute>

@@ -3,6 +3,8 @@ import {
   CreateTaskPayload,
   CreateWeeklyPlanPayload,
   PlanTask,
+  PlannerAgentRequestPayload,
+  PlannerAgentResponseResult,
   TaskStatus,
   UpdateTaskPayload,
   UpdateWeeklyPlanPayload,
@@ -57,4 +59,10 @@ export const weeklyPlanService = {
     const response = await api.patch<PlanTask>(`/tasks/${taskId}/status`, { status });
     return response.data;
   },
+
+  async generateAIPlan(payload: PlannerAgentRequestPayload): Promise<PlannerAgentResponseResult> {
+    const response = await api.post<PlannerAgentResponseResult>('/planner/generate', payload);
+    return response.data;
+  },
 };
+

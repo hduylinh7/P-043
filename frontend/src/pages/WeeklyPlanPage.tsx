@@ -29,6 +29,7 @@ import {
   AimOutlined,
   UserOutlined,
   FlagOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -43,6 +44,7 @@ import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
 import {
   PlanTask,
+  PlannerAgentResponseResult,
   TaskPriority,
   TaskSourceType,
   TaskStatus,
@@ -83,6 +85,10 @@ export const WeeklyPlanPage: React.FC = () => {
   const { themeMode } = useTheme();
   const isDark = themeMode === 'dark';
 
+  const isStudent = useMemo(() => {
+    return !user?.roles || user.roles.includes('student') || user.roles.includes('admin');
+  }, [user]);
+
   // Navigation State
   const [currentMonday, setCurrentMonday] = useState<Dayjs>(dayjs().startOf('isoWeek'));
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
@@ -99,6 +105,13 @@ export const WeeklyPlanPage: React.FC = () => {
   const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState<boolean>(false);
   const [taskForm] = Form.useForm();
   const [planForm] = Form.useForm();
+
+  // AI Planning Agent State
+  const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState<boolean>(false);
+  const [aiPlanRequest, setAiPlanRequest] = useState<string>('');
+  const [aiResultModalOpen, setAiResultModalOpen] = useState<boolean>(false);
+  const [aiResultData, setAiResultData] = useState<PlannerAgentResponseResult | null>(null);
 
   // Active week date range
   const weekStart = useMemo(() => currentMonday.startOf('day'), [currentMonday]);
@@ -158,6 +171,29 @@ export const WeeklyPlanPage: React.FC = () => {
       message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch tuần');
     }
   };
+
+  // Generate AI Plan
+  const handleGenerateAIPlan = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const payload = {
+        week_start: weekStart.format('YYYY-MM-DD'),
+        request: aiPlanRequest.trim() || undefined,
+      };
+      const res = await weeklyPlanService.generateAIPlan(payload);
+      message.success('Tạo Kế hoạch AI thành công!');
+      setAiResultData(res);
+      setIsAIModalOpen(false);
+      setAiResultModalOpen(true);
+      setAiPlanRequest('');
+      fetchWeeklyPlans();
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch bằng AI. Vui lòng thử lại.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
 
   // Open Task Modal (Create / Edit)
   const openTaskModal = (task?: PlanTask, defaultDate?: Dayjs, defaultTime?: string) => {
@@ -345,6 +381,18 @@ export const WeeklyPlanPage: React.FC = () => {
                 </button>
               </div>
 
+              {/* AI Plan Button */}
+              {isStudent && (
+                <Button
+                  type="primary"
+                  icon={<RobotOutlined />}
+                  onClick={() => setIsAIModalOpen(true)}
+                  className="bg-purple-600 hover:bg-purple-500 rounded-xl font-semibold border-none shadow-md shadow-purple-500/20"
+                >
+                  AI Plan My Week
+                </Button>
+              )}
+
               {/* Add Task Button */}
               {activePlan && (
                 <Button
@@ -376,15 +424,28 @@ export const WeeklyPlanPage: React.FC = () => {
               <p className="text-slate-400 text-sm mb-6 max-w-md">
                 Tạo Kế hoạch tuần cho khoảng thời gian từ <span className="font-semibold text-blue-400">{weekStart.format('DD/MM')}</span> đến <span className="font-semibold text-blue-400">{weekEnd.format('DD/MM/YYYY')}</span> để quản lý lịch biểu và các bài tập/nhiệm vụ.
               </p>
-              <Button
-                type="primary"
-                size="large"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreatePlanModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold shadow-lg shadow-blue-500/25 border-none"
-              >
-                Tạo Kế hoạch tuần này
-              </Button>
+              <div className="flex items-center gap-3">
+                {isStudent && (
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<RobotOutlined />}
+                    onClick={() => setIsAIModalOpen(true)}
+                    className="bg-purple-600 hover:bg-purple-500 rounded-xl font-semibold shadow-lg shadow-purple-500/25 border-none"
+                  >
+                    AI Plan My Week
+                  </Button>
+                )}
+                <Button
+                  type="default"
+                  size="large"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsCreatePlanModalOpen(true)}
+                  className="rounded-xl font-semibold"
+                >
+                  Tạo kế hoạch thủ công
+                </Button>
+              </div>
             </div>
           ) : (
             /* Main Views */
@@ -819,6 +880,112 @@ export const WeeklyPlanPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* AI PLAN MY WEEK REQUEST MODAL */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-purple-500 font-bold text-lg">
+            <RobotOutlined className="text-xl" />
+            <span>AI Plan My Week (Tự động lập kế hoạch)</span>
+          </div>
+        }
+        open={isAIModalOpen}
+        onCancel={() => !isGeneratingAI && setIsAIModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <div className="space-y-4 py-2">
+          <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs">
+            <span className="font-semibold text-purple-400">Khoảng thời gian lên lịch: </span>
+            <span className="font-bold text-slate-200">
+              {weekStart.format('DD/MM/YYYY')} - {weekEnd.format('DD/MM/YYYY')}
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1 text-slate-300">
+              Bạn muốn tập trung vào điều gì tuần này? (Tùy chọn)
+            </label>
+            <TextArea
+              rows={4}
+              value={aiPlanRequest}
+              onChange={(e) => setAiPlanRequest(e.target.value)}
+              placeholder="Ví dụ: Tuần này mình có bài tập môn Python sắp tới hạn, hãy ưu tiên giúp mình xếp lịch làm bài tập và chuẩn bị trước 2 ngày..."
+              disabled={isGeneratingAI}
+            />
+          </div>
+
+          {isGeneratingAI && (
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
+              <Spin size="small" />
+              <span className="text-xs font-medium text-blue-400">
+                🤖 AI đang phân tích bài tập, mục tiêu và xếp lịch tự động cho bạn...
+              </span>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button onClick={() => setIsAIModalOpen(false)} disabled={isGeneratingAI}>
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              loading={isGeneratingAI}
+              onClick={handleGenerateAIPlan}
+              className="bg-purple-600 hover:bg-purple-500 rounded-xl font-semibold border-none"
+            >
+              Tạo Kế Hoạch AI
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* AI RESULT SUMMARY MODAL */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-emerald-500 font-bold text-lg">
+            <CheckCircleOutlined className="text-xl" />
+            <span>Kế hoạch AI đã sẵn sàng!</span>
+          </div>
+        }
+        open={aiResultModalOpen}
+        onOk={() => setAiResultModalOpen(false)}
+        onCancel={() => setAiResultModalOpen(false)}
+        okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+      >
+        {aiResultData && (
+          <div className="space-y-4 py-2 text-xs">
+            <p className="text-sm font-semibold text-slate-300">{aiResultData.summary}</p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                <span className="block text-lg font-bold text-emerald-400">
+                  {aiResultData.created_tasks?.length || 0}
+                </span>
+                <span className="text-slate-400">Nhiệm vụ được tạo</span>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
+                <span className="block text-lg font-bold text-blue-400">
+                  {aiResultData.skipped_items?.length || 0}
+                </span>
+                <span className="text-slate-400">Mục đã hoãn/bỏ qua</span>
+              </div>
+            </div>
+
+            {aiResultData.warnings?.length > 0 && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                <span className="font-bold text-amber-400">Lưu ý & Đánh đổi:</span>
+                <ul className="list-disc list-inside text-slate-300">
+                  {aiResultData.warnings.map((w, idx) => (
+                    <li key={idx}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
