@@ -5,8 +5,14 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from fastapi import Depends
+from sqlalchemy import select
+
 from src.db.database import Base, get_db
+from src.db.models import User
 from src.main import app
+from src.models.auth import UserResponse
+from src.routers.auth_router import get_current_user
 
 # In-memory SQLite for testing
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -22,7 +28,30 @@ async def override_get_db():
         yield session
 
 
+async def override_get_current_user(db: AsyncSession = Depends(get_db)):
+    user = await db.scalar(select(User).where(User.id == "test_user_1"))
+    if not user:
+        user = User(
+            id="test_user_1",
+            email="test@example.com",
+            full_name="Test User",
+            is_active=True,
+            is_verified=True,
+        )
+        db.add(user)
+        await db.commit()
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        is_active=user.is_active,
+        is_verified=user.is_verified,
+        roles=["student"],
+    )
+
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[get_current_user] = override_get_current_user
 
 
 @pytest_asyncio.fixture(autouse=True)

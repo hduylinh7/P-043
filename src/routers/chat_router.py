@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.graph import agent
 from src.config import get_settings
 from src.db.database import get_db
+from src.models.auth import UserResponse
 from src.models.schemas import ChatRequest, ChatResponse
+from src.routers.auth_router import get_current_user
 from src.services.db_service import (
     add_message,
     create_session,
@@ -23,7 +25,9 @@ router = APIRouter(tags=["Chat"])
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
-    request: ChatRequest, db: AsyncSession = Depends(get_db)
+    request: ChatRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
 ) -> ChatResponse:
     """Send a message to the RAG AI agent and receive a grounded response with citations."""
     try:
@@ -32,11 +36,12 @@ async def chat(
         # 1. Resolve or create chat session
         session_id = request.session_id
         course_id = request.course_id
+        user_id = current_user.id
 
         if not session_id:
             db_session = await create_session(
                 db,
-                user_id=request.user_id,
+                user_id=user_id,
                 course_id=course_id,
                 title=request.message[:30],
             )
@@ -46,7 +51,7 @@ async def chat(
             if not db_session:
                 db_session = await create_session(
                     db,
-                    user_id=request.user_id,
+                    user_id=user_id,
                     course_id=course_id,
                     title=request.message[:30],
                 )
@@ -96,7 +101,7 @@ async def chat(
             "query": request.message,
             "session_id": session_id,
             "course_id": effective_course_id,
-            "user_id": request.user_id,
+            "user_id": user_id,
             "recent_messages": history_langchain_msgs,
         })
 
@@ -139,9 +144,10 @@ async def chat(
 async def course_chat(
     course_id: str,
     request: ChatRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ) -> ChatResponse:
     """Course-scoped chat endpoint."""
     request.course_id = course_id
-    return await chat(request=request, db=db)
+    return await chat(request=request, current_user=current_user, db=db)
 

@@ -16,9 +16,16 @@ class ChatRepository:
         title: str = "New Chat",
         agent_name: str = "default_agent",
     ) -> ChatSession:
-        """Create a new chat session."""
+        """Create a new chat session safely handling optional user_id."""
+        valid_user_id = None
+        if user_id:
+            from src.db.models import User
+            user_exists = await db.scalar(select(User.id).where(User.id == user_id))
+            if user_exists:
+                valid_user_id = user_id
+
         session = ChatSession(
-            user_id=user_id,
+            user_id=valid_user_id,
             course_id=course_id,
             title=title,
             agent_name=agent_name,
@@ -42,7 +49,9 @@ class ChatRepository:
         limit: int = 50,
     ) -> Sequence[ChatSession]:
         """List sessions for a specific user and optional course."""
-        query = select(ChatSession).where(ChatSession.user_id == user_id)
+        query = select(ChatSession)
+        if user_id and user_id != "default_user":
+            query = query.where(ChatSession.user_id == user_id)
         if course_id:
             query = query.where(ChatSession.course_id == course_id)
         query = query.order_by(ChatSession.updated_at.desc()).limit(limit)

@@ -443,6 +443,38 @@ class AssignmentService:
         await AssignmentRepository.delete_assignment(db, assignment)
         return {"message": "Xóa bài tập thành công."}
 
+    @staticmethod
+    async def update_student_progress(
+        db: AsyncSession,
+        assignment_id: str,
+        payload: AssignmentProgressUpdateRequest,
+        current_user: UserResponse,
+    ) -> AssignmentResponse:
+        """Student updates their overall progress status for an assignment."""
+        assignment = await AssignmentRepository.get_by_id(db, assignment_id)
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy bài tập.",
+            )
+
+        is_enrolled = await CourseRepository.check_enrollment_exists(
+            db, student_id=current_user.id, course_id=assignment.course_id
+        )
+        if not is_enrolled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn chưa đăng ký khóa học này.",
+            )
+
+        await AssignmentRepository.upsert_student_progress(
+            db=db,
+            assignment_id=assignment_id,
+            student_id=current_user.id,
+            progress_status=payload.progress_status,
+        )
+        return await AssignmentService.get_assignment_detail(db, assignment_id, current_user)
+
     # --- Student Submission Operations ---
 
     @staticmethod

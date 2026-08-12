@@ -26,7 +26,10 @@ def get_llm(
                 or os.getenv("GOOGLE_API_KEY")
                 or "dummy-key-for-test"
             )
-            g_model = model_name or settings.model_name or "gemini-2.5-flash"
+            g_model = "gemini-3.6-flash"
+            if model_name and "3.6" in model_name:
+                g_model = model_name
+
             return ChatGoogleGenerativeAI(
                 model=g_model,
                 google_api_key=api_key,
