@@ -64,9 +64,13 @@ async def test_generate_rag_response_node():
 
 @pytest.mark.asyncio
 async def test_chat_repository_recent_messages(prepare_database):
-    from src.conftest import TestSessionLocal
+    from tests.conftest import TestSessionLocal
+    from src.db.models import User
 
     async with TestSessionLocal() as db:
+        db.add(User(id="user_test", email="user_test@example.com", full_name="User Test"))
+        await db.commit()
+
         session = await ChatRepository.create_session(
             db, user_id="user_test", course_id="course_test", title="RAG Session"
         )

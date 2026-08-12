@@ -11,6 +11,7 @@ from src.models.assignment import (
     AssignmentUpdateRequest,
 )
 from src.models.auth import UserResponse
+from src.models.course import CourseCreateRequest
 from src.services.assignment_service import AssignmentService
 from src.services.course_service import CourseService
 
@@ -45,18 +46,21 @@ async def test_assignment_lifecycle_and_permissions(async_session: AsyncSession)
         email="instructor@test.com",
         full_name="Instructor One",
         roles=["instructor"],
+        is_active=True,
     )
     student_user = UserResponse(
         id="stud_1",
         email="student@test.com",
         full_name="Student One",
         roles=["student"],
+        is_active=True,
     )
     unauthorized_student_user = UserResponse(
         id="stud_2",
         email="student2@test.com",
         full_name="Student Two",
         roles=["student"],
+        is_active=True,
     )
 
     # 2. Instructor creates a course

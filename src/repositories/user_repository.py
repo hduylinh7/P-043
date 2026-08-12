@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 from src.db.models.identity.role import Role
 from src.db.models.identity.user import User
 from src.db.models.identity.user_role import UserRole
@@ -21,7 +22,6 @@ class UserRepository:
         stmt = select(User).where(User.id == user_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
-
     @staticmethod
     async def create_user(
         db: AsyncSession,
