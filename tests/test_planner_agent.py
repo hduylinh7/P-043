@@ -345,3 +345,30 @@ async def test_academic_integrity_behavior(async_session: AsyncSession):
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
         assert len(res.created_tasks) == 2
         assert "Research Assignment Requirements" in res.created_tasks[0].title
+
+
+def test_parse_explicit_task_datetime():
+    """15. Test parse_task_datetime_from_text for explicit weekday and time."""
+    from src.agents.nodes.planner_nodes import parse_task_datetime_from_text
+
+    # "đi đá bóng lúc 20h ngày thứ 6 tuần này" with week_start "2026-08-10" (Monday)
+    # Friday is 2026-08-14
+    date_str, start_time, end_time = parse_task_datetime_from_text(
+        "Đi đá bóng với lớp học",
+        "đi đá bóng lúc 20h ngày thứ 6 tuần này",
+        "2026-08-10"
+    )
+    assert date_str == "2026-08-14"
+    assert start_time == "20:00"
+    assert end_time == "21:30"
+
+    # Test relative weekend + evening phrase: "Đi xem phim vào cuối tuần", "chưa biết thời gian cụ thể nhưng muốn đi vào buổi tối"
+    # Saturday is 2026-08-15
+    date_str2, start_time2, end_time2 = parse_task_datetime_from_text(
+        "Đi xem phim vào cuối tuần",
+        "Tôi muốn đi xem phim vào cuối tuần, chưa biết thời gian cụ thể nhưng muốn đi vào buổi tối",
+        "2026-08-10"
+    )
+    assert date_str2 == "2026-08-15"
+    assert start_time2 == "20:00"
+    assert end_time2 == "21:30"

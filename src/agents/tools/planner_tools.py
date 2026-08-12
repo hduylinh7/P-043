@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.db.enums import normalize_priority
 from src.db.models.learning.assignment import Assignment
 from src.db.models.planning.goal import Goal
 from src.db.models.planning.personal_task import PersonalTask
@@ -187,7 +188,7 @@ class PlannerTools:
         payload = PlanTaskCreateRequest(
             title=title,
             description=description,
-            priority=priority,
+            priority=normalize_priority(priority),
             status="todo",
             scheduled_date=scheduled_date,
             start_time=start_time,
@@ -260,7 +261,7 @@ class PlannerTools:
             scheduled_date=scheduled_date,
             start_time=start_time,
             end_time=end_time,
-            priority=priority,
+            priority=normalize_priority(priority) if priority is not None else None,
             estimated_duration=estimated_duration,
             status=status,
         )

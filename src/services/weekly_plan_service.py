@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.db.enums import normalize_priority
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
@@ -280,12 +281,36 @@ class WeeklyPlanService:
 
         sched_dt = parse_datetime(payload.scheduled_date)
 
+        # Validate start_time < end_time
+        if payload.start_time and payload.end_time and payload.start_time >= payload.end_time:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Giờ bắt đầu ({payload.start_time}) phải trước giờ kết thúc ({payload.end_time}).",
+            )
+
+        # Check schedule conflict with existing tasks in the same plan
+        if sched_dt and payload.start_time and payload.end_time:
+            tasks_stmt = select(Task).where(Task.weekly_goal_id == plan.id)
+            tasks_res = await db.execute(tasks_stmt)
+            existing_tasks = tasks_res.scalars().all()
+
+            target_date = sched_dt.date() if isinstance(sched_dt, datetime) else sched_dt
+            for t in existing_tasks:
+                if t.scheduled_date and t.start_time and t.end_time:
+                    t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
+                    if t_date == target_date:
+                        if payload.start_time < t.end_time and payload.end_time > t.start_time:
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Trùng lịch! Khung giờ ({payload.start_time} - {payload.end_time}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
+                            )
+
         task = Task(
             weekly_goal_id=plan.id,
             assignment_id=payload.assignment_id,
             title=payload.title,
             description=payload.description,
-            priority=payload.priority,
+            priority=normalize_priority(payload.priority),
             status=payload.status,
             scheduled_date=sched_dt,
             start_time=payload.start_time,
@@ -324,7 +349,7 @@ class WeeklyPlanService:
         if payload.description is not None:
             task.description = payload.description
         if payload.priority is not None:
-            task.priority = payload.priority
+            task.priority = normalize_priority(payload.priority)
         if payload.status is not None:
             task.status = payload.status
         if payload.scheduled_date is not None:
@@ -341,6 +366,36 @@ class WeeklyPlanService:
             task.source_id = payload.source_id
         if payload.assignment_id is not None:
             task.assignment_id = payload.assignment_id
+
+        # Check schedule conflict for updated task
+        eff_date = parse_datetime(payload.scheduled_date) if payload.scheduled_date is not None else task.scheduled_date
+        eff_start = payload.start_time if payload.start_time is not None else task.start_time
+        eff_end = payload.end_time if payload.end_time is not None else task.end_time
+
+        if eff_start and eff_end and eff_start >= eff_end:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Giờ bắt đầu ({eff_start}) phải trước giờ kết thúc ({eff_end}).",
+            )
+
+        if eff_date and eff_start and eff_end:
+            tasks_stmt = select(Task).where(
+                Task.weekly_goal_id == task.weekly_goal_id,
+                Task.id != task.id,
+            )
+            tasks_res = await db.execute(tasks_stmt)
+            existing_tasks = tasks_res.scalars().all()
+
+            target_date = eff_date.date() if isinstance(eff_date, datetime) else eff_date
+            for t in existing_tasks:
+                if t.scheduled_date and t.start_time and t.end_time:
+                    t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
+                    if t_date == target_date:
+                        if eff_start < t.end_time and eff_end > t.start_time:
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
+                            )
 
         await db.commit()
         await db.refresh(task)

@@ -72,12 +72,123 @@ const SOURCE_CONFIG: Record<TaskSourceType, { label: string; color: string; icon
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   urgent: { label: 'Khẩn cấp', color: 'red' },
   URGENT: { label: 'Khẩn cấp', color: 'red' },
+  critical: { label: 'Khẩn cấp', color: 'red' },
+  CRITICAL: { label: 'Khẩn cấp', color: 'red' },
   high: { label: 'Cao', color: 'orange' },
   HIGH: { label: 'Cao', color: 'orange' },
   medium: { label: 'Trung bình', color: 'blue' },
   MEDIUM: { label: 'Trung bình', color: 'blue' },
-  low: { label: 'Thấp', color: 'default' },
-  LOW: { label: 'Thấp', color: 'default' },
+  low: { label: 'Thấp', color: 'green' },
+  LOW: { label: 'Thấp', color: 'green' },
+};
+
+const PRIORITY_THEME: Record<string, {
+  label: string;
+  dotColor: string;
+  badgeBg: string;
+  badgeText: string;
+  accentBorder: string;
+  cardBgLight: string;
+  cardBgDark: string;
+  borderLight: string;
+  borderDark: string;
+  glowHover: string;
+}> = {
+  urgent: {
+    label: 'Khẩn cấp',
+    dotColor: 'bg-rose-500',
+    badgeBg: 'bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/20',
+    badgeText: 'text-rose-700 dark:text-rose-300',
+    accentBorder: 'bg-rose-500',
+    cardBgLight: 'bg-rose-50/70 hover:bg-rose-50/90',
+    cardBgDark: 'bg-[#1e131d]/90 hover:bg-[#251624]',
+    borderLight: 'border-rose-200/80 hover:border-rose-300',
+    borderDark: 'border-rose-500/30 hover:border-rose-500/50',
+    glowHover: 'hover:shadow-rose-500/10',
+  },
+  critical: {
+    label: 'Khẩn cấp',
+    dotColor: 'bg-rose-500',
+    badgeBg: 'bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/20',
+    badgeText: 'text-rose-700 dark:text-rose-300',
+    accentBorder: 'bg-rose-500',
+    cardBgLight: 'bg-rose-50/70 hover:bg-rose-50/90',
+    cardBgDark: 'bg-[#1e131d]/90 hover:bg-[#251624]',
+    borderLight: 'border-rose-200/80 hover:border-rose-300',
+    borderDark: 'border-rose-500/30 hover:border-rose-500/50',
+    glowHover: 'hover:shadow-rose-500/10',
+  },
+  high: {
+    label: 'Cao',
+    dotColor: 'bg-amber-500',
+    badgeBg: 'bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/20',
+    badgeText: 'text-amber-700 dark:text-amber-300',
+    accentBorder: 'bg-amber-500',
+    cardBgLight: 'bg-amber-50/70 hover:bg-amber-50/90',
+    cardBgDark: 'bg-[#1f1912]/90 hover:bg-[#282015]',
+    borderLight: 'border-amber-200/80 hover:border-amber-300',
+    borderDark: 'border-amber-500/30 hover:border-amber-500/50',
+    glowHover: 'hover:shadow-amber-500/10',
+  },
+  medium: {
+    label: 'Trung bình',
+    dotColor: 'bg-blue-500',
+    badgeBg: 'bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/20',
+    badgeText: 'text-blue-700 dark:text-blue-300',
+    accentBorder: 'bg-blue-500',
+    cardBgLight: 'bg-blue-50/60 hover:bg-blue-50/80',
+    cardBgDark: 'bg-[#111927]/90 hover:bg-[#162032]',
+    borderLight: 'border-blue-200/80 hover:border-blue-300',
+    borderDark: 'border-blue-500/30 hover:border-blue-500/50',
+    glowHover: 'hover:shadow-blue-500/10',
+  },
+  low: {
+    label: 'Thấp',
+    dotColor: 'bg-emerald-500',
+    badgeBg: 'bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20',
+    badgeText: 'text-emerald-700 dark:text-emerald-300',
+    accentBorder: 'bg-emerald-500',
+    cardBgLight: 'bg-emerald-50/60 hover:bg-emerald-50/80',
+    cardBgDark: 'bg-[#101e19]/90 hover:bg-[#152720]',
+    borderLight: 'border-emerald-200/80 hover:border-emerald-300',
+    borderDark: 'border-emerald-500/30 hover:border-emerald-500/50',
+    glowHover: 'hover:shadow-emerald-500/10',
+  },
+};
+
+const getTaskTimeDetails = (task: PlanTask, slot: string) => {
+  const slotHour = parseInt(slot.split(':')[0], 10);
+
+  let startHour = slotHour;
+  let startMinute = 0;
+
+  if (task.start_time) {
+    const parts = task.start_time.split(':');
+    startHour = parseInt(parts[0], 10);
+    startMinute = parseInt(parts[1], 10) || 0;
+  }
+
+  let durationMinutes = task.estimated_duration || task.estimated_minutes || 60;
+
+  if (task.start_time && task.end_time) {
+    const startParts = task.start_time.split(':');
+    const endParts = task.end_time.split(':');
+    const sH = parseInt(startParts[0], 10);
+    const sM = parseInt(startParts[1], 10) || 0;
+    const eH = parseInt(endParts[0], 10);
+    const eM = parseInt(endParts[1], 10) || 0;
+
+    const calcDur = (eH * 60 + eM) - (sH * 60 + sM);
+    if (calcDur > 0) {
+      durationMinutes = calcDur;
+    }
+  }
+
+  const minuteOffset = (startHour - slotHour) * 60 + startMinute;
+  const topPx = (minuteOffset / 60) * 80;
+  const heightPx = Math.max(42, (durationMinutes / 60) * 80 - 6);
+
+  return { topPx, heightPx, durationMinutes };
 };
 
 export const WeeklyPlanPage: React.FC = () => {
@@ -236,6 +347,33 @@ export const WeeklyPlanPage: React.FC = () => {
   const handleSaveTask = async (values: any) => {
     if (!activePlan) return;
 
+    const reqDateStr = values.scheduled_date ? values.scheduled_date.format('YYYY-MM-DD') : undefined;
+    const reqStart = values.start_time;
+    const reqEnd = values.end_time;
+
+    // Validate start_time < end_time
+    if (reqStart && reqEnd && reqStart >= reqEnd) {
+      message.error(`Giờ bắt đầu (${reqStart}) phải trước giờ kết thúc (${reqEnd}).`);
+      return;
+    }
+
+    // Client-side pre-check for schedule conflicts
+    if (reqDateStr && reqStart && reqEnd && activePlan.tasks) {
+      const conflictingTask = activePlan.tasks.find((t) => {
+        if (editingTask && t.id === editingTask.id) return false;
+        if (!t.scheduled_date || !t.start_time || !t.end_time) return false;
+        const taskDateStr = dayjs(t.scheduled_date).format('YYYY-MM-DD');
+        if (taskDateStr !== reqDateStr) return false;
+        // Overlap condition: start1 < end2 && end1 > start2
+        return reqStart < t.end_time && reqEnd > t.start_time;
+      });
+
+      if (conflictingTask) {
+        message.error(`Trùng lịch! Khung giờ (${reqStart} - ${reqEnd}) bị trùng với nhiệm vụ "${conflictingTask.title}" (${conflictingTask.start_time} - ${conflictingTask.end_time}). Vui lòng chọn khung giờ khác.`);
+        return;
+      }
+    }
+
     try {
       const payload = {
         title: values.title,
@@ -261,7 +399,7 @@ export const WeeklyPlanPage: React.FC = () => {
       setDetailTask(null);
       fetchWeeklyPlans();
     } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể lưu nhiệm vụ');
+      message.error(err.response?.data?.detail || 'Không thể lưu nhiệm vụ do trùng lịch hoặc lỗi hệ thống.');
     }
   };
 
@@ -320,9 +458,8 @@ export const WeeklyPlanPage: React.FC = () => {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Header Section */}
-        <div className={`p-6 border-b backdrop-blur-md sticky top-0 z-30 transition-colors ${
-          isDark ? 'bg-[#0f0d1b]/90 border-slate-800' : 'bg-white/90 border-slate-200'
-        }`}>
+        <div className={`p-6 border-b backdrop-blur-md sticky top-0 z-30 transition-colors ${isDark ? 'bg-[#0f0d1b]/90 border-slate-800' : 'bg-white/90 border-slate-200'
+          }`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -338,9 +475,8 @@ export const WeeklyPlanPage: React.FC = () => {
 
             {/* Week Navigation Header */}
             <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border ${
-                isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200 shadow-sm'
-              }`}>
+              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200 shadow-sm'
+                }`}>
                 <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevWeek} title="Tuần trước" />
                 <span className="font-semibold text-sm px-2">
                   {weekStart.format('DD MMM')} - {weekEnd.format('DD MMM, YYYY')}
@@ -352,30 +488,27 @@ export const WeeklyPlanPage: React.FC = () => {
               </div>
 
               {/* View Mode Toggle Button */}
-              <div className={`flex items-center p-1 rounded-xl border ${
-                isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/60 border-slate-300'
-              }`}>
+              <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/60 border-slate-300'
+                }`}>
                 <button
                   onClick={() => setViewMode('calendar')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    viewMode === 'calendar'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : isDark
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === 'calendar'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : isDark
                       ? 'text-slate-400 hover:text-white'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <CalendarOutlined /> Calendar View
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    viewMode === 'list'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : isDark
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === 'list'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : isDark
                       ? 'text-slate-400 hover:text-white'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <UnorderedListOutlined /> List View
                 </button>
@@ -416,9 +549,8 @@ export const WeeklyPlanPage: React.FC = () => {
             </div>
           ) : !activePlan ? (
             /* Blank State when no plan exists for selected week */
-            <div className={`flex flex-col items-center justify-center p-12 rounded-2xl border border-dashed text-center max-w-xl mx-auto my-12 ${
-              isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-300 shadow-sm'
-            }`}>
+            <div className={`flex flex-col items-center justify-center p-12 rounded-2xl border border-dashed text-center max-w-xl mx-auto my-12 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-300 shadow-sm'
+              }`}>
               <StarOutlined className="text-4xl text-blue-500 mb-4" />
               <h2 className="text-xl font-bold mb-2">Chưa có Kế hoạch cho tuần này</h2>
               <p className="text-slate-400 text-sm mb-6 max-w-md">
@@ -452,129 +584,180 @@ export const WeeklyPlanPage: React.FC = () => {
             <div className="space-y-6">
               {/* CALENDAR VIEW */}
               {viewMode === 'calendar' && (
-                <div className={`rounded-2xl border overflow-hidden shadow-xl ${
-                  isDark ? 'bg-[#0f0d1b] border-slate-800' : 'bg-white border-slate-200'
-                }`}>
-                  {/* Grid Header: Days of Week */}
-                  <div className={`grid grid-cols-8 border-b text-center font-semibold text-xs tracking-wider uppercase sticky top-0 z-20 ${
-                    isDark ? 'bg-slate-900/90 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
-                  }`}>
-                    <div className="py-3 px-2 border-r border-slate-700/30 flex items-center justify-center text-slate-400">
-                      Time
+                <div className="space-y-3">
+                  {/* Priority Legend Bar */}
+                  <div className={`flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-sm ${isDark ? 'bg-slate-900/80 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                    }`}>
+                    <div className="flex items-center gap-2 text-slate-400 font-bold">
+                      <FlagOutlined className="text-blue-500" />
+                      <span>Phân loại cấp độ ưu tiên:</span>
                     </div>
-                    {daysOfWeek.map((day, idx) => {
-                      const isToday = day.isSame(dayjs(), 'day');
-                      return (
-                        <div
-                          key={idx}
-                          className={`py-3 px-1 border-r border-slate-700/20 last:border-r-0 flex flex-col items-center justify-center ${
-                            isToday ? 'bg-blue-500/10 text-blue-400 font-bold' : ''
-                          }`}
-                        >
-                          <span>{DAY_NAMES[idx]}</span>
-                          <span className={`text-sm mt-0.5 ${isToday ? 'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center' : 'text-slate-400'}`}>
-                            {day.format('DD')}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50"></span>
+                        <span className="text-rose-600 dark:text-rose-400 font-bold">Khẩn cấp (Urgent)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></span>
+                        <span className="text-amber-600 dark:text-amber-400 font-bold">Cao (High)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></span>
+                        <span className="text-blue-600 dark:text-blue-400 font-bold">Trung bình (Medium)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Thấp (Low)</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Calendar Grid Body */}
-                  <div className="divide-y divide-slate-800/40 max-h-[calc(100vh-250px)] overflow-y-auto">
-                    {TIME_SLOTS.map((slot) => {
-                      const slotHour = parseInt(slot.split(':')[0], 10);
-
-                      return (
-                        <div key={slot} className="grid grid-cols-8 min-h-[72px] transition-colors hover:bg-blue-500/[0.02]">
-                          {/* Time label */}
-                          <div className={`p-2 text-xs font-mono border-r border-slate-700/20 flex items-start justify-center ${
-                            isDark ? 'text-slate-500 bg-slate-950/40' : 'text-slate-400 bg-slate-50'
-                          }`}>
-                            {slot}
+                  <div className={`rounded-2xl border overflow-hidden shadow-xl ${isDark ? 'bg-[#0f0d1b] border-slate-800' : 'bg-white border-slate-200'
+                    }`}>
+                    {/* Grid Header: Days of Week */}
+                    <div className={`grid grid-cols-8 border-b text-center font-semibold text-xs tracking-wider uppercase sticky top-0 z-20 ${isDark ? 'bg-slate-900/90 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                      }`}>
+                      <div className="py-3 px-2 border-r border-slate-700/30 flex items-center justify-center text-slate-400">
+                        Time
+                      </div>
+                      {daysOfWeek.map((day, idx) => {
+                        const isToday = day.isSame(dayjs(), 'day');
+                        return (
+                          <div
+                            key={idx}
+                            className={`py-3 px-1 border-r border-slate-700/20 last:border-r-0 flex flex-col items-center justify-center ${isToday ? 'bg-blue-500/10 text-blue-400 font-bold' : ''
+                              }`}
+                          >
+                            <span>{DAY_NAMES[idx]}</span>
+                            <span className={`text-sm mt-0.5 ${isToday ? 'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center' : 'text-slate-400'}`}>
+                              {day.format('DD')}
+                            </span>
                           </div>
+                        );
+                      })}
+                    </div>
 
-                          {/* Day Columns for current time slot */}
-                          {daysOfWeek.map((day, dayIdx) => {
-                            const dayTasks = tasksByDay[dayIdx] || [];
-                            // Find tasks matching slot hour
-                            const slotTasks = dayTasks.filter((t) => {
-                              if (!t.start_time) return false;
-                              const taskHour = parseInt(t.start_time.split(':')[0], 10);
-                              return taskHour === slotHour;
-                            });
+                    {/* Calendar Grid Body */}
+                    <div className="divide-y divide-slate-800/40 max-h-[calc(100vh-250px)] overflow-y-auto">
+                      {TIME_SLOTS.map((slot) => {
+                        const slotHour = parseInt(slot.split(':')[0], 10);
 
-                            return (
-                              <div
-                                key={dayIdx}
-                                onClick={(e) => {
-                                  if (e.target === e.currentTarget) {
-                                    openTaskModal(undefined, day, slot);
-                                  }
-                                }}
-                                className={`p-1.5 border-r border-slate-700/20 last:border-r-0 relative group cursor-pointer transition-colors ${
-                                  isDark ? 'hover:bg-slate-900/50' : 'hover:bg-blue-50/50'
-                                }`}
-                              >
-                                {slotTasks.map((task) => {
-                                  const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
-                                  const priorityConf = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
-                                  const sourceConf = SOURCE_CONFIG[task.source_type] || SOURCE_CONFIG.MANUAL;
+                        return (
+                          <div key={slot} className="grid grid-cols-8 h-[80px] transition-colors hover:bg-blue-500/[0.02]">
+                            {/* Time label */}
+                            <div className={`p-2 text-xs font-mono border-r border-slate-700/20 flex items-start justify-center ${isDark ? 'text-slate-500 bg-slate-950/40' : 'text-slate-400 bg-slate-50'
+                              }`}>
+                              {slot}
+                            </div>
 
-                                  return (
-                                    <div
-                                      key={task.id}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setDetailTask(task);
-                                      }}
-                                      className={`p-2 rounded-xl border text-xs shadow-md mb-1.5 cursor-pointer transition-all hover:scale-[1.02] ${
-                                        isCompleted
-                                          ? isDark
-                                            ? 'bg-slate-900/80 border-slate-800 text-slate-500 line-through opacity-70'
-                                            : 'bg-slate-100 border-slate-200 text-slate-400 line-through opacity-70'
-                                          : isDark
-                                          ? 'bg-slate-900/90 border-blue-500/30 text-white hover:border-blue-400 shadow-blue-500/5'
-                                          : 'bg-white border-blue-200 text-slate-900 hover:border-blue-400 shadow-sm'
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between gap-1 mb-1">
-                                        <span className="font-bold truncate text-xs text-blue-400">
-                                          {task.start_time || slot} {task.end_time ? `- ${task.end_time}` : ''}
-                                        </span>
-                                        <Tag color={priorityConf.color} style={{ marginRight: 0, fontSize: '10px', padding: '0 4px', lineHeight: '14px' }}>
-                                          {priorityConf.label}
-                                        </Tag>
+                            {/* Day Columns for current time slot */}
+                            {daysOfWeek.map((day, dayIdx) => {
+                              const dayTasks = tasksByDay[dayIdx] || [];
+                              // Find tasks matching slot hour
+                              const slotTasks = dayTasks.filter((t) => {
+                                if (!t.start_time) return false;
+                                const taskHour = parseInt(t.start_time.split(':')[0], 10);
+                                return taskHour === slotHour;
+                              });
+
+                              return (
+                                <div
+                                  key={dayIdx}
+                                  onClick={(e) => {
+                                    if (e.target === e.currentTarget) {
+                                      openTaskModal(undefined, day, slot);
+                                    }
+                                  }}
+                                  className={`p-1.5 border-r border-slate-700/20 last:border-r-0 relative group cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-900/50' : 'hover:bg-blue-50/50'
+                                    }`}
+                                >
+                                  {slotTasks.map((task, taskIdx) => {
+                                    const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
+                                    const pKey = (task.priority || 'medium').toLowerCase();
+                                    const theme = PRIORITY_THEME[pKey] || PRIORITY_THEME.medium;
+                                    const sourceConf = SOURCE_CONFIG[task.source_type] || SOURCE_CONFIG.MANUAL;
+                                    const { topPx, heightPx, durationMinutes } = getTaskTimeDetails(task, slot);
+
+                                    const count = slotTasks.length;
+                                    const widthPercent = 100 / count;
+                                    const leftPercent = taskIdx * widthPercent;
+                                    const isCompact = heightPx < 65;
+
+                                    return (
+                                      <div
+                                        key={task.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDetailTask(task);
+                                        }}
+                                        style={{
+                                          top: `${topPx + 3}px`,
+                                          height: `${heightPx}px`,
+                                          left: count === 1 ? '4px' : `calc(${leftPercent}% + 2px)`,
+                                          width: count === 1 ? 'calc(100% - 8px)' : `calc(${widthPercent}% - 4px)`,
+                                          zIndex: 10,
+                                        }}
+                                        className={`absolute rounded-xl border transition-all duration-200 ease-out cursor-pointer hover:z-30 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between overflow-hidden backdrop-blur-xs ${isCompleted
+                                            ? isDark
+                                              ? 'bg-slate-900/70 border-slate-800 text-slate-500 line-through opacity-65'
+                                              : 'bg-slate-100/90 border-slate-200 text-slate-400 line-through opacity-65'
+                                            : isDark
+                                              ? `${theme.cardBgDark} ${theme.borderDark} text-slate-100 ${theme.glowHover}`
+                                              : `${theme.cardBgLight} ${theme.borderLight} text-slate-900 ${theme.glowHover}`
+                                          }`}
+                                      >
+                                        {/* Accent Bar */}
+                                        <div className={`absolute top-0 bottom-0 left-0 w-1.5 rounded-l-xl ${isCompleted ? 'bg-slate-400/50' : theme.accentBorder}`} />
+
+                                        {/* Main Content */}
+                                        <div className={`pl-3 pr-2 py-1.5 flex flex-col justify-between h-full ${isCompact ? 'py-1' : ''}`}>
+                                          <div>
+                                            <div className="flex items-center justify-between gap-1 mb-1">
+                                              <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-slate-700 dark:text-slate-200 tracking-tight truncate">
+                                                <ClockCircleOutlined className="text-[9px] opacity-70" />
+                                                {task.start_time || slot} {task.end_time ? `- ${task.end_time}` : ''}
+                                              </span>
+
+                                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${theme.dotColor}`} />
+                                                <span className="hidden sm:inline">{theme.label}</span>
+                                              </span>
+                                            </div>
+
+                                            <h4 className={`font-bold text-xs leading-snug truncate ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                                              {task.title}
+                                            </h4>
+                                          </div>
+
+                                          {!isCompact && (
+                                            <div className="flex items-center justify-between text-[10px] pt-1 mt-1 border-t border-black/5 dark:border-white/5 opacity-85">
+                                              <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-400 truncate">
+                                                {sourceConf.icon}
+                                                <span className="truncate">{sourceConf.label.split(' ')[0]}</span>
+                                              </span>
+                                              <span className="font-mono font-bold px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                                                {durationMinutes}m
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
+                                    );
+                                  })}
 
-                                      <p className="font-semibold truncate text-xs leading-snug mb-1">{task.title}</p>
-
-                                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1 pt-1 border-t border-slate-800/40">
-                                        <span className="flex items-center gap-1 truncate text-slate-400">
-                                          {sourceConf.icon} {sourceConf.label.split(' ')[0]}
-                                        </span>
-                                        {task.estimated_duration && (
-                                          <span className="font-mono text-slate-400">
-                                            {task.estimated_duration}m
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-
-                                {/* Hover '+' button to add task */}
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                                  <span className="text-xs text-blue-400 font-semibold bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20 backdrop-blur-sm">
-                                    + Thêm {slot}
-                                  </span>
+                                  {/* Hover '+' button to add task */}
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                                    <span className="text-xs text-blue-400 font-semibold bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20 backdrop-blur-sm">
+                                      + Thêm {slot}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -589,11 +772,10 @@ export const WeeklyPlanPage: React.FC = () => {
                     return (
                       <div
                         key={dayIdx}
-                        className={`rounded-2xl border p-5 transition-all ${
-                          isDark
-                            ? 'bg-[#0f0d1b] border-slate-800'
-                            : 'bg-white border-slate-200 shadow-sm'
-                        } ${isToday ? 'ring-2 ring-blue-500/40' : ''}`}
+                        className={`rounded-2xl border p-5 transition-all ${isDark
+                          ? 'bg-[#0f0d1b] border-slate-800'
+                          : 'bg-white border-slate-200 shadow-sm'
+                          } ${isToday ? 'ring-2 ring-blue-500/40' : ''}`}
                       >
                         {/* Day Section Header */}
                         <div className="flex items-center justify-between pb-3 border-b border-slate-800/40 mb-4">
@@ -627,60 +809,65 @@ export const WeeklyPlanPage: React.FC = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {dayTasks.map((task) => {
                               const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
-                              const priorityConf = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+                              const pKey = (task.priority || 'medium').toLowerCase();
+                              const theme = PRIORITY_THEME[pKey] || PRIORITY_THEME.medium;
                               const sourceConf = SOURCE_CONFIG[task.source_type] || SOURCE_CONFIG.MANUAL;
 
                               return (
                                 <div
                                   key={task.id}
                                   onClick={() => setDetailTask(task)}
-                                  className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
-                                    isCompleted
+                                  className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-md overflow-hidden ${isCompleted
                                       ? isDark
-                                        ? 'bg-slate-900/50 border-slate-800 opacity-60'
-                                        : 'bg-slate-50 border-slate-200 opacity-70'
+                                        ? 'bg-slate-900/60 border-slate-800 opacity-60'
+                                        : 'bg-slate-100/90 border-slate-200 opacity-65'
                                       : isDark
-                                      ? 'bg-slate-900 border-slate-800 hover:border-blue-500/50'
-                                      : 'bg-white border-slate-200 hover:border-blue-300'
-                                  }`}
+                                        ? `${theme.cardBgDark} ${theme.borderDark} text-slate-100 ${theme.glowHover}`
+                                        : `${theme.cardBgLight} ${theme.borderLight} text-slate-900 ${theme.glowHover}`
+                                    }`}
                                 >
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<CheckCircleOutlined className={isCompleted ? 'text-emerald-500' : 'text-slate-400'} />}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleToggleTaskStatus(task);
-                                        }}
-                                      />
-                                      <h3 className={`font-semibold text-sm truncate ${isCompleted ? 'line-through text-slate-500' : isDark ? 'text-white' : 'text-slate-900'}`}>
-                                        {task.title}
-                                      </h3>
-                                    </div>
-                                    <Tag color={priorityConf.color} className="mr-0 text-[10px]">
-                                      {priorityConf.label}
-                                    </Tag>
-                                  </div>
+                                  <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${isCompleted ? 'bg-slate-400/50' : theme.accentBorder}`} />
+                                  <div className="pl-2">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          icon={<CheckCircleOutlined className={isCompleted ? 'text-emerald-500' : 'text-slate-400'} />}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleTaskStatus(task);
+                                          }}
+                                        />
+                                        <h3 className={`font-bold text-sm truncate ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                                          {task.title}
+                                        </h3>
+                                      </div>
 
-                                  {task.description && (
-                                    <p className="text-xs text-slate-400 line-clamp-2 mb-3 pl-8">
-                                      {task.description}
-                                    </p>
-                                  )}
-
-                                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/30 pl-8">
-                                    <div className="flex items-center gap-1.5 text-slate-400">
-                                      <ClockCircleOutlined />
-                                      <span>
-                                        {task.start_time || 'Chưa định thời gian'} {task.end_time ? `- ${task.end_time}` : ''}
+                                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${theme.dotColor}`} />
+                                        {theme.label}
                                       </span>
                                     </div>
 
-                                    <Tag icon={sourceConf.icon} color={sourceConf.color} className="mr-0 text-[10px]">
-                                      {sourceConf.label.split(' ')[0]}
-                                    </Tag>
+                                    {task.description && (
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 pl-8">
+                                        {task.description}
+                                      </p>
+                                    )}
+
+                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-black/5 dark:border-white/5 pl-8">
+                                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-[11px] font-medium">
+                                        <ClockCircleOutlined />
+                                        <span>
+                                          {task.start_time || 'Chưa định thời gian'} {task.end_time ? `- ${task.end_time}` : ''}
+                                        </span>
+                                      </div>
+
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                        {sourceConf.icon} {sourceConf.label.split(' ')[0]}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               );

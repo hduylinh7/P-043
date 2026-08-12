@@ -50,6 +50,19 @@ class TaskPriorityEnum(enum.StrEnum):
     URGENT = "urgent"
 
 
+def normalize_priority(val: str | None) -> str:
+    """Normalize priority string to valid TaskPriorityEnum value (max 6 characters)."""
+    if not val:
+        return TaskPriorityEnum.MEDIUM.value
+    clean = str(val).lower().strip()
+    if clean in ("critical", "urgent"):
+        return TaskPriorityEnum.URGENT.value
+    if clean in {e.value for e in TaskPriorityEnum}:
+        return clean
+    return TaskPriorityEnum.MEDIUM.value
+
+
+
 class TaskStatusEnum(enum.StrEnum):
     TODO = "todo"
     IN_PROGRESS = "in_progress"
