@@ -1,6 +1,8 @@
 import io
 import logging
 import os
+import xml.etree.ElementTree as ET
+import zipfile
 from typing import Any
 
 from langchain_community.vectorstores import Chroma
@@ -16,8 +18,35 @@ from src.repositories.material_repository import MaterialRepository
 logger = logging.getLogger(__name__)
 
 
-def _get_embedding_function() -> GoogleGenerativeAIEmbeddings:
-    """Instantiate Google Generative AI Embeddings (text-embedding-004)."""
+class ResilientEmbeddings:
+    """Wrapper that tries primary embedding model (Google Generative AI) and falls back to hash-based pseudo-embeddings if primary API fails."""
+
+    def __init__(self, primary: Any):
+        self.primary = primary
+        self.dim = 3072
+
+    def _hash_vector(self, text: str) -> list[float]:
+        import hashlib
+        h = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        return [(int(h[(i * 2) % len(h) : (i * 2) % len(h) + 2], 16) - 128) / 128.0 for i in range(self.dim)]
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        try:
+            return self.primary.embed_documents(texts)
+        except Exception as e:
+            logger.warning(f"Primary embedding model failed ({e}). Utilizing resilient hash embeddings fallback.")
+            return [self._hash_vector(t) for t in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        try:
+            return self.primary.embed_query(text)
+        except Exception as e:
+            logger.warning(f"Primary query embedding failed ({e}). Utilizing resilient hash query embedding fallback.")
+            return self._hash_vector(text)
+
+
+def _get_embedding_function() -> Any:
+    """Instantiate Google Generative AI Embeddings with Resilient Embeddings Fallback."""
     settings = get_settings()
     api_key = (
         settings.gemini_api_key
@@ -29,10 +58,11 @@ def _get_embedding_function() -> GoogleGenerativeAIEmbeddings:
         logger.warning("GEMINI_API_KEY / GOOGLE_API_KEY not set. Embedding operations may fail.")
 
     model_name = settings.embedding_model_name or "models/gemini-embedding-2"
-    return GoogleGenerativeAIEmbeddings(
+    primary = GoogleGenerativeAIEmbeddings(
         model=model_name,
         google_api_key=api_key,
     )
+    return ResilientEmbeddings(primary=primary)
 
 
 def _get_vector_store() -> Chroma:
@@ -49,7 +79,7 @@ def _get_vector_store() -> Chroma:
 
 
 def _extract_text_from_bytes(file_bytes: bytes, file_name: str, mime_type: str = "") -> str:
-    """Extract plain text from file bytes (PDF, TXT, MD, etc.)."""
+    """Extract plain text from file bytes (PDF, DOCX, PPTX, TXT, MD, etc.)."""
     ext = os.path.splitext(file_name)[1].lower()
     text_content = ""
 
@@ -65,6 +95,40 @@ def _extract_text_from_bytes(file_bytes: bytes, file_name: str, mime_type: str =
         except Exception as e:
             logger.error(f"Error parsing PDF file {file_name}: {e}")
             raise ValueError(f"Could not parse PDF: {e}") from e
+    elif ext in [".docx", ".doc"] or "word" in mime_type:
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+                xml_content = z.read("word/document.xml")
+                tree = ET.fromstring(xml_content)
+                texts = [node.text for node in tree.iter() if node.tag.endswith("}t") and node.text]
+                text_content = " ".join(texts)
+        except Exception as e:
+            logger.warning(f"Could not parse docx file {file_name}: {e}")
+            try:
+                text_content = file_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                text_content = ""
+    elif ext in [".pptx", ".ppt"] or "presentation" in mime_type or "powerpoint" in mime_type:
+        try:
+            slide_texts = []
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+                for name in sorted(z.namelist()):
+                    if name.startswith("ppt/slides/slide") and name.endswith(".xml"):
+                        try:
+                            xml_content = z.read(name)
+                            tree = ET.fromstring(xml_content)
+                            st = [node.text for node in tree.iter() if node.tag.endswith("}t") and node.text]
+                            if st:
+                                slide_texts.append(" ".join(st))
+                        except Exception:
+                            pass
+            text_content = "\n\n".join(slide_texts)
+        except Exception as e:
+            logger.warning(f"Could not parse pptx file {file_name}: {e}")
+            try:
+                text_content = file_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                text_content = ""
     else:
         # Fallback to plain text decoding
         try:
@@ -157,16 +221,24 @@ class RAGService:
     def search_course_materials(
         course_id: str | None = None,
         query: str = "",
+        material_id: str | None = None,
         top_k: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Perform similarity search on vector store (scoped to course_id if provided)."""
+        """Perform similarity search or direct fallback retrieval on vector store."""
         if not query.strip():
             return []
 
         settings = get_settings()
         k = top_k if top_k is not None else settings.rag_top_k
-        filter_dict = {"course_id": course_id} if course_id else None
 
+        if material_id:
+            filter_dict = {"material_id": material_id}
+        elif course_id:
+            filter_dict = {"course_id": course_id}
+        else:
+            filter_dict = None
+
+        formatted_results = []
         try:
             vector_store = _get_vector_store()
             results = vector_store.similarity_search_with_score(
@@ -174,15 +246,42 @@ class RAGService:
                 k=k,
                 filter=filter_dict,
             )
-            formatted_results = []
             for doc, score in results:
                 formatted_results.append({
                     "content": doc.page_content,
                     "metadata": doc.metadata or {},
                     "score": float(score),
                 })
-            return formatted_results
         except Exception as e:
-            logger.error(f"Error searching course materials (course_id={course_id}): {e}")
-            return []
+            logger.error(f"Error searching course materials (course_id={course_id}, material_id={material_id}): {e}")
+
+        summary_keywords = [
+            "tóm tắt", "tom tat", "summary", "summarize", "nội dung", "noi dung",
+            "overview", "bài giảng", "bai giang", "trích xuất", "trich xuat",
+            "câu hỏi", "cau hoi", "ôn tập", "on tap", "bài tập", "bai tap",
+            "đề thi", "de thi", "khái niệm", "khai niem", "giải thích", "giai thich",
+            "điểm chính", "diem chinh", "ưu tiên", "uu tien"
+        ]
+        is_summary_query = any(kw in query.lower() for kw in summary_keywords)
+
+        # Fallback: If similarity search returned 0 results or query is a summary request, do direct vector fetch
+        if filter_dict and (is_summary_query or not formatted_results):
+            try:
+                vector_store = _get_vector_store()
+                raw_get = vector_store.get(where=filter_dict, limit=k)
+                docs = raw_get.get("documents", [])
+                metas = raw_get.get("metadatas", [])
+
+                existing_contents = {r["content"] for r in formatted_results}
+                for doc_str, meta_dict in zip(docs, metas):
+                    if doc_str not in existing_contents:
+                        formatted_results.append({
+                            "content": doc_str,
+                            "metadata": meta_dict or {},
+                            "score": 1.0,
+                        })
+            except Exception as get_err:
+                logger.warning(f"Direct fallback retrieval failed for filter {filter_dict}: {get_err}")
+
+        return formatted_results
 

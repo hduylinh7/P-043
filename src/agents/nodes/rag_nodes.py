@@ -14,6 +14,7 @@ async def retrieve_context_node(state: AgentState) -> dict[str, Any]:
     """Retrieve relevant course material chunks from vector database."""
     query = state.get("query", "")
     course_id = state.get("course_id")
+    material_id = state.get("material_id")
     messages = state.get("messages", [])
 
     if not query and messages:
@@ -31,7 +32,7 @@ async def retrieve_context_node(state: AgentState) -> dict[str, Any]:
 
     try:
         retrieved = RAGService.search_course_materials(
-            course_id=course_id, query=query
+            course_id=course_id, query=query, material_id=material_id
         )
     except Exception as e:
         logger.error(f"Error during RAG context retrieval: {e}")

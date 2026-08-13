@@ -34,10 +34,12 @@ async def create_new_session(
 @router.get("", response_model=list[SessionResponse])
 async def get_user_sessions(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
+    agent_name: str | None = None,
+    course_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List sessions for current authenticated user."""
-    sessions = await list_sessions(db, user_id=current_user.id)
+    sessions = await list_sessions(db, user_id=current_user.id, course_id=course_id, agent_name=agent_name)
     return sessions
 
 

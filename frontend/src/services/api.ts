@@ -39,9 +39,9 @@ export interface SystemStatus {
 
 export interface ApiClientInstance extends AxiosInstance {
   checkStatus: () => Promise<SystemStatus>;
-  getSessions: (userId?: string) => Promise<ChatSession[]>;
+  getSessions: (userId?: string, agentName?: string, courseId?: string) => Promise<ChatSession[]>;
   getMessages: (sessionId: string) => Promise<ChatMessage[]>;
-  sendMessage: (message: string, sessionId?: string, userId?: string, courseId?: string) => Promise<ChatResponse>;
+  sendMessage: (message: string, sessionId?: string, userId?: string, courseId?: string, materialId?: string, mode?: string) => Promise<ChatResponse>;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -152,8 +152,11 @@ api.checkStatus = async () => {
   return res.data;
 };
 
-api.getSessions = async (userId = 'default_user') => {
-  const res = await api.get<ChatSession[]>('/sessions', { params: { user_id: userId } });
+api.getSessions = async (userId = 'default_user', agentName?: string, courseId?: string) => {
+  const params: Record<string, string> = { user_id: userId };
+  if (agentName) params.agent_name = agentName;
+  if (courseId) params.course_id = courseId;
+  const res = await api.get<ChatSession[]>('/sessions', { params });
   return res.data;
 };
 
@@ -162,12 +165,14 @@ api.getMessages = async (sessionId: string) => {
   return res.data;
 };
 
-api.sendMessage = async (message: string, sessionId?: string, userId = 'default_user', courseId?: string) => {
+api.sendMessage = async (message: string, sessionId?: string, userId = 'default_user', courseId?: string, materialId?: string, mode?: string) => {
   const res = await api.post<ChatResponse>('/chat', {
     message,
     session_id: sessionId,
     user_id: userId,
     course_id: courseId,
+    material_id: materialId,
+    mode,
   });
   return res.data;
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Button,
   Tag,
@@ -296,13 +296,25 @@ export const CourseDetailPage: React.FC = () => {
 
         const opts: any[] = [];
         if (qType === 'MULTIPLE_CHOICE') {
-          const correctIdx = parseInt(row['correct_option'] || row['correct'] || '1') - 1;
+          const rawCorrect = (row['correct_option'] || row['correct'] || '').trim();
+          let correctIdx = -1;
+
+          if (/^\d+$/.test(rawCorrect)) {
+            correctIdx = parseInt(rawCorrect, 10) - 1;
+          } else if (/^option[_-]?(\d+)$/i.test(rawCorrect)) {
+            const match = rawCorrect.match(/^option[_-]?(\d+)$/i);
+            if (match) correctIdx = parseInt(match[1], 10) - 1;
+          } else if (/^[a-f]$/i.test(rawCorrect)) {
+            correctIdx = rawCorrect.toUpperCase().charCodeAt(0) - 65;
+          }
+
           for (let o = 1; o <= 6; o++) {
             const optVal = row[`option_${o}`] || row[`option${o}`];
             if (optVal) {
+              const isCorr = (correctIdx >= 0 && o - 1 === correctIdx) || rawCorrect.toLowerCase() === optVal.toLowerCase();
               opts.push({
                 option_text: optVal,
-                is_correct: o - 1 === correctIdx,
+                is_correct: isCorr,
                 display_order: o - 1,
               });
             }
@@ -376,11 +388,24 @@ export const CourseDetailPage: React.FC = () => {
     }
   };
 
+  const [searchParams] = useSearchParams();
+  const targetAssignmentId = searchParams.get('assignment') || searchParams.get('assignmentId');
+
   useEffect(() => {
     fetchDetail();
     fetchMaterials();
     fetchAssignments();
   }, [courseId]);
+
+  useEffect(() => {
+    if (targetAssignmentId && assignments.length > 0) {
+      const found = assignments.find((a) => a.id === targetAssignmentId);
+      if (found) {
+        setViewingAssignment(found);
+        setIsDetailAssignmentModalOpen(true);
+      }
+    }
+  }, [targetAssignmentId, assignments]);
 
   const handleUploadMaterial = async (values: any) => {
     if (!courseId || fileList.length === 0) {
@@ -1134,8 +1159,8 @@ export const CourseDetailPage: React.FC = () => {
                       key={idx}
                       onClick={() => setActiveQuestionIdx(idx)}
                       className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-2 ${isSelected
-                          ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 shadow-sm'
-                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
                         }`}
                     >
                       <div className="min-w-0 flex-1">

@@ -12,10 +12,11 @@ async def create_session(
     user_id: str | None = "default_user",
     title: str = "New Chat",
     course_id: str | None = None,
+    agent_name: str = "default_agent",
 ) -> ChatSession:
     """Create a new chat session."""
     return await ChatRepository.create_session(
-        db, user_id=user_id, course_id=course_id, title=title
+        db, user_id=user_id, course_id=course_id, title=title, agent_name=agent_name
     )
 
 
@@ -29,10 +30,11 @@ async def list_sessions(
     user_id: str = "default_user",
     limit: int = 50,
     course_id: str | None = None,
+    agent_name: str | None = None,
 ) -> Sequence[ChatSession]:
     """List sessions for a specific user."""
     return await ChatRepository.list_sessions(
-        db, user_id=user_id, course_id=course_id, limit=limit
+        db, user_id=user_id, course_id=course_id, agent_name=agent_name, limit=limit
     )
 
 

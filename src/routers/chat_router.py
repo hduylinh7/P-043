@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.companion_agent import PersonalLearningCompanionAgent
 from src.agents.graph import agent
 from src.config import get_settings
 from src.db.database import get_db
@@ -33,7 +34,10 @@ async def chat(
     try:
         settings = get_settings()
 
-        # 1. Resolve or create chat session
+        # 1. Determine agent mode and session scope
+        is_material_mode = (request.mode == "material") or (request.material_id is not None)
+        target_agent_name = "material_rag" if is_material_mode else "companion"
+
         session_id = request.session_id
         course_id = request.course_id
         user_id = current_user.id
@@ -44,6 +48,7 @@ async def chat(
                 user_id=user_id,
                 course_id=course_id,
                 title=request.message[:30],
+                agent_name=target_agent_name,
             )
             session_id = db_session.id
         else:
@@ -54,15 +59,16 @@ async def chat(
                     user_id=user_id,
                     course_id=course_id,
                     title=request.message[:30],
+                    agent_name=target_agent_name,
                 )
                 session_id = db_session.id
             elif course_id and not db_session.course_id:
-                # Update course context if not previously set
                 db_session.course_id = course_id
                 await db.commit()
 
-        # Effective course_id from session if not in request
+        # Effective course_id and material_id
         effective_course_id = course_id or getattr(db_session, "course_id", None)
+        material_id = request.material_id
 
         # 2. Fetch recent conversation history BEFORE adding current message
         recent_db_msgs = await get_recent_messages(
@@ -96,14 +102,23 @@ async def chat(
                 analysis="Retrieved from Redis Cache",
             )
 
-        # 5. Invoke LangGraph RAG AI Agent
-        result = await agent.ainvoke({
-            "query": request.message,
-            "session_id": session_id,
-            "course_id": effective_course_id,
-            "user_id": user_id,
-            "recent_messages": history_langchain_msgs,
-        })
+        # 5. Invoke AI Agent (Personal Learning Companion vs Course Material RAG Agent)
+        if is_material_mode:
+            result = await agent.ainvoke({
+                "query": request.message,
+                "session_id": session_id,
+                "course_id": effective_course_id,
+                "material_id": material_id,
+                "user_id": user_id,
+                "recent_messages": history_langchain_msgs,
+            })
+        else:
+            result = await PersonalLearningCompanionAgent.run(
+                db=db,
+                current_user=current_user,
+                query=request.message,
+                recent_messages=history_langchain_msgs,
+            )
 
         ai_response = result.get("response", "No response generated.")
         analysis = result.get("analysis", "")

@@ -28,6 +28,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { materialService } from '../services/materialService';
 import { api, ChatSession } from '../services/api';
 import { CourseMaterial } from '../types/material';
@@ -91,12 +92,11 @@ export const MaterialViewerPage: React.FC = () => {
   const loadChatHistory = async () => {
     if (!courseId) return;
     try {
-      const userSessions = await api.getSessions(user?.id || 'default_user');
-      const filtered = userSessions.filter((s) => !s.course_id || s.course_id === courseId);
-      setCourseSessions(filtered);
+      const userSessions = await api.getSessions(user?.id || 'default_user', 'material_rag', courseId);
+      setCourseSessions(userSessions);
 
-      if (filtered.length > 0) {
-        const latestSession = filtered[0];
+      if (userSessions.length > 0) {
+        const latestSession = userSessions[0];
         setSessionId(latestSession.id);
         const history = await api.getMessages(latestSession.id);
         if (history && history.length > 0) {
@@ -176,7 +176,9 @@ export const MaterialViewerPage: React.FC = () => {
         q,
         sessionId || undefined,
         user?.id || 'default_user',
-        courseId
+        courseId,
+        materialId || currentMaterial?.id,
+        'material'
       );
       if (res.session_id) {
         setSessionId(res.session_id);
@@ -486,7 +488,7 @@ export const MaterialViewerPage: React.FC = () => {
                             : 'bg-slate-100 text-slate-800 rounded-tl-none'
                         }`}
                       >
-                        {msg.text}
+                        <MarkdownRenderer content={msg.text} isUser={msg.sender === 'user'} />
                       </div>
 
                       {msg.sender === 'ai' && msg.sources && msg.sources.length > 0 && (

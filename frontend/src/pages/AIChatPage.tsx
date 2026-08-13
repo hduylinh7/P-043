@@ -30,9 +30,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { api, ChatSession, ChatMessage, Citation } from '../services/api';
 import { courseService } from '../services/courseService';
+import { assignmentService } from '../services/assignmentService';
+import { goalService } from '../services/goalService';
 import { Course } from '../types/course';
+import { Assignment } from '../types/assignment';
+import { Goal } from '../types/goal';
+import { EntityContext } from '../components/MarkdownRenderer';
 
 export const AIChatPage: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +54,8 @@ export const AIChatPage: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(initialCourseId);
 
   // UI States
@@ -67,17 +75,37 @@ export const AIChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages, sending]);
 
-  // Load User Courses & Sessions on Mount
+  // Load User Courses, Assignments, Goals & Sessions on Mount
   useEffect(() => {
     const fetchData = async () => {
       setLoadingSessions(true);
       try {
-        // Fetch courses for context selector
+        // Fetch courses for context selector & entity matching
         const userCourses = await courseService.getStudentCourses();
         setCourses(userCourses);
 
-        // Fetch chat sessions
-        const userSessions = await api.getSessions(user?.id || 'default_user');
+        // Fetch assignments for entity matching
+        let userAssignments: Assignment[] = [];
+        for (const c of userCourses) {
+          try {
+            const cAss = await assignmentService.getCourseAssignments(c.id);
+            userAssignments = [...userAssignments, ...cAss];
+          } catch (e) {
+            console.error('Failed to load course assignments:', e);
+          }
+        }
+        setAssignments(userAssignments);
+
+        // Fetch goals for entity matching
+        try {
+          const userGoals = await goalService.getGoals();
+          setGoals(userGoals);
+        } catch (e) {
+          console.error('Failed to load user goals:', e);
+        }
+
+        // Fetch chat sessions for Personal Companion ONLY
+        const userSessions = await api.getSessions(user?.id || 'default_user', 'companion');
         setSessions(userSessions);
 
         if (userSessions.length > 0) {
@@ -90,7 +118,7 @@ export const AIChatPage: React.FC = () => {
             {
               role: 'assistant',
               content:
-                'Xin chào! Tôi là Trợ Lý AI Học Tập thông minh (RAG Assistant). Bạn có thể hỏi tôi bất kỳ nội dung nào từ giáo trình, bài giảng hoặc tài liệu đã tải lên trong các khóa học!',
+                'Xin chào! Tôi là Trợ Lý Học Tập Cá Nhân (Personal Learning Companion). Tôi có thể giúp bạn theo dõi thông tin khóa học, bài tập, hạn nộp, điểm số, mục tiêu cá nhân và gợi ý những bài tập cần ưu tiên!',
             },
           ]);
         }
@@ -113,7 +141,7 @@ export const AIChatPage: React.FC = () => {
           {
             role: 'assistant',
             content:
-              'Phiên trò chuyện mới đã sẵn sàng. Hãy đặt câu hỏi để tôi truy vấn dữ liệu tài liệu cho bạn nhé!',
+              'Phiên trò chuyện mới đã sẵn sàng. Bạn có thể hỏi tôi về các môn học, bài tập sắp đến hạn, điểm số, hoặc xin gợi ý ưu tiên làm bài tập!',
           },
         ]);
       } else {
@@ -138,7 +166,7 @@ export const AIChatPage: React.FC = () => {
       {
         role: 'assistant',
         content:
-          'Đã khởi tạo phiên hỏi đáp mới. Vui lòng chọn môn học (nếu có) và nhập câu hỏi để tra cứu từ tài liệu!',
+          'Đã khởi tạo phiên hỏi đáp mới. Hãy đặt câu hỏi về khóa học, bài tập, hạn nộp, điểm số hoặc mục tiêu cá nhân của bạn!',
       },
     ]);
   };
@@ -164,14 +192,16 @@ export const AIChatPage: React.FC = () => {
         userMsgContent,
         activeSessionId || undefined,
         user?.id || 'default_user',
-        selectedCourseId
+        selectedCourseId,
+        undefined,
+        'companion'
       );
 
       // If new session was created by backend
       if (!activeSessionId && response.session_id) {
         setActiveSessionId(response.session_id);
         // Refresh sessions list
-        const updatedSessions = await api.getSessions(user?.id || 'default_user');
+        const updatedSessions = await api.getSessions(user?.id || 'default_user', 'companion');
         setSessions(updatedSessions);
       }
 
@@ -192,7 +222,7 @@ export const AIChatPage: React.FC = () => {
         ...prev,
         {
           role: 'assistant',
-          content: '⚠️ Đã xảy ra lỗi khi truy vấn tài liệu. Vui lòng thử lại sau giây lát.',
+          content: '⚠️ Đã xảy ra lỗi khi truy vấn dữ liệu học tập. Vui lòng thử lại sau giây lát.',
         },
       ]);
     } finally {
@@ -202,22 +232,36 @@ export const AIChatPage: React.FC = () => {
 
   const quickPrompts = [
     {
-      label: '💡 Tóm tắt nội dung chính',
-      query: 'Hãy tóm tắt ngắn gọn các khái niệm chính trong các tài liệu bài giảng đã tải lên.',
+      label: '📚 Môn học của tôi',
+      query: 'Tôi đang học những môn học nào?',
     },
     {
-      label: '🔍 Tìm kiếm công thức & định nghĩa',
-      query: 'Liệt kê các định nghĩa quan trọng và công thức cốt lõi cần nhớ.',
+      label: '⏰ Bài tập sắp đến hạn',
+      query: 'Tôi có những bài tập nào sắp đến hạn nộp?',
     },
     {
-      label: '❓ Tạo 3 câu hỏi ôn tập',
-      query: 'Tạo cho tôi 3 câu hỏi trắc nghiệm tự luyện kèm đáp án từ tài liệu môn học.',
+      label: '🎯 Mục tiêu cá nhân',
+      query: 'Mục tiêu cá nhân của tôi hiện tại là gì?',
+    },
+    {
+      label: '📊 Điểm số & Đánh giá',
+      query: 'Tôi đã nhận được điểm số và nhận xét nào?',
+    },
+    {
+      label: '💡 Gợi ý ưu tiên bài tập',
+      query: 'Tôi nên ưu tiên tập trung làm bài tập nào tuần này?',
     },
   ];
 
   const filteredSessions = sessions.filter((s) =>
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const entityContext: EntityContext = {
+    courses: courses.map((c) => ({ id: c.id, code: c.code, name: c.name })),
+    assignments: assignments.map((a) => ({ id: a.id, title: a.title, course_id: a.course_id })),
+    goals: goals.map((g) => ({ id: g.id, title: g.title })),
+  };
 
   return (
     <div
@@ -244,18 +288,18 @@ export const AIChatPage: React.FC = () => {
             </div>
             <div>
               <h1 className="font-bold text-lg tracking-tight flex items-center gap-2 m-0">
-                AI RAG Chat Assistant
+                Personal Learning Companion
                 <Badge
                   status="processing"
                   text={
                     <span className="text-[11px] font-medium text-emerald-500 dark:text-emerald-400">
-                      ChromaDB & Gemini RAG
+                      Learning Companion Agent
                     </span>
                   }
                 />
               </h1>
               <p className="text-xs text-slate-400 m-0">
-                Truy vấn dữ liệu bài giảng & tài liệu môn học tự động
+                Đồng hành theo dõi khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân
               </p>
             </div>
           </div>
@@ -399,7 +443,7 @@ export const AIChatPage: React.FC = () => {
                               : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none shadow-sm'
                           }`}
                         >
-                          <p className="whitespace-pre-wrap m-0 font-sans">{msg.content}</p>
+                          <MarkdownRenderer content={msg.content} isUser={isUser} entityContext={entityContext} />
                         </div>
 
                         {/* RAG Citations Cards (AI Messages only) */}
@@ -483,7 +527,7 @@ export const AIChatPage: React.FC = () => {
                     }`}
                   >
                     <Spin size="small" />
-                    <span>Đang tìm kiếm dữ liệu trong ChromaDB & tổng hợp câu trả lời...</span>
+                    <span>Đang phân tích thông tin học tập cá nhân & tổng hợp câu trả lời...</span>
                   </div>
                 </motion.div>
               )}
@@ -527,7 +571,7 @@ export const AIChatPage: React.FC = () => {
                         handleSendMessage();
                       }
                     }}
-                    placeholder="Hỏi bất kỳ điều gì từ tài liệu bài giảng..."
+                    placeholder="Hỏi về khóa học, bài tập, hạn nộp, điểm số, mục tiêu cá nhân..."
                     autoSize={{ minRows: 2, maxRows: 5 }}
                     disabled={sending}
                     className={`pr-14 rounded-2xl text-sm ${
@@ -550,7 +594,7 @@ export const AIChatPage: React.FC = () => {
                 </div>
 
                 <div className="text-[11px] text-center text-slate-400">
-                  Hệ thống sử dụng RAG với bộ khớp Embedding từ các tài liệu bài giảng đã tải lên.
+                  Trợ lý học tập cá nhân tự động tổng hợp thông tin khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân.
                 </div>
               </div>
             </div>

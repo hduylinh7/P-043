@@ -1357,6 +1357,12 @@ class AssignmentService:
                 raw_correct = (row.get("correct_option") or row.get("correct") or "").strip()
                 if raw_correct.isdigit():
                     correct_idx = int(raw_correct) - 1
+                elif raw_correct.lower().startswith("option_") and raw_correct[7:].isdigit():
+                    correct_idx = int(raw_correct[7:]) - 1
+                elif raw_correct.lower().startswith("option") and raw_correct[6:].isdigit():
+                    correct_idx = int(raw_correct[6:]) - 1
+                elif len(raw_correct) == 1 and raw_correct.upper() in ["A", "B", "C", "D", "E", "F"]:
+                    correct_idx = ord(raw_correct.upper()) - ord("A")
 
                 opt_texts = []
                 for i in range(1, 10):

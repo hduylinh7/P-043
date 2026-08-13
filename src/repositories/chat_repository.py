@@ -46,14 +46,17 @@ class ChatRepository:
         db: AsyncSession,
         user_id: str = "default_user",
         course_id: str | None = None,
+        agent_name: str | None = None,
         limit: int = 50,
     ) -> Sequence[ChatSession]:
-        """List sessions for a specific user and optional course."""
+        """List sessions for a specific user and optional course/agent_name."""
         query = select(ChatSession)
         if user_id and user_id != "default_user":
             query = query.where(ChatSession.user_id == user_id)
         if course_id:
             query = query.where(ChatSession.course_id == course_id)
+        if agent_name:
+            query = query.where(ChatSession.agent_name == agent_name)
         query = query.order_by(ChatSession.updated_at.desc()).limit(limit)
 
         result = await db.execute(query)

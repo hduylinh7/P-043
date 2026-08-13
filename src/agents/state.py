@@ -16,6 +16,7 @@ class AgentState(TypedDict, total=False):
     query: str
     session_id: str
     course_id: str | None
+    material_id: str | None
     user_id: str
     recent_messages: list[BaseMessage]
     retrieved_docs: list[dict]
