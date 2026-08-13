@@ -12,7 +12,6 @@ from src.db.models.learning.assignment import Assignment
 from src.db.models.learning.enrollment import Enrollment
 from src.db.models.learning.submission import Submission
 from src.db.models.planning.goal import Goal
-from src.db.models.planning.personal_task import PersonalTask
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
@@ -20,7 +19,6 @@ from src.models.planner_context import (
     AssignmentContextDTO,
     CurrentWeeklyPlanContextDTO,
     GoalContextDTO,
-    PersonalTaskContextDTO,
     PlanTaskContextDTO,
     PlannerContext,
     PlanningPeriodDTO,
@@ -169,31 +167,8 @@ class PlannerContextBuilder:
                     )
                 )
 
-        # 4. Active Personal Tasks
-        p_task_stmt = (
-            select(PersonalTask)
-            .where(
-                PersonalTask.student_id == student_id,
-                PersonalTask.status.notin_(["COMPLETED", "completed"]),
-            )
-            .order_by(PersonalTask.due_at.asc().nulls_last())
-        )
-        p_task_res = await db.execute(p_task_stmt)
-        active_personal_tasks = p_task_res.scalars().all()
-
-        personal_task_dtos = [
-            PersonalTaskContextDTO(
-                id=pt.id,
-                title=pt.title,
-                description=pt.description,
-                category=pt.category,
-                priority=pt.priority,
-                status=pt.status,
-                due_date=format_iso(pt.due_at),
-                estimated_hours=pt.estimated_hours,
-            )
-            for pt in active_personal_tasks
-        ]
+        # 4. Active Personal Tasks (Deprecated / Removed)
+        personal_task_dtos = []
 
         # 5. Current Weekly Plan for requested week
         start_dt_tz = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)

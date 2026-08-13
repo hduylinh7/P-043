@@ -20,8 +20,8 @@ export const HeroSection: React.FC = () => {
   return (
     <section className="relative overflow-hidden py-16 lg:py-24">
       {/* Background glow accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -34,56 +34,48 @@ export const HeroSection: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             {/* Badge */}
-            <Tag color="blue" className="px-3 py-1 text-sm font-semibold rounded-full mb-6 border-blue-200 dark:border-blue-900/60 flex items-center gap-1.5 shadow-sm">
-              <StarOutlined className="text-blue-500" />
-              <span>Next-Gen AI Powered Learning Platform</span>
-            </Tag>
+            <div className="px-4 py-1.5 text-xs font-bold rounded-full mb-6 border-2 border-minecraft-grassBorder bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center gap-2 shadow-sm font-pixel tracking-wide">
+              <StarOutlined className="text-amber-500 text-sm" />
+              <span>NỀN TẢNG HỌC TẬP THÔNG MINH CÙNG AI</span>
+            </div>
 
             {/* Large Heading */}
             <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] mb-6 ${
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
-              Your Personal{' '}
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 bg-clip-text text-transparent">
+              Chinh Phục Tri Thức Cùng{' '}
+              <span className="bg-gradient-to-r from-amber-500 via-emerald-500 to-sky-500 bg-clip-text text-transparent">
                 Lita Learning
-              </span>{' '}
-              Platform
+              </span>
             </h1>
 
             {/* Subtitle */}
-            <p className={`text-lg sm:text-xl font-normal leading-relaxed max-w-2xl mb-8 ${
-              themeMode === 'dark' ? 'text-slate-300' : 'text-slate-600'
+            <p className={`text-lg sm:text-xl font-medium leading-relaxed max-w-2xl mb-8 ${
+              themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'
             }`}>
-              Plan smarter, study better, and achieve your academic goals with AI-powered assistance. Personalized schedules, instant AI tutoring, and intelligent goal tracking all in one place.
+              Lập kế hoạch thông minh, học tập hiệu quả và chinh phục mục tiêu cá nhân cùng trợ lý AI linh hoạt. Trải nghiệm phương pháp học tập Gamified đầy hứng khởi.
             </p>
 
             {/* Buttons */}
             <div className="flex flex-wrap items-center gap-4">
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<RocketOutlined />}
+                <button
                   onClick={() => navigate('/register')}
-                  className="h-13 px-8 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border-none shadow-lg shadow-blue-500/25 rounded-xl flex items-center gap-2"
+                  className="btn-voxel-green text-base px-8 py-3.5"
                 >
-                  Get Started
-                </Button>
+                  <RocketOutlined />
+                  <span>Bắt Đầu Ngay</span>
+                </button>
               </motion.div>
 
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Button
-                  size="large"
-                  icon={<LoginOutlined />}
+                <button
                   onClick={() => navigate('/login')}
-                  className={`h-13 px-8 text-base font-semibold rounded-xl border flex items-center gap-2 ${
-                    themeMode === 'dark'
-                      ? 'border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-600 hover:text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-600 hover:text-indigo-600 shadow-sm'
-                  }`}
+                  className="btn-voxel-gold text-base px-8 py-3.5"
                 >
-                  Sign In
-                </Button>
+                  <LoginOutlined />
+                  <span>Đăng Nhập</span>
+                </button>
               </motion.div>
             </div>
 

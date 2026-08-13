@@ -4,6 +4,37 @@
 
 @layer base {
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #FDFBF7;
+    color: #1a291c;
+  }
+
+  .dark body {
+    background-color: #0F1710;
+    color: #F2F9F3;
   }
 }
+
+/* Custom 3D Voxel Utilities */
+@layer components {
+  .btn-voxel-green {
+    @apply bg-minecraft-grass hover:bg-emerald-600 active:translate-y-1 text-white font-bold px-5 py-2.5 rounded-xl border-2 border-minecraft-grassBorder shadow-voxel shadow-minecraft-grassBorder transition-all duration-150 flex items-center justify-center gap-2;
+  }
+
+  .btn-voxel-gold {
+    @apply bg-minecraft-gold hover:bg-amber-500 active:translate-y-1 text-slate-900 font-bold px-5 py-2.5 rounded-xl border-2 border-minecraft-goldBorder shadow-voxel-gold transition-all duration-150 flex items-center justify-center gap-2;
+  }
+
+  .btn-voxel-sky {
+    @apply bg-minecraft-sky hover:bg-sky-500 active:translate-y-1 text-white font-bold px-5 py-2.5 rounded-xl border-2 border-minecraft-skyBorder shadow-voxel-sky transition-all duration-150 flex items-center justify-center gap-2;
+  }
+
+  .card-voxel {
+    @apply bg-white dark:bg-minecraft-obsidianCard border-2 border-slate-200 dark:border-minecraft-obsidianBorder rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .font-pixel {
+    font-family: 'Pixelify Sans', cursive, sans-serif;
+  }
+}
+

@@ -112,19 +112,19 @@ export const CoursesPage: React.FC = () => {
   );
 
   return (
-    <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-900'}`}>
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto">
         <header className={`px-6 py-5 border-b sticky top-0 z-10 backdrop-blur-md flex items-center justify-between ${
-          isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'
+          isDark ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder' : 'bg-[#FDFBF7]/90 border-amber-900/10'
         }`}>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight m-0">Quản Lý Khóa Học</h1>
-              <Tag color={isInstructor ? 'purple' : 'blue'} className="rounded-full px-3 py-0.5 font-semibold text-xs border-0">
+              <Tag color={isInstructor ? 'gold' : 'green'} className="rounded-full px-3 py-0.5 font-bold text-xs border-0">
                 {isInstructor ? 'Giảng Viên' : 'Sinh Viên'}
               </Tag>
             </div>
@@ -136,15 +136,13 @@ export const CoursesPage: React.FC = () => {
           </div>
 
           {isInstructor && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
+            <button
               onClick={() => setIsModalOpen(true)}
-              size="large"
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold shadow-md shadow-indigo-500/20"
+              className="btn-voxel-green text-xs px-5 py-2.5"
             >
-              Tạo Khóa Học Mới
-            </Button>
+              <PlusOutlined />
+              <span>Tạo Khóa Học Mới</span>
+            </button>
           )}
         </header>
 
@@ -165,7 +163,7 @@ export const CoursesPage: React.FC = () => {
                       { key: 'discover', label: 'Khám Phá Khóa Học' },
                     ]
               }
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto font-bold"
             />
 
             <div className="w-full sm:w-72">
@@ -187,7 +185,7 @@ export const CoursesPage: React.FC = () => {
               <p className="text-sm mt-3 text-slate-400">Đang tải danh sách khóa học...</p>
             </div>
           ) : filteredCourses.length === 0 ? (
-            <div className="py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-center">
+            <div className="py-16 bg-white dark:bg-minecraft-obsidianCard rounded-3xl border-2 border-amber-900/10 dark:border-minecraft-obsidianBorder text-center">
               <Empty
                 description={
                   <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
@@ -196,14 +194,13 @@ export const CoursesPage: React.FC = () => {
                 }
               />
               {isInstructor && activeTab === 'managed' && (
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
+                <button
                   onClick={() => setIsModalOpen(true)}
-                  className="mt-4 rounded-xl bg-indigo-600 hover:bg-indigo-500"
+                  className="btn-voxel-green text-xs px-4 py-2 mt-4 inline-flex items-center gap-1.5"
                 >
-                  Tạo khóa học đầu tiên
-                </Button>
+                  <PlusOutlined />
+                  <span>Tạo khóa học đầu tiên</span>
+                </button>
               )}
             </div>
           ) : (
@@ -213,15 +210,15 @@ export const CoursesPage: React.FC = () => {
                   key={course.id}
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.2 }}
-                  className={`rounded-2xl border p-6 flex flex-col justify-between relative shadow-sm hover:shadow-md transition-all ${
+                  className={`rounded-2xl border-2 p-6 flex flex-col justify-between relative shadow-sm hover:shadow-md transition-all ${
                     isDark
-                      ? 'bg-slate-900/90 border-slate-800/80 hover:border-slate-700'
-                      : 'bg-white border-slate-200/80 hover:border-indigo-200'
+                      ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder hover:border-emerald-500/50'
+                      : 'bg-white border-amber-900/10 hover:border-emerald-400'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <Tag color="indigo" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
+                      <Tag color="emerald" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
                         {course.code}
                       </Tag>
                       <div className="flex items-center gap-1.5 text-xs text-slate-400">

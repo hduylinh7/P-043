@@ -222,7 +222,7 @@ export const AIChatPage: React.FC = () => {
   return (
     <div
       className={`min-h-screen flex transition-colors duration-300 ${
-        isDark ? 'bg-[#090b10] text-slate-100' : 'bg-slate-50 text-slate-900'
+        isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-900'
       }`}
     >
       {/* Sidebar */}
@@ -232,18 +232,18 @@ export const AIChatPage: React.FC = () => {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header Bar */}
         <header
-          className={`h-16 px-6 border-b flex items-center justify-between shrink-0 backdrop-blur-md z-10 ${
+          className={`h-20 px-6 border-b flex items-center justify-between shrink-0 backdrop-blur-md z-10 ${
             isDark
-              ? 'bg-slate-950/80 border-slate-800/80 text-white'
-              : 'bg-white/80 border-slate-200 text-slate-900'
+              ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder text-white'
+              : 'bg-[#FDFBF7]/90 border-amber-900/10 text-slate-900'
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shadow-sm">
-              <ThunderboltOutlined className="text-lg animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-minecraft-grass/20 border-2 border-minecraft-grassBorder flex items-center justify-center text-emerald-500 shadow-sm">
+              <ThunderboltOutlined className="text-xl animate-pulse" />
             </div>
             <div>
-              <h1 className="font-bold text-base tracking-tight flex items-center gap-2 m-0">
+              <h1 className="font-bold text-lg tracking-tight flex items-center gap-2 m-0">
                 AI RAG Chat Assistant
                 <Badge
                   status="processing"

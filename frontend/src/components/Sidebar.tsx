@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
-  LayoutDashboard,
   MessageSquare,
   User,
   LogOut,
@@ -14,11 +13,11 @@ import {
   Sun,
   Moon,
   BookOpen,
-  CheckSquare,
   Target,
   Calendar,
   LucideIcon
 } from 'lucide-react';
+import { LitaLogo } from './common/LitaLogo';
 
 interface NavItem {
   id: string;
@@ -45,12 +44,6 @@ export const Sidebar: React.FC = () => {
       icon: Compass,
     },
     {
-      id: 'dashboard',
-      name: 'Bảng điều khiển',
-      path: '/dashboard',
-      icon: LayoutDashboard,
-    },
-    {
       id: 'courses',
       name: 'Khóa học',
       path: '/courses',
@@ -70,12 +63,6 @@ export const Sidebar: React.FC = () => {
             path: '/goals',
             icon: Target,
           },
-          {
-            id: 'tasks',
-            name: 'Nhiệm vụ cá nhân',
-            path: '/tasks',
-            icon: CheckSquare,
-          },
         ]
       : []),
 
@@ -88,7 +75,6 @@ export const Sidebar: React.FC = () => {
     },
   ];
 
-
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -100,26 +86,29 @@ export const Sidebar: React.FC = () => {
     <aside
       className={`relative flex flex-col h-screen transition-all duration-300 ease-in-out z-40 border-r ${
         isDark
-          ? 'bg-[#0f0d14] border-slate-800/80 text-slate-200'
-          : 'bg-white border-slate-200 text-slate-800 shadow-lg'
+          ? 'bg-[#0F1710] border-minecraft-obsidianBorder text-slate-200'
+          : 'bg-[#FDFBF7] border-amber-900/10 text-slate-800 shadow-md'
       } ${isCollapsed ? 'w-20' : 'w-64'}`}
     >
-      {/* 1. Sidebar Header (Ocean Blue Theme) */}
-      <div className={`flex items-center justify-between h-16 px-4 border-b ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
-        {!isCollapsed && (
-          <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-blue-500">
-            <Sparkles className="w-4 h-4 text-blue-500 shrink-0" />
-            <span>Menu Navigation</span>
-          </div>
+      {/* 1. Sidebar Header (Lita Logo) */}
+      <div className={`flex items-center justify-between h-20 px-4 border-b ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}>
+        {!isCollapsed ? (
+          <Link to="/" className="flex items-center gap-2 overflow-hidden py-2">
+            <LitaLogo size="sm" />
+          </Link>
+        ) : (
+          <Link to="/" className="mx-auto py-2">
+            <LitaLogo variant="icon" size="sm" />
+          </Link>
         )}
 
         {/* Nút Ẩn / Hiện */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`p-2 rounded-xl transition-colors ml-auto focus:outline-none ${
+          className={`p-1.5 rounded-xl transition-colors focus:outline-none ${
             isDark
-              ? 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
-              : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              ? 'bg-minecraft-obsidianCard hover:bg-emerald-950/60 text-slate-300 border border-minecraft-obsidianBorder'
+              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/60'
           }`}
           title={isCollapsed ? 'Mở rộng Sidebar' : 'Thu gọn Sidebar'}
         >
@@ -127,18 +116,20 @@ export const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      {/* 2. User Info Briefing (Chỉ khi đã đăng nhập) */}
+      {/* 2. User Info Briefing */}
       {isAuthenticated && user && (
-        <div className={`p-3 border-b ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
-          <div className={`flex items-center gap-3 p-2 rounded-xl border ${
-            isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-blue-50/50 border-blue-200/60'
+        <div className={`p-3 border-b ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}>
+          <div className={`flex items-center gap-3 p-2 rounded-xl border-2 ${
+            isDark
+              ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder'
+              : 'bg-white border-amber-900/10 shadow-sm'
           } ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-bold flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-9 h-9 rounded-lg bg-minecraft-grass text-white font-bold flex items-center justify-center shrink-0 shadow-sm border border-minecraft-grassBorder">
               {user.full_name ? user.full_name.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
             </div>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <p className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {user.full_name}
                 </p>
                 <p className="text-xs text-slate-400 truncate">{user.email}</p>
@@ -147,6 +138,7 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
       )}
+
 
       {/* 3. Navigation List */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
@@ -167,21 +159,21 @@ export const Sidebar: React.FC = () => {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all group relative ${
                 isActive
                   ? isDark
-                    ? 'bg-gradient-to-r from-blue-500/15 to-indigo-500/15 text-blue-300 border border-blue-500/30 shadow-lg shadow-blue-500/5'
-                    : 'bg-gradient-to-r from-blue-50 to-blue-50 text-blue-800 border border-blue-200 font-bold shadow-sm'
+                    ? 'bg-minecraft-obsidianCard text-emerald-400 border border-minecraft-grassBorder shadow-sm font-bold'
+                    : 'bg-white text-emerald-800 border-2 border-minecraft-grassBorder font-bold shadow-voxel-sm shadow-minecraft-grassBorder'
                   : isDark
-                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                  : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/60'
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-emerald-950/40'
+                  : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50/60'
               } ${isCollapsed ? 'justify-center' : ''}`}
             >
               <Icon className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
-                isActive ? 'text-blue-500' : 'text-slate-400'
+                isActive ? 'text-emerald-500' : 'text-slate-400'
               }`} />
 
               {!isCollapsed && <span className="truncate">{item.name}</span>}
 
               {!isCollapsed && item.badge && (
-                <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
+                <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-minecraft-grass/20 text-emerald-600 dark:text-emerald-400 border border-minecraft-grass/40 rounded-full">
                   {item.badge}
                 </span>
               )}

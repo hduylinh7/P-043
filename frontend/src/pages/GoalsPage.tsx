@@ -219,13 +219,13 @@ export const GoalsPage: React.FC = () => {
 
   if (!isStudent) {
     return (
-      <div className={`flex min-h-screen ${isDark ? 'bg-[#0b0910] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <div className={`flex min-h-screen ${isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-900'}`}>
         <Sidebar />
         <main className="flex-1 p-10 flex items-center justify-center">
-          <div className={`p-8 rounded-3xl border max-w-md text-center space-y-4 shadow-xl ${
-            isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          <div className={`p-8 rounded-3xl border-2 max-w-md text-center space-y-4 shadow-xl ${
+            isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10'
           }`}>
-            <AimOutlined className="text-5xl text-rose-500" />
+            <AimOutlined className="text-5xl text-amber-500" />
             <h2 className="text-xl font-bold">Quyền Truy Cập Bị Hạn Chế</h2>
             <p className="text-xs text-slate-400 leading-relaxed">
               Chức năng <strong>Quản lý Mục tiêu</strong> chỉ dành riêng cho tài khoản Sinh viên để định hướng học tập & sự nghiệp cá nhân.
@@ -237,15 +237,15 @@ export const GoalsPage: React.FC = () => {
   }
 
   return (
-    <div className={`flex min-h-screen ${isDark ? 'bg-[#0b0910] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex min-h-screen ${isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-900'}`}>
       <Sidebar />
 
       <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-900/10 dark:border-minecraft-obsidianBorder pb-5">
           <div>
-            <h1 className="text-2xl font-black flex items-center gap-2.5 m-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
-              <AimOutlined className="text-blue-500" />
+            <h1 className="text-2xl font-black flex items-center gap-2.5 m-0 bg-gradient-to-r from-amber-500 via-emerald-500 to-sky-500 bg-clip-text text-transparent">
+              <AimOutlined className="text-emerald-500" />
               Mục Tiêu Cá Nhân
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 m-0">
@@ -253,19 +253,18 @@ export const GoalsPage: React.FC = () => {
             </p>
           </div>
 
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
+          <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-sm font-semibold h-10 px-5 shadow-lg shadow-blue-500/25 border-0"
+            className="btn-voxel-green text-xs px-5 py-2.5"
           >
-            Tạo Mục Tiêu Mới
-          </Button>
+            <PlusOutlined />
+            <span>Tạo Mục Tiêu Mới</span>
+          </button>
         </div>
 
         {/* Filter & Sorting Controls */}
-        <div className={`p-4 rounded-2xl border flex flex-wrap items-center gap-3 justify-between ${
-          isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        <div className={`p-4 rounded-2xl border-2 flex flex-wrap items-center gap-3 justify-between ${
+          isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
         }`}>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">

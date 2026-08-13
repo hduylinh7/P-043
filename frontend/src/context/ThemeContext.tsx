@@ -43,18 +43,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         theme={{
           algorithm: themeMode === 'dark' ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
           token: {
-            colorPrimary: '#f97316',
-            borderRadius: 12,
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            colorBgContainer: themeMode === 'dark' ? '#0f0d14' : '#ffffff',
-            colorBgElevated: themeMode === 'dark' ? '#181424' : '#ffffff',
-            colorText: themeMode === 'dark' ? '#f8fafc' : '#0f172a',
-            colorTextSecondary: themeMode === 'dark' ? '#a1a1aa' : '#64748b',
+            colorPrimary: '#59B335',
+            borderRadius: 14,
+            fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            colorBgContainer: themeMode === 'dark' ? '#162218' : '#FFFFFF',
+            colorBgElevated: themeMode === 'dark' ? '#1D2E21' : '#FFFFFF',
+            colorText: themeMode === 'dark' ? '#F2F9F3' : '#1A291C',
+            colorTextSecondary: themeMode === 'dark' ? '#92A895' : '#4E6351',
           },
           components: {
             Button: {
-              borderRadius: 10,
-              fontWeight: 600,
+              borderRadius: 12,
+              fontWeight: 700,
             },
             Card: {
               borderRadiusLG: 16,
@@ -62,7 +62,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           },
         }}
       >
-        <div className={themeMode === 'dark' ? 'dark bg-slate-950 text-slate-100 min-h-screen' : 'bg-slate-50 text-slate-900 min-h-screen'}>
+        <div className={themeMode === 'dark' ? 'dark bg-[#0F1710] text-[#F2F9F3] min-h-screen font-sans' : 'bg-[#FDFBF7] text-[#1A291C] min-h-screen font-sans'}>
           {children}
         </div>
       </ConfigProvider>

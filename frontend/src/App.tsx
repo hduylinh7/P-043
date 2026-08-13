@@ -14,7 +14,6 @@ import { CoursesPage } from './pages/CoursesPage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { MaterialViewerPage } from './pages/MaterialViewerPage';
 import { AIChatPage } from './pages/AIChatPage';
-import { PersonalTasksPage } from './pages/PersonalTasksPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { WeeklyPlanPage } from './pages/WeeklyPlanPage';
 
@@ -120,14 +119,7 @@ export const App: React.FC = () => {
                 </ProtectedDashboardRoute>
               }
             />
-            <Route
-              path="/tasks"
-              element={
-                <ProtectedDashboardRoute>
-                  <PersonalTasksPage />
-                </ProtectedDashboardRoute>
-              }
-            />
+
             <Route
               path="/goals"
               element={

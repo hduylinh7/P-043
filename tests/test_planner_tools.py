@@ -12,7 +12,6 @@ from src.db.models import (
     Course,
     Enrollment,
     Goal,
-    PersonalTask,
     Task,
     User,
     WeeklyGoal,
@@ -325,17 +324,16 @@ async def test_source_entity_does_not_exist(async_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_valid_source_entity(async_session: AsyncSession):
-    """15. Test successful task creation with valid source entity (Goal, PersonalTask, Assignment)."""
+    """15. Test successful task creation with valid source entity (Goal, Assignment)."""
     u1 = User(id="u1", email="u1@test.com", full_name="User 1")
     g1 = Goal(id="g1", student_id="u1", title="Learn LangGraph", status="ACTIVE")
-    pt1 = PersonalTask(id="pt1", student_id="u1", title="Study Math", status="NOT_STARTED")
     course = Course(id="c1", code="CS101", name="Intro to CS")
     assign1 = Assignment(id="a1", course_id="c1", title="HW1", status="ACTIVE")
 
     start_dt = datetime(2026, 8, 10, tzinfo=timezone.utc)
     plan = WeeklyGoal(id="wp1", student_id="u1", title="Plan W33", week_start_date=start_dt, status="ACTIVE")
 
-    async_session.add_all([u1, g1, pt1, course, assign1, plan])
+    async_session.add_all([u1, g1, course, assign1, plan])
     await async_session.commit()
 
     user_ctx = make_user("u1")
@@ -346,13 +344,6 @@ async def test_valid_source_entity(async_session: AsyncSession):
     )
     assert t_goal.source_type == "GOAL"
     assert t_goal.source_id == "g1"
-
-    # Link to PersonalTask
-    t_pt = await PlannerTools.create_plan_task(
-        async_session, user_ctx, weekly_plan_id="wp1", title="PT Task", source_type="PERSONAL_TASK", source_id="pt1"
-    )
-    assert t_pt.source_type == "PERSONAL_TASK"
-    assert t_pt.source_id == "pt1"
 
     # Link to Assignment
     t_ass = await PlannerTools.create_plan_task(

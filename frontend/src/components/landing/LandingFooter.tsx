@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOutlined, GithubOutlined, HeartFilled } from '@ant-design/icons';
+import { GithubOutlined, HeartFilled } from '@ant-design/icons';
 import { useTheme } from '../../context/ThemeContext';
+import { LitaLogo } from '../common/LitaLogo';
 
 export const LandingFooter: React.FC = () => {
   const { themeMode } = useTheme();
@@ -9,24 +10,19 @@ export const LandingFooter: React.FC = () => {
   return (
     <footer id="about" className={`border-t transition-colors duration-300 ${
       themeMode === 'dark'
-        ? 'bg-slate-950 border-slate-800 text-slate-400'
-        : 'bg-white border-slate-200 text-slate-600'
+        ? 'bg-[#0F1710] border-minecraft-obsidianBorder text-slate-400'
+        : 'bg-[#FDFBF7] border-amber-900/10 text-slate-600'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
           
           {/* Col 1 & 2: Logo & Brand Summary */}
           <div className="md:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2.5 font-bold text-xl tracking-tight">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                <BookOutlined className="text-lg" />
-              </div>
-              <span className={themeMode === 'dark' ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
-                Lita <span className="text-indigo-600">Learning</span>
-              </span>
+            <Link to="/" className="inline-block">
+              <LitaLogo size="md" />
             </Link>
             <p className="text-sm leading-relaxed max-w-sm">
-              Your all-in-one AI study assistant. Empowering students to plan smarter, learn faster, and reach academic goals with state-of-the-art AI.
+              Trợ lý học tập AI cá nhân hóa toàn diện. Giúp học sinh, sinh viên lập kế hoạch thông minh, tiếp thu kiến thức nhanh hơn và chinh phục đỉnh cao học tập.
             </p>
           </div>
 

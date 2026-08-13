@@ -116,7 +116,7 @@ export const RegisterPage: React.FC = () => {
 
           <button
             onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-            className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-500 hover:from-blue-300 hover:to-blue-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-xl"
           >
             Nhập mã OTP xác thực
           </button>
@@ -133,10 +133,10 @@ export const RegisterPage: React.FC = () => {
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
           isDark
-            ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
-            : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+            ? 'bg-amber-950/60 border-amber-800/80 text-amber-200'
+            : 'bg-amber-50 border-amber-200 text-amber-900'
         }`}>
-          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -158,8 +158,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -181,8 +181,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -204,8 +204,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
             <button
@@ -250,8 +250,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -260,11 +260,11 @@ export const RegisterPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#eff6ff] hover:bg-[#dbeafe] active:scale-[0.99] text-blue-950 dark:text-blue-900 font-extrabold py-3.5 rounded-xl border border-[#bfdbfe] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          className="w-full btn-voxel-green text-base py-3.5 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin text-blue-900" />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
               <span>Đang khởi tạo tài khoản...</span>
             </>
           ) : (
@@ -274,10 +274,10 @@ export const RegisterPage: React.FC = () => {
       </form>
 
       <div className={`mt-8 text-center border-t pt-6 text-sm ${
-        isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
+        isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-500'
       }`}>
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-blue-700 dark:text-blue-400 hover:underline">
+        <Link to="/login" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
           Đăng nhập
         </Link>
       </div>

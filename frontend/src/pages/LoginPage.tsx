@@ -142,8 +142,8 @@ export const LoginPage: React.FC = () => {
               placeholder="name@example.com"
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${isDark
-                ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
                 }`}
             />
           </div>
@@ -157,7 +157,7 @@ export const LoginPage: React.FC = () => {
             </label>
             <Link
               to="/forgot-password"
-              className="text-xs font-bold text-blue-800 dark:text-blue-300 hover:underline transition-colors"
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors"
             >
               Quên mật khẩu?
             </Link>
@@ -171,8 +171,8 @@ export const LoginPage: React.FC = () => {
               placeholder="••••••••"
               required
               className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${isDark
-                ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
                 }`}
             />
             <button
@@ -188,11 +188,11 @@ export const LoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#eff6ff] hover:bg-[#dbeafe] active:scale-[0.99] text-blue-950 dark:text-blue-900 font-extrabold py-3.5 rounded-xl border border-[#bfdbfe] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+          className="w-full btn-voxel-green text-base py-3.5 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-3"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin text-blue-900" />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
               <span>Đang xử lý...</span>
             </>
           ) : (
@@ -204,10 +204,10 @@ export const LoginPage: React.FC = () => {
       {/* Divider */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
-          <div className={`w-full border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}></div>
+          <div className={`w-full border-t ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}></div>
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className={`px-3 font-semibold ${isDark ? 'bg-slate-900 text-slate-500' : 'bg-white text-slate-400'
+          <span className={`px-3 font-semibold ${isDark ? 'bg-minecraft-obsidianCard text-slate-500' : 'bg-white text-slate-400'
             }`}>
             Hoặc đăng nhập bằng
           </span>
@@ -225,10 +225,10 @@ export const LoginPage: React.FC = () => {
         />
       </div>
 
-      <div className={`mt-8 text-center border-t pt-6 text-sm ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
+      <div className={`mt-8 text-center border-t pt-6 text-sm ${isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-500'
         }`}>
         Chưa có tài khoản?{' '}
-        <Link to="/register" className="font-bold text-blue-700 dark:text-blue-400 hover:underline">
+        <Link to="/register" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
           Đăng ký ngay
         </Link>
       </div>

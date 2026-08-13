@@ -10,7 +10,6 @@ from src.db.models import (
     Course,
     Enrollment,
     Goal,
-    PersonalTask,
     Submission,
     Task,
     User,
@@ -48,14 +47,13 @@ def make_user_response(user_id: str, email: str = "test@example.com", name: str 
 
 @pytest.mark.asyncio
 async def test_student_with_all_data(async_session: AsyncSession):
-    """1. Test student with active goals, upcoming assignments, active personal tasks, and current weekly plan."""
+    """1. Test student with active goals, upcoming assignments, and current weekly plan."""
     student = User(id="s1", email="student1@test.com", full_name="Student One")
     course = Course(id="c1", code="CS101", name="Intro to CS")
     enrollment = Enrollment(id="e1", user_id="s1", course_id="c1", role=EnrollmentRoleEnum.STUDENT)
 
     goal = Goal(id="g1", student_id="s1", title="Learn Python", status="ACTIVE", priority="HIGH")
     assignment = Assignment(id="a1", course_id="c1", title="HW1", status="ACTIVE", due_at=datetime.now(timezone.utc) + timedelta(days=2))
-    p_task = PersonalTask(id="pt1", student_id="s1", title="Study Math", status="NOT_STARTED", priority="MEDIUM")
 
     week_start = parse_week_start("2026-08-10")
     start_dt = datetime(2026, 8, 10, tzinfo=timezone.utc)
@@ -64,7 +62,7 @@ async def test_student_with_all_data(async_session: AsyncSession):
     )
     plan_task = Task(id="t1", weekly_goal_id="wp1", title="Review CS", status="todo", priority="medium")
 
-    async_session.add_all([student, course, enrollment, goal, assignment, p_task, weekly_plan, plan_task])
+    async_session.add_all([student, course, enrollment, goal, assignment, weekly_plan, plan_task])
     await async_session.commit()
 
     student_user = make_user_response("s1", "student1@test.com", "Student One")
@@ -82,8 +80,7 @@ async def test_student_with_all_data(async_session: AsyncSession):
     assert ctx.assignments[0].title == "HW1"
     assert ctx.assignments[0].course_name == "Intro to CS"
 
-    assert len(ctx.personal_tasks) == 1
-    assert ctx.personal_tasks[0].title == "Study Math"
+    assert len(ctx.personal_tasks) == 0
 
     assert ctx.current_weekly_plan is not None
     assert ctx.current_weekly_plan.id == "wp1"
@@ -165,14 +162,10 @@ async def test_without_weekly_plan(async_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_completed_tasks_and_assignments_excluded(async_session: AsyncSession):
-    """7. Test completed personal tasks and submitted assignments are excluded."""
+    """7. Test submitted assignments are excluded."""
     student = User(id="s7", email="s7@test.com", full_name="Student Seven")
     course = Course(id="c7", code="CS102", name="Data Structures")
     enrollment = Enrollment(id="e7", user_id="s7", course_id="c7", role=EnrollmentRoleEnum.STUDENT)
-
-    # Personal tasks: 1 completed, 1 active
-    pt_done = PersonalTask(id="pt_done", student_id="s7", title="Done Task", status="COMPLETED")
-    pt_active = PersonalTask(id="pt_act", student_id="s7", title="Active Task", status="IN_PROGRESS")
 
     # Assignment with submission
     assign1 = Assignment(id="a_submitted", course_id="c7", title="Submitted HW", status="ACTIVE")
@@ -180,15 +173,13 @@ async def test_completed_tasks_and_assignments_excluded(async_session: AsyncSess
 
     assign2 = Assignment(id="a_pending", course_id="c7", title="Pending HW", status="ACTIVE")
 
-    async_session.add_all([student, course, enrollment, pt_done, pt_active, assign1, submission, assign2])
+    async_session.add_all([student, course, enrollment, assign1, submission, assign2])
     await async_session.commit()
 
     student_user = make_user_response("s7")
     ctx = await PlannerContextBuilder.build_context(async_session, student_user, week_start="2026-08-10")
 
-    # Personal tasks: only active included
-    assert len(ctx.personal_tasks) == 1
-    assert ctx.personal_tasks[0].id == "pt_act"
+    assert len(ctx.personal_tasks) == 0
 
     # Assignments: only pending included
     assert len(ctx.assignments) == 1
@@ -220,9 +211,8 @@ async def test_another_student_data_not_returned(async_session: AsyncSession):
     studentB = User(id="sb", email="sb@test.com", full_name="Student B")
 
     goalB = Goal(id="gb", student_id="sb", title="Student B Goal", status="ACTIVE")
-    ptaskB = PersonalTask(id="ptb", student_id="sb", title="Student B Task", status="NOT_STARTED")
 
-    async_session.add_all([studentA, studentB, goalB, ptaskB])
+    async_session.add_all([studentA, studentB, goalB])
     await async_session.commit()
 
     studentA_user = make_user_response("sa")

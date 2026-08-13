@@ -97,13 +97,13 @@ export const RoleSelectionPage: React.FC = () => {
           }}
           className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-4 ${
             selectedRole === 'student'
-              ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40'
+              ? 'border-minecraft-grass bg-emerald-50/50 dark:bg-emerald-950/40'
               : themeMode === 'dark'
-              ? 'border-slate-800 bg-slate-900/50 hover:border-indigo-500/50'
-              : 'border-slate-200 bg-slate-50/60 hover:border-indigo-300'
+              ? 'border-minecraft-obsidianBorder bg-minecraft-obsidianCard hover:border-emerald-500/50'
+              : 'border-amber-900/15 bg-white hover:border-emerald-400 shadow-sm'
           }`}
         >
-          <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
+          <div className="w-12 h-12 rounded-xl bg-minecraft-grass text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 border-2 border-minecraft-grassBorder">
             <UserOutlined className="text-xl" />
           </div>
           <div className="flex-1 min-w-0">
@@ -112,7 +112,7 @@ export const RoleSelectionPage: React.FC = () => {
                 Sinh Viên / Học Viên
               </h3>
               {loading && selectedRole === 'student' ? (
-                <LoadingOutlined className="text-indigo-600" />
+                <LoadingOutlined className="text-emerald-600" />
               ) : (
                 <RightOutlined className="text-xs text-slate-400" />
               )}
@@ -134,14 +134,14 @@ export const RoleSelectionPage: React.FC = () => {
           }}
           className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col gap-3 ${
             selectedRole === 'instructor'
-              ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40'
+              ? 'border-minecraft-gold bg-amber-50/50 dark:bg-amber-950/40'
               : themeMode === 'dark'
-              ? 'border-slate-800 bg-slate-900/50 hover:border-indigo-500/50'
-              : 'border-slate-200 bg-slate-50/60 hover:border-indigo-300'
+              ? 'border-minecraft-obsidianBorder bg-minecraft-obsidianCard hover:border-amber-500/50'
+              : 'border-amber-900/15 bg-white hover:border-amber-400 shadow-sm'
           }`}
         >
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+            <div className="w-12 h-12 rounded-xl bg-minecraft-gold text-slate-900 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 border-2 border-minecraft-goldBorder">
               <ReadOutlined className="text-xl" />
             </div>
             <div className="flex-1 min-w-0">
@@ -164,14 +164,14 @@ export const RoleSelectionPage: React.FC = () => {
               animate={{ opacity: 1, height: 'auto' }}
               transition={{ duration: 0.3 }}
               onSubmit={handleVerifyInstructor}
-              className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3"
+              className="mt-3 pt-3 border-t border-amber-900/10 dark:border-minecraft-obsidianBorder space-y-3"
             >
               <div>
                 <label className={`block text-xs font-semibold mb-1 ${themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                   Mã xác thực học viện (Institution Passcode):
                 </label>
                 <Input
-                  prefix={<KeyOutlined className="text-indigo-500" />}
+                  prefix={<KeyOutlined className="text-amber-500" />}
                   placeholder="Ví dụ: VINUNI-2026-AI"
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
@@ -179,21 +179,18 @@ export const RoleSelectionPage: React.FC = () => {
                   className="rounded-xl"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
-                  * Nhập mã do trường cấp (Dùng mã MVP: <span className="font-mono font-semibold text-indigo-500">VINUNI-2026-AI</span>)
+                  * Nhập mã do trường cấp (Dùng mã MVP: <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">VINUNI-2026-AI</span>)
                 </p>
               </div>
 
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={loading}
-                icon={<CheckCircleOutlined />}
-                block
-                size="large"
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full btn-voxel-gold py-3 text-sm rounded-xl font-bold"
               >
-                Xác Thực & Tiếp Tục
-              </Button>
+                <CheckCircleOutlined />
+                <span>Xác Thực & Tiếp Tục</span>
+              </button>
             </motion.form>
           )}
         </motion.div>

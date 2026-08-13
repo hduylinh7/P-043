@@ -453,17 +453,17 @@ export const WeeklyPlanPage: React.FC = () => {
   }, [activePlan, daysOfWeek]);
 
   return (
-    <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-[#0b0914] text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+    <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-800'}`}>
       <Sidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Header Section */}
-        <div className={`p-6 border-b backdrop-blur-md sticky top-0 z-30 transition-colors ${isDark ? 'bg-[#0f0d1b]/90 border-slate-800' : 'bg-white/90 border-slate-200'
+        <div className={`p-6 border-b backdrop-blur-md sticky top-0 z-30 transition-colors ${isDark ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder' : 'bg-[#FDFBF7]/90 border-amber-900/10'
           }`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <CalendarOutlined className="text-blue-500 text-2xl" />
+                <CalendarOutlined className="text-emerald-500 text-2xl" />
                 <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Weekly Plan (Kế hoạch tuần)
                 </h1>
@@ -475,25 +475,25 @@ export const WeeklyPlanPage: React.FC = () => {
 
             {/* Week Navigation Header */}
             <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200 shadow-sm'
+              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
                 }`}>
                 <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevWeek} title="Tuần trước" />
                 <span className="font-semibold text-sm px-2">
                   {weekStart.format('DD MMM')} - {weekEnd.format('DD MMM, YYYY')}
                 </span>
                 <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextWeek} title="Tuần sau" />
-                <Button type="text" size="small" onClick={handleToday} className="ml-1 text-blue-500 font-medium">
+                <Button type="text" size="small" onClick={handleToday} className="ml-1 text-emerald-600 dark:text-emerald-400 font-bold">
                   Hôm nay
                 </Button>
               </div>
 
               {/* View Mode Toggle Button */}
-              <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/60 border-slate-300'
+              <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-amber-900/5 border-amber-900/10'
                 }`}>
                 <button
                   onClick={() => setViewMode('calendar')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === 'calendar'
-                    ? 'bg-blue-600 text-white shadow-md'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar'
+                    ? 'bg-minecraft-grass text-white shadow-sm'
                     : isDark
                       ? 'text-slate-400 hover:text-white'
                       : 'text-slate-600 hover:text-slate-900'
@@ -503,8 +503,8 @@ export const WeeklyPlanPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === 'list'
-                    ? 'bg-blue-600 text-white shadow-md'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list'
+                    ? 'bg-minecraft-grass text-white shadow-sm'
                     : isDark
                       ? 'text-slate-400 hover:text-white'
                       : 'text-slate-600 hover:text-slate-900'
@@ -516,26 +516,24 @@ export const WeeklyPlanPage: React.FC = () => {
 
               {/* AI Plan Button */}
               {isStudent && (
-                <Button
-                  type="primary"
-                  icon={<RobotOutlined />}
+                <button
                   onClick={() => setIsAIModalOpen(true)}
-                  className="bg-purple-600 hover:bg-purple-500 rounded-xl font-semibold border-none shadow-md shadow-purple-500/20"
+                  className="btn-voxel-gold text-xs px-4 py-2"
                 >
-                  AI Plan My Week
-                </Button>
+                  <RobotOutlined />
+                  <span>AI Plan My Week</span>
+                </button>
               )}
 
               {/* Add Task Button */}
               {activePlan && (
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
+                <button
                   onClick={() => openTaskModal()}
-                  className="bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold border-none shadow-md shadow-blue-500/20"
+                  className="btn-voxel-green text-xs px-4 py-2"
                 >
-                  Thêm nhiệm vụ
-                </Button>
+                  <PlusOutlined />
+                  <span>Thêm nhiệm vụ</span>
+                </button>
               )}
             </div>
           </div>

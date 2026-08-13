@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.enums import normalize_priority
 from src.db.models.learning.assignment import Assignment
 from src.db.models.planning.goal import Goal
-from src.db.models.planning.personal_task import PersonalTask
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
@@ -168,14 +167,7 @@ class PlannerTools:
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail=f"Goal with id '{source_id}' not found for current student.",
                     )
-            elif clean_source_type == "PERSONAL_TASK":
-                res = await db.execute(select(PersonalTask).where(PersonalTask.id == source_id))
-                pt_obj = res.scalar_one_or_none()
-                if not pt_obj or pt_obj.student_id != current_user.id:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"PersonalTask with id '{source_id}' not found for current student.",
-                    )
+
             elif clean_source_type == "ASSIGNMENT":
                 res = await db.execute(select(Assignment).where(Assignment.id == source_id))
                 ass_obj = res.scalar_one_or_none()

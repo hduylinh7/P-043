@@ -16,32 +16,32 @@ export const FeaturesSection: React.FC = () => {
 
   const features = [
     {
-      icon: <RobotOutlined className="text-3xl text-indigo-600 dark:text-indigo-400" />,
+      icon: <RobotOutlined className="text-3xl text-emerald-500" />,
       title: 'AI Tutor',
       description: 'Receive step-by-step explanations, instant concept breakdowns, and personalized problem-solving hints anytime.',
     },
     {
-      icon: <CalendarOutlined className="text-3xl text-purple-600 dark:text-purple-400" />,
+      icon: <CalendarOutlined className="text-3xl text-amber-500" />,
       title: 'Smart Study Planner',
       description: 'Automatically generate balanced study schedules tailored around your university lectures, exams, and personal life.',
     },
     {
-      icon: <AimOutlined className="text-3xl text-emerald-600 dark:text-emerald-400" />,
+      icon: <AimOutlined className="text-3xl text-emerald-500" />,
       title: 'Weekly Goals',
       description: 'Set manageable target milestones each week with intelligent progress tracking and adaptive push notifications.',
     },
     {
-      icon: <FileDoneOutlined className="text-3xl text-blue-600 dark:text-blue-400" />,
+      icon: <FileDoneOutlined className="text-3xl text-sky-500" />,
       title: 'Assignment Tracking',
       description: 'Stay ahead of deadlines with centralized submission timelines, priority tags, and automated reminder alerts.',
     },
     {
-      icon: <MessageOutlined className="text-3xl text-blue-600 dark:text-blue-400" />,
+      icon: <MessageOutlined className="text-3xl text-sky-500" />,
       title: 'AI Chat Assistant',
       description: 'Engage in natural conversations with an AI study buddy that answers course questions and summarizes dense documents.',
     },
     {
-      icon: <LineChartOutlined className="text-3xl text-indigo-600 dark:text-indigo-400" />,
+      icon: <LineChartOutlined className="text-3xl text-amber-500" />,
       title: 'Learning Analytics',
       description: 'Gain clear data insights into your study habits, retention metrics, time allocation, and academic performance.',
     },
@@ -67,18 +67,18 @@ export const FeaturesSection: React.FC = () => {
         
         {/* Section Title */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">
-            POWERFUL FEATURES
+          <h2 className="text-xs font-pixel font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3">
+            TÍNH NĂNG ĐỘT PHÁ
           </h2>
           <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
             themeMode === 'dark' ? 'text-white' : 'text-slate-900'
           }`}>
-            Everything You Need to Excel in Your Studies
+            Mọi Công Cụ Bạn Cần Để Bứt Phá Học Tập
           </h3>
           <p className={`mt-4 text-base sm:text-lg ${
             themeMode === 'dark' ? 'text-slate-400' : 'text-slate-600'
           }`}>
-            Engineered to streamline student workflows, boost information retention, and eliminate academic burn-out.
+            Tối ưu hóa quy trình học, nâng cao ghi nhớ thông tin và duy trì động lực bền bỉ.
           </p>
         </div>
 
@@ -96,16 +96,14 @@ export const FeaturesSection: React.FC = () => {
               variants={cardVariants}
               whileHover={{ y: -8, transition: { duration: 0.2 } }}
             >
-              <Card
-                hoverable
-                className={`h-full border transition-all duration-300 rounded-2xl ${
+              <div
+                className={`h-full border-2 transition-all duration-300 rounded-3xl p-8 ${
                   themeMode === 'dark'
-                    ? 'bg-slate-900/80 border-slate-800 shadow-slate-950/40 hover:border-slate-700'
-                    : 'bg-white border-slate-200/80 shadow-sm hover:shadow-xl hover:border-indigo-100'
+                    ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder shadow-lg hover:border-emerald-500/50'
+                    : 'bg-white border-amber-900/10 shadow-sm hover:shadow-xl hover:border-emerald-400'
                 }`}
-                bodyStyle={{ padding: '2rem' }}
               >
-                <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-minecraft-grassBorder/30 flex items-center justify-center mb-6">
                   {feature.icon}
                 </div>
                 <h4 className={`text-xl font-bold mb-3 ${
@@ -118,7 +116,7 @@ export const FeaturesSection: React.FC = () => {
                 }`}>
                   {feature.description}
                 </p>
-              </Card>
+              </div>
             </motion.div>
           ))}
         </motion.div>

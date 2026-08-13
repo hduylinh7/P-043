@@ -15,7 +15,6 @@ from src.db.models import (
     Course,
     Enrollment,
     Goal,
-    PersonalTask,
     Task,
     User,
     WeeklyGoal,
