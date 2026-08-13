@@ -8,12 +8,18 @@ from src.models.assignment import (
     AssignmentAnalyticsResponse,
     AssignmentCreateRequest,
     AssignmentProgressUpdateRequest,
+    AssignmentQuestionCreateRequest,
+    AssignmentQuestionReorderRequest,
+    AssignmentQuestionResponse,
+    AssignmentQuestionUpdateRequest,
     AssignmentResponse,
+    AssignmentSubmissionsOverviewResponse,
     AssignmentUpdateRequest,
     ChecklistCreateRequest,
     ChecklistReorderRequest,
     ChecklistResponse,
     ChecklistUpdateRequest,
+    GradeSubmissionRequest,
     SubmissionResponse,
 )
 from src.models.auth import UserResponse
@@ -111,6 +117,65 @@ async def update_student_progress(
     return await AssignmentService.update_student_progress(db, assignment_id, payload, current_user)
 
 
+# --- Question Management Endpoints ---
+
+@router.post(
+    "/assignments/{id}/questions",
+    response_model=AssignmentQuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_assignment_question(
+    id: str,
+    payload: AssignmentQuestionCreateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor adds a question to an assignment."""
+    return await AssignmentService.create_question(db, id, payload, current_user)
+
+
+@router.put("/questions/{id}", response_model=AssignmentQuestionResponse)
+async def update_assignment_question(
+    id: str,
+    payload: AssignmentQuestionUpdateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor updates a question."""
+    return await AssignmentService.update_question(db, id, payload, current_user)
+
+
+@router.delete("/questions/{id}")
+async def delete_assignment_question(
+    id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor deletes a question."""
+    return await AssignmentService.delete_question(db, id, current_user)
+
+
+@router.patch("/questions/reorder")
+async def reorder_assignment_questions(
+    payload: AssignmentQuestionReorderRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor reorders questions."""
+    return await AssignmentService.reorder_questions(db, payload, current_user)
+
+
+@router.post("/assignments/{id}/import-questions", response_model=list[AssignmentQuestionResponse])
+async def import_assignment_questions(
+    id: str,
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor imports questions from a CSV file into an assignment."""
+    return await AssignmentService.import_questions_from_csv(db, id, file, current_user)
+
+
 # --- Student Submissions Endpoints ---
 
 @router.post("/assignments/{assignment_id}/submit", response_model=SubmissionResponse)
@@ -135,14 +200,35 @@ async def get_my_submission(
     return await AssignmentService.get_my_submission(db, assignment_id, current_user)
 
 
-@router.get("/assignments/{assignment_id}/submissions", response_model=list[SubmissionResponse])
+@router.post("/assignments/{assignment_id}/undo-turn-in", response_model=SubmissionResponse)
+async def undo_turn_in_assignment(
+    assignment_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Student unlocks their active submission (Undo Turn In) to allow editing."""
+    return await AssignmentService.undo_turn_in_assignment(db, assignment_id, current_user)
+
+
+@router.get("/assignments/{assignment_id}/submissions", response_model=AssignmentSubmissionsOverviewResponse)
 async def get_assignment_submissions(
     assignment_id: str,
     current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Instructor views all student submissions for an assignment."""
+    """Instructor views overview statistics and complete student submission roster."""
     return await AssignmentService.get_assignment_submissions(db, assignment_id, current_user)
+
+
+@router.put("/submissions/{submission_id}/grade", response_model=SubmissionResponse)
+async def grade_submission(
+    submission_id: str,
+    payload: GradeSubmissionRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor grades a student submission."""
+    return await AssignmentService.grade_submission(db, submission_id, payload, current_user)
 
 
 @router.get("/submissions/{submission_id}/download")
@@ -237,3 +323,4 @@ async def get_assignment_analytics(
 ):
     """Instructor views aggregated completion analytics for an assignment."""
     return await AssignmentService.get_assignment_analytics(db, id, current_user)
+

@@ -10,6 +10,7 @@ from src.models.course import (
     CourseCreateRequest,
     CourseDetailResponse,
     CourseResponse,
+    CourseUpdateRequest,
     EnrolledStudentResponse,
 )
 from src.models.material import CourseMaterialResponse
@@ -28,6 +29,18 @@ async def create_course(
 ):
     """Instructor creates a new course."""
     return await CourseService.create_course(db, payload, current_user)
+
+
+@router.put("/{course_id}", response_model=CourseResponse)
+async def update_course(
+    course_id: str,
+    payload: CourseUpdateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor updates an existing course."""
+    return await CourseService.update_course(db, course_id, payload, current_user)
+
 
 
 @router.get("/instructor/my-courses", response_model=list[CourseResponse])

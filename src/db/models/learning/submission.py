@@ -35,6 +35,7 @@ class Submission(Base, TimestampMixin):
     file_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     object_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     submission_text: Mapped[str | None] = mapped_column(String(5000), nullable=True)
+    feedback: Mapped[str | None] = mapped_column(String(5000), nullable=True)
     status: Mapped[SubmissionStatusEnum] = mapped_column(
         SQLEnum(SubmissionStatusEnum, native_enum=False),
         default=SubmissionStatusEnum.UNSUBMITTED,

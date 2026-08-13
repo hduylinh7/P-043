@@ -8,6 +8,7 @@ from src.db.models.identity.user import User
 from src.db.models.learning.assignment import Assignment
 from src.db.models.learning.assignment_checklist import AssignmentChecklist
 from src.db.models.learning.enrollment import Enrollment
+from src.db.models.learning.question import AssignmentQuestion, QuestionOption
 from src.db.models.learning.student_assignment_progress import StudentAssignmentProgress
 from src.db.models.learning.student_checklist_progress import StudentChecklistProgress
 from src.db.models.learning.submission import Submission
@@ -35,9 +36,10 @@ class AssignmentRepository:
         course_id: str,
         title: str,
         description: str | None = None,
+        available_from: datetime | str | None = None,
         due_date: datetime | str | None = None,
         estimated_hours: float | None = None,
-        status: str = "ACTIVE",
+        status: str = "DRAFT",
         priority: str = "MEDIUM",
         attachment_file_name: str | None = None,
         attachment_file_url: str | None = None,
@@ -46,13 +48,15 @@ class AssignmentRepository:
     ) -> Assignment:
         """Create and persist a new Assignment."""
         due_dt = cls.parse_datetime(due_date)
+        available_dt = cls.parse_datetime(available_from)
         assignment = Assignment(
             course_id=course_id,
             title=title.strip(),
             description=description.strip() if description else None,
+            available_from=available_dt,
             due_at=due_dt,
             estimated_hours=estimated_hours,
-            status=status.strip().upper() if status else "ACTIVE",
+            status=status.strip().upper() if status else "DRAFT",
             priority=priority.strip().upper() if priority else "MEDIUM",
             attachment_file_name=attachment_file_name,
             attachment_file_url=attachment_file_url,
@@ -66,24 +70,35 @@ class AssignmentRepository:
 
     @staticmethod
     async def get_by_id(db: AsyncSession, assignment_id: str) -> Assignment | None:
-        """Fetch assignment by ID with course loaded."""
+        """Fetch assignment by ID with course, checklists, and questions loaded."""
         stmt = (
             select(Assignment)
-            .options(selectinload(Assignment.course), selectinload(Assignment.checklists))
+            .options(
+                selectinload(Assignment.course),
+                selectinload(Assignment.checklists),
+                selectinload(Assignment.questions).selectinload(AssignmentQuestion.options),
+            )
             .where(Assignment.id == assignment_id)
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_assignments_by_course(db: AsyncSession, course_id: str) -> list[Assignment]:
+    async def get_assignments_by_course(
+        db: AsyncSession, course_id: str, include_drafts: bool = True
+    ) -> list[Assignment]:
         """Fetch all assignments for a course ordered by creation date."""
         stmt = (
             select(Assignment)
-            .options(selectinload(Assignment.checklists))
+            .options(
+                selectinload(Assignment.checklists),
+                selectinload(Assignment.questions).selectinload(AssignmentQuestion.options),
+            )
             .where(Assignment.course_id == course_id)
-            .order_by(Assignment.created_at.desc())
         )
+        if not include_drafts:
+            stmt = stmt.where(Assignment.status != "DRAFT")
+        stmt = stmt.order_by(Assignment.created_at.desc())
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -91,11 +106,14 @@ class AssignmentRepository:
     async def get_assignments_by_course_with_student_progress(
         db: AsyncSession, course_id: str, student_id: str
     ) -> list[dict]:
-        """Fetch assignments for a course with current student's progress and checklists."""
+        """Fetch assignments for a course with current student's progress and checklists (hides DRAFTs)."""
         stmt = (
             select(Assignment)
-            .options(selectinload(Assignment.checklists))
-            .where(Assignment.course_id == course_id)
+            .options(
+                selectinload(Assignment.checklists),
+                selectinload(Assignment.questions).selectinload(AssignmentQuestion.options),
+            )
+            .where((Assignment.course_id == course_id) & (Assignment.status != "DRAFT"))
             .order_by(Assignment.created_at.desc())
         )
         result = await db.execute(stmt)
@@ -137,6 +155,7 @@ class AssignmentRepository:
         assignment: Assignment,
         title: str | None = None,
         description: str | None = None,
+        available_from: datetime | str | None = None,
         due_date: datetime | str | None = None,
         estimated_hours: float | None = None,
         status: str | None = None,
@@ -150,6 +169,8 @@ class AssignmentRepository:
             assignment.title = title.strip()
         if description is not None:
             assignment.description = description.strip() if description else None
+        if available_from is not None:
+            assignment.available_from = cls.parse_datetime(available_from)
         if due_date is not None:
             assignment.due_at = cls.parse_datetime(due_date)
         if estimated_hours is not None:
@@ -399,6 +420,9 @@ class AssignmentRepository:
             )
             db.add(sub)
         else:
+            if sub.status in (SubmissionStatusEnum.SUBMITTED, SubmissionStatusEnum.GRADED):
+                raise ValueError("BÀI_NỘP_ĐÃ_KHÓA: Vui lòng bấm 'Hủy Nộp Bài' (Undo Turn In) trước khi chỉnh sửa.")
+
             if file_name:
                 sub.file_name = file_name
             if file_url:
@@ -413,6 +437,27 @@ class AssignmentRepository:
 
         await db.commit()
         await db.refresh(sub)
+        return sub
+
+    @staticmethod
+    async def undo_turn_in_submission(
+        db: AsyncSession, assignment_id: str, student_id: str
+    ) -> Submission | None:
+        """Undo a student's submission, unlocking it for editing."""
+        stmt = select(Submission).where(
+            (Submission.assignment_id == assignment_id)
+            & (Submission.student_id == student_id)
+        )
+        result = await db.execute(stmt)
+        sub = result.scalar_one_or_none()
+        if not sub:
+            return None
+
+        if sub.status == SubmissionStatusEnum.SUBMITTED:
+            sub.status = SubmissionStatusEnum.UNSUBMITTED
+            db.add(sub)
+            await db.commit()
+            await db.refresh(sub)
         return sub
 
     @staticmethod
@@ -464,6 +509,24 @@ class AssignmentRepository:
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def grade_submission(
+        db: AsyncSession,
+        submission: Submission,
+        score: float,
+        grade: str = "GRADED",
+        feedback: str | None = None,
+    ) -> Submission:
+        """Instructor grades a student submission."""
+        submission.score = score
+        submission.grade = grade
+        if feedback is not None:
+            submission.feedback = feedback
+        db.add(submission)
+        await db.commit()
+        await db.refresh(submission)
+        return submission
 
     @staticmethod
     async def get_assignment_analytics(db: AsyncSession, assignment_id: str) -> dict:
@@ -560,3 +623,122 @@ class AssignmentRepository:
             "in_progress_students_count": in_progress_count,
             "not_started_students_count": not_started_count,
         }
+
+    # --- Question Repository Methods ---
+
+    @staticmethod
+    async def create_question(
+        db: AsyncSession,
+        assignment_id: str,
+        question_type: str,
+        question_text: str,
+        points: float = 1.0,
+        display_order: int = 0,
+        expected_answer: str | None = None,
+        options: list[dict] | None = None,
+    ) -> AssignmentQuestion:
+        question = AssignmentQuestion(
+            assignment_id=assignment_id,
+            question_type=question_type,
+            question_text=question_text.strip(),
+            points=points,
+            display_order=display_order,
+            expected_answer=expected_answer.strip() if expected_answer else None,
+        )
+        db.add(question)
+        await db.flush()
+
+        if options and question_type == "MULTIPLE_CHOICE":
+            for idx, opt in enumerate(options):
+                opt_obj = QuestionOption(
+                    question_id=question.id,
+                    option_text=opt["option_text"].strip(),
+                    is_correct=opt.get("is_correct", False),
+                    display_order=opt.get("display_order", idx),
+                )
+                db.add(opt_obj)
+
+        await db.commit()
+
+        stmt = (
+            select(AssignmentQuestion)
+            .options(selectinload(AssignmentQuestion.options))
+            .where(AssignmentQuestion.id == question.id)
+        )
+        res = await db.execute(stmt)
+        return res.scalar_one()
+
+    @staticmethod
+    async def get_question_by_id(db: AsyncSession, question_id: str) -> AssignmentQuestion | None:
+        stmt = (
+            select(AssignmentQuestion)
+            .options(selectinload(AssignmentQuestion.options))
+            .where(AssignmentQuestion.id == question_id)
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def update_question(
+        db: AsyncSession,
+        question: AssignmentQuestion,
+        question_type: str | None = None,
+        question_text: str | None = None,
+        points: float | None = None,
+        display_order: int | None = None,
+        expected_answer: str | None = None,
+        options: list[dict] | None = None,
+    ) -> AssignmentQuestion:
+        if question_type is not None:
+            question.question_type = question_type
+        if question_text is not None:
+            question.question_text = question_text.strip()
+        if points is not None:
+            question.points = points
+        if display_order is not None:
+            question.display_order = display_order
+        if expected_answer is not None:
+            question.expected_answer = expected_answer.strip() if expected_answer else None
+
+        if options is not None:
+            for opt in list(question.options):
+                await db.delete(opt)
+            await db.flush()
+
+            if (question_type or question.question_type) == "MULTIPLE_CHOICE":
+                for idx, opt in enumerate(options):
+                    opt_obj = QuestionOption(
+                        question_id=question.id,
+                        option_text=opt["option_text"].strip(),
+                        is_correct=opt.get("is_correct", False),
+                        display_order=opt.get("display_order", idx),
+                    )
+                    db.add(opt_obj)
+
+        db.add(question)
+        await db.commit()
+
+        stmt = (
+            select(AssignmentQuestion)
+            .options(selectinload(AssignmentQuestion.options))
+            .where(AssignmentQuestion.id == question.id)
+        )
+        res = await db.execute(stmt)
+        return res.scalar_one()
+
+    @staticmethod
+    async def delete_question(db: AsyncSession, question: AssignmentQuestion) -> None:
+        await db.delete(question)
+        await db.commit()
+
+    @staticmethod
+    async def reorder_questions(db: AsyncSession, items: list[dict]) -> None:
+        for item in items:
+            stmt = select(AssignmentQuestion).where(AssignmentQuestion.id == item["id"])
+            res = await db.execute(stmt)
+            q = res.scalar_one_or_none()
+            if q:
+                q.display_order = item["display_order"]
+                db.add(q)
+        await db.commit()
+

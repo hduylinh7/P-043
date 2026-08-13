@@ -13,9 +13,11 @@ from src.db.models.knowledge import Document, DocumentChunk
 from src.db.models.learning import (
     Assignment,
     AssignmentChecklist,
+    AssignmentQuestion,
     Course,
     CourseMaterial,
     Enrollment,
+    QuestionOption,
     StudentAssignmentProgress,
     StudentChecklistProgress,
     Submission,
