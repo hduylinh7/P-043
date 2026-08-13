@@ -3,12 +3,18 @@ import {
   Course,
   CourseCreatePayload,
   CourseDetail,
+  CourseUpdatePayload,
   EnrolledStudent,
 } from '../types/course';
 
 export const courseService = {
   async createCourse(payload: CourseCreatePayload): Promise<Course> {
     const response = await api.post<Course>('/courses', payload);
+    return response.data;
+  },
+
+  async updateCourse(courseId: string, payload: CourseUpdatePayload): Promise<Course> {
+    const response = await api.put<Course>(`/courses/${courseId}`, payload);
     return response.data;
   },
 
@@ -42,3 +48,4 @@ export const courseService = {
     return response.data;
   },
 };
+

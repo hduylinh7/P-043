@@ -11,6 +11,7 @@ import {
   Empty,
   Spin,
   message,
+  DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,13 +21,17 @@ import {
   SearchOutlined,
   TeamOutlined,
   ArrowRightOutlined,
+  CalendarOutlined,
+  EditOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { courseService } from '../services/courseService';
-import { Course, CourseCreatePayload } from '../types/course';
+import { Course, CourseCreatePayload, CourseUpdatePayload } from '../types/course';
 
 export const CoursesPage: React.FC = () => {
   const { user } = useAuth();
@@ -42,10 +47,13 @@ export const CoursesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
-  // Modal State for Create Course
+  // Modal State for Create / Edit Course
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [form] = Form.useForm();
-  const [creating, setCreating] = useState<boolean>(false);
+  const [editForm] = Form.useForm();
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const isDark = themeMode === 'dark';
 
@@ -74,10 +82,25 @@ export const CoursesPage: React.FC = () => {
     fetchCourses(activeTab);
   }, [activeTab, isInstructor]);
 
-  const handleCreateCourse = async (values: CourseCreatePayload) => {
-    setCreating(true);
+  const handleCreateCourse = async (values: any) => {
+    if (!values.date_range || values.date_range.length < 2) {
+      message.error('Vui lòng chọn Ngày bắt đầu và Ngày kết thúc khóa học.');
+      return;
+    }
+    const startDate = values.date_range[0].toISOString();
+    const endDate = values.date_range[1].toISOString();
+
+    setSubmitting(true);
     try {
-      const newCourse = await courseService.createCourse(values);
+      const payload: CourseCreatePayload = {
+        name: values.name,
+        code: values.code,
+        term: values.term,
+        description: values.description,
+        start_date: startDate,
+        end_date: endDate,
+      };
+      const newCourse = await courseService.createCourse(payload);
       message.success('Tạo khóa học thành công!');
       setIsModalOpen(false);
       form.resetFields();
@@ -86,8 +109,54 @@ export const CoursesPage: React.FC = () => {
       console.error('Create course error:', err);
       message.error(err.response?.data?.detail || 'Tạo khóa học thất bại. Vui lòng thử lại.');
     } finally {
-      setCreating(false);
+      setSubmitting(false);
     }
+  };
+
+  const handleEditCourse = async (values: any) => {
+    if (!editingCourse) return;
+    if (!values.date_range || values.date_range.length < 2) {
+      message.error('Vui lòng chọn Ngày bắt đầu và Ngày kết thúc khóa học.');
+      return;
+    }
+    const startDate = values.date_range[0].toISOString();
+    const endDate = values.date_range[1].toISOString();
+
+    setSubmitting(true);
+    try {
+      const payload: CourseUpdatePayload = {
+        name: values.name,
+        code: values.code,
+        term: values.term,
+        description: values.description,
+        start_date: startDate,
+        end_date: endDate,
+      };
+      await courseService.updateCourse(editingCourse.id, payload);
+      message.success('Cập nhật khóa học thành công!');
+      setIsEditModalOpen(false);
+      setEditingCourse(null);
+      editForm.resetFields();
+      fetchCourses(activeTab);
+    } catch (err: any) {
+      console.error('Edit course error:', err);
+      message.error(err.response?.data?.detail || 'Cập nhật khóa học thất bại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditModal = (c: Course, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCourse(c);
+    editForm.setFieldsValue({
+      name: c.name,
+      code: c.code,
+      term: c.term,
+      description: c.description,
+      date_range: c.start_date && c.end_date ? [dayjs(c.start_date), dayjs(c.end_date)] : undefined,
+    });
+    setIsEditModalOpen(true);
   };
 
   const handleJoinCourse = async (courseId: string) => {
@@ -95,7 +164,6 @@ export const CoursesPage: React.FC = () => {
     try {
       await courseService.joinCourse(courseId);
       message.success('Tham gia khóa học thành công!');
-      // Refresh discover tab
       fetchCourses(activeTab);
     } catch (err: any) {
       console.error('Join course error:', err);
@@ -103,6 +171,16 @@ export const CoursesPage: React.FC = () => {
     } finally {
       setJoiningId(null);
     }
+  };
+
+  const renderStatusTag = (status?: string) => {
+    const st = (status || '').toUpperCase();
+    if (st === 'UPCOMING') {
+      return <Tag color="blue" className="rounded-full px-2.5 py-0.5 font-semibold text-xs border-0">Sắp diễn ra</Tag>;
+    } else if (st === 'COMPLETED') {
+      return <Tag color="default" className="rounded-full px-2.5 py-0.5 font-semibold text-xs border-0">Đã kết thúc</Tag>;
+    }
+    return <Tag color="green" className="rounded-full px-2.5 py-0.5 font-semibold text-xs border-0">Đang diễn ra</Tag>;
   };
 
   const filteredCourses = courses.filter(
@@ -138,7 +216,7 @@ export const CoursesPage: React.FC = () => {
           {isInstructor && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="btn-voxel-green text-xs px-5 py-2.5"
+              className="btn-voxel-green text-xs px-5 py-2.5 flex items-center gap-2"
             >
               <PlusOutlined />
               <span>Tạo Khóa Học Mới</span>
@@ -218,9 +296,12 @@ export const CoursesPage: React.FC = () => {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <Tag color="emerald" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
-                        {course.code}
-                      </Tag>
+                      <div className="flex items-center gap-2">
+                        <Tag color="emerald" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
+                          {course.code}
+                        </Tag>
+                        {renderStatusTag(course.status)}
+                      </div>
                       <div className="flex items-center gap-1.5 text-xs text-slate-400">
                         <TeamOutlined />
                         <span>{course.student_count} sinh viên</span>
@@ -231,9 +312,19 @@ export const CoursesPage: React.FC = () => {
                       {course.name}
                     </h3>
 
-                    <p className={`text-xs leading-relaxed line-clamp-2 mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className={`text-xs leading-relaxed line-clamp-2 mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {course.description || 'Chưa có mô tả cho khóa học này.'}
                     </p>
+
+                    {/* Course Period Display */}
+                    {course.start_date && course.end_date && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl mb-3">
+                        <CalendarOutlined />
+                        <span>
+                          Thời gian: {dayjs(course.start_date).format('DD/MM/YYYY')} - {dayjs(course.end_date).format('DD/MM/YYYY')}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto">
@@ -242,33 +333,45 @@ export const CoursesPage: React.FC = () => {
                       <span className="truncate max-w-[120px]">{course.instructor_name || 'Giảng viên'}</span>
                     </div>
 
-                    {activeTab === 'discover' && !isInstructor ? (
-                      course.is_enrolled ? (
-                        <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-lg px-3 py-1 font-medium">
-                          Đã tham gia
-                        </Tag>
+                    <div className="flex items-center gap-2">
+                      {isInstructor && activeTab === 'managed' && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={(e) => openEditModal(course, e)}
+                          className="rounded-lg text-slate-500 hover:text-indigo-600"
+                        />
+                      )}
+
+                      {activeTab === 'discover' && !isInstructor ? (
+                        course.is_enrolled ? (
+                          <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-lg px-3 py-1 font-medium">
+                            Đã tham gia
+                          </Tag>
+                        ) : (
+                          <Button
+                            type="primary"
+                            size="small"
+                            loading={joiningId === course.id}
+                            onClick={() => handleJoinCourse(course.id)}
+                            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold"
+                          >
+                            Tham gia
+                          </Button>
+                        )
                       ) : (
                         <Button
-                          type="primary"
+                          type="default"
                           size="small"
-                          loading={joiningId === course.id}
-                          onClick={() => handleJoinCourse(course.id)}
-                          className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold"
+                          icon={<ArrowRightOutlined />}
+                          onClick={() => navigate(`/courses/${course.id}`)}
+                          className="rounded-lg text-xs font-semibold"
                         >
-                          Tham gia
+                          Chi tiết
                         </Button>
-                      )
-                    ) : (
-                      <Button
-                        type="default"
-                        size="small"
-                        icon={<ArrowRightOutlined />}
-                        onClick={() => navigate(`/courses/${course.id}`)}
-                        className="rounded-lg text-xs font-semibold"
-                      >
-                        Chi tiết
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -326,11 +429,24 @@ export const CoursesPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item
+            name="date_range"
+            label={<span className="font-semibold text-xs uppercase">Thời Gian Bắt Đầu — Kết Thúc *</span>}
+            rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu và kết thúc' }]}
+          >
+            <DatePicker.RangePicker
+              size="large"
+              className="w-full rounded-xl"
+              format="DD/MM/YYYY"
+              placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
+            />
+          </Form.Item>
+
+          <Form.Item
             name="description"
             label={<span className="font-semibold text-xs uppercase">Mô tả chi tiết</span>}
           >
             <Input.TextArea
-              rows={4}
+              rows={3}
               placeholder="Nhập tổng quan nội dung môn học, mục tiêu & thông tin bổ sung..."
               className="rounded-xl"
             />
@@ -349,7 +465,7 @@ export const CoursesPage: React.FC = () => {
             <Button
               type="primary"
               htmlType="submit"
-              loading={creating}
+              loading={submitting}
               className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
             >
               Tạo Khóa Học
@@ -357,6 +473,99 @@ export const CoursesPage: React.FC = () => {
           </div>
         </Form>
       </Modal>
+
+      {/* Modal Edit Course */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+            <EditOutlined />
+            <span>Chỉnh Sửa Khóa Học</span>
+          </div>
+        }
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false);
+          setEditingCourse(null);
+          editForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+        centered
+        className="rounded-2xl overflow-hidden"
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditCourse}
+          requiredMark="optional"
+          className="mt-4 space-y-4"
+        >
+          <Form.Item
+            name="name"
+            label={<span className="font-semibold text-xs uppercase">Tên khóa học</span>}
+            rules={[{ required: true, message: 'Vui lòng nhập tên khóa học' }]}
+          >
+            <Input size="large" className="rounded-xl" />
+          </Form.Item>
+
+          <Form.Item
+            name="code"
+            label={<span className="font-semibold text-xs uppercase">Mã môn học</span>}
+            rules={[{ required: true, message: 'Vui lòng nhập mã môn học' }]}
+          >
+            <Input size="large" className="rounded-xl font-mono uppercase" />
+          </Form.Item>
+
+          <Form.Item
+            name="term"
+            label={<span className="font-semibold text-xs uppercase">Học kỳ / Niên khóa</span>}
+          >
+            <Input size="large" className="rounded-xl" />
+          </Form.Item>
+
+          <Form.Item
+            name="date_range"
+            label={<span className="font-semibold text-xs uppercase">Thời Gian Bắt Đầu — Kết Thúc *</span>}
+            rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu và kết thúc' }]}
+          >
+            <DatePicker.RangePicker
+              size="large"
+              className="w-full rounded-xl"
+              format="DD/MM/YYYY"
+              placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label={<span className="font-semibold text-xs uppercase">Mô tả chi tiết</span>}
+          >
+            <Input.TextArea rows={3} className="rounded-xl" />
+          </Form.Item>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingCourse(null);
+                editForm.resetFields();
+              }}
+              className="rounded-xl"
+            >
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+            >
+              Lưu Thay Đổi
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };
+

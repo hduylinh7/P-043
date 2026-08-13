@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,6 +16,8 @@ class CourseRepository:
         name: str,
         code: str,
         instructor_id: str,
+        start_date: datetime,
+        end_date: datetime,
         description: str | None = None,
         term: str | None = None,
     ) -> Course:
@@ -24,12 +27,47 @@ class CourseRepository:
             code=code.upper().strip(),
             description=description.strip() if description else None,
             term=term.strip() if term else None,
+            start_date=start_date,
+            end_date=end_date,
             instructor_id=instructor_id,
         )
         db.add(course)
         await db.commit()
         await db.refresh(course)
         return course
+
+    @staticmethod
+    async def update_course(
+        db: AsyncSession,
+        course_id: str,
+        name: str | None = None,
+        code: str | None = None,
+        description: str | None = None,
+        term: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> Course | None:
+        """Update fields of an existing course."""
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            return None
+        if name is not None:
+            course.name = name.strip()
+        if code is not None:
+            course.code = code.upper().strip()
+        if description is not None:
+            course.description = description.strip() if description else None
+        if term is not None:
+            course.term = term.strip() if term else None
+        if start_date is not None:
+            course.start_date = start_date
+        if end_date is not None:
+            course.end_date = end_date
+
+        await db.commit()
+        await db.refresh(course)
+        return course
+
 
     @staticmethod
     async def get_by_id(db: AsyncSession, course_id: str) -> Course | None:
