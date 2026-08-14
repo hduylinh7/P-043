@@ -242,14 +242,15 @@ class MaterialService:
 
         try:
             guessed_mime = mimetypes.guess_type(material.file_name)[0] or material.mime_type or "application/octet-stream"
-            
-            if not inline and not isinstance(storage, LocalStorageService):
-                presigned_url = await storage.generate_presigned_url(
-                    material.object_key, filename=material.file_name
-                )
-                return RedirectResponse(url=presigned_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
-            file_bytes = await storage.download_file(material.object_key)
+            # Check active storage (R2), fallback to local storage if file was uploaded before R2 setup
+            active_storage = storage
+            if not await storage.file_exists(material.object_key):
+                local_storage = LocalStorageService()
+                if await local_storage.file_exists(material.object_key):
+                    active_storage = local_storage
+
+            file_bytes = await active_storage.download_file(material.object_key)
             disposition_type = "inline" if inline else "attachment"
             headers = {
                 "Content-Disposition": f'{disposition_type}; filename="{material.file_name}"',
@@ -304,7 +305,13 @@ class MaterialService:
             return {"id": material.id, "title": material.title, "file_name": material.file_name, "content": ""}
 
         try:
-            file_bytes = await storage.download_file(material.object_key)
+            active_storage = storage
+            if not await storage.file_exists(material.object_key):
+                local_storage = LocalStorageService()
+                if await local_storage.file_exists(material.object_key):
+                    active_storage = local_storage
+
+            file_bytes = await active_storage.download_file(material.object_key)
             text_content = RAGService._extract_text_from_bytes(
                 file_bytes=file_bytes,
                 file_name=material.file_name,
