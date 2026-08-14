@@ -81,9 +81,19 @@ class PersonalLearningCompanionAgent:
             llm = get_llm(temperature=0.3)
             response = await llm.ainvoke(messages)
 
-            response_text = (
-                response.content if hasattr(response, "content") else str(response)
-            )
+            content_val = response.content if hasattr(response, "content") else str(response)
+            if isinstance(content_val, list):
+                texts = []
+                for part in content_val:
+                    if isinstance(part, dict) and "text" in part:
+                        texts.append(part["text"])
+                    elif isinstance(part, str):
+                        texts.append(part)
+                    else:
+                        texts.append(str(part))
+                response_text = "".join(texts)
+            else:
+                response_text = str(content_val)
 
             return {
                 "response": response_text,

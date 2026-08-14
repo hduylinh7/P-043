@@ -121,7 +121,18 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
     try:
         llm = get_llm()
         ai_msg = await llm.ainvoke(prompt_messages)
-        response_text = str(ai_msg.content)
+        if isinstance(ai_msg.content, list):
+            texts = []
+            for part in ai_msg.content:
+                if isinstance(part, dict) and "text" in part:
+                    texts.append(part["text"])
+                elif isinstance(part, str):
+                    texts.append(part)
+                else:
+                    texts.append(str(part))
+            response_text = "".join(texts)
+        else:
+            response_text = str(ai_msg.content)
     except Exception as e:
         logger.error(f"Error calling LLM provider: {e}")
         response_text = (

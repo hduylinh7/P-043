@@ -15,6 +15,20 @@ def get_llm(
     llm_provider = (provider or settings.llm_provider or "openai").lower()
     temp = temperature if temperature is not None else settings.llm_temperature
 
+    if llm_provider == "groq":
+        api_key = (
+            settings.groq_api_key
+            or os.getenv("GROQ_API_KEY")
+            or "gsk_dummy"
+        )
+        groq_model = model_name or settings.model_name or "llama-3.3-70b-versatile"
+        return ChatOpenAI(
+            model=groq_model,
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+            temperature=temp,
+        )
+
     if llm_provider in ("gemini", "google"):
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
