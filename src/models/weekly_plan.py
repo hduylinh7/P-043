@@ -9,6 +9,16 @@ TaskSourceType = Literal["ASSIGNMENT", "PERSONAL_TASK", "GOAL", "MANUAL"]
 class PlanTaskCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(default=None)
+    topic: str | None = Field(default=None)
+    what_to_study: list[str] = Field(default_factory=list)
+    what_to_do: list[str] = Field(default_factory=list)
+    reason: str | None = Field(default=None)
+    material_id: str | None = Field(default=None)
+    material_title: str | None = Field(default=None)
+    course_id: str | None = Field(default=None)
+    course_name: str | None = Field(default=None)
+    goal_id: str | None = Field(default=None)
+    goal_title: str | None = Field(default=None)
     priority: str = Field(default="medium")
     status: str = Field(default="todo")
     scheduled_date: datetime | str | None = Field(default=None)
@@ -23,6 +33,16 @@ class PlanTaskCreateRequest(BaseModel):
 class PlanTaskUpdateRequest(BaseModel):
     title: str | None = None
     description: str | None = None
+    topic: str | None = None
+    what_to_study: list[str] | None = None
+    what_to_do: list[str] | None = None
+    reason: str | None = None
+    material_id: str | None = None
+    material_title: str | None = None
+    course_id: str | None = None
+    course_name: str | None = None
+    goal_id: str | None = None
+    goal_title: str | None = None
     priority: str | None = None
     status: str | None = None
     scheduled_date: datetime | str | None = None
@@ -44,6 +64,16 @@ class PlanTaskResponse(BaseModel):
     assignment_id: str | None = None
     title: str
     description: str | None = None
+    topic: str | None = None
+    what_to_study: list[str] = Field(default_factory=list)
+    what_to_do: list[str] = Field(default_factory=list)
+    reason: str | None = None
+    material_id: str | None = None
+    material_title: str | None = None
+    course_id: str | None = None
+    course_name: str | None = None
+    goal_id: str | None = None
+    goal_title: str | None = None
     priority: str = "medium"
     status: str = "todo"
     scheduled_date: datetime | str | None = None

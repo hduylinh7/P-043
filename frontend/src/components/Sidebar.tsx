@@ -56,7 +56,7 @@ export const Sidebar: React.FC = () => {
       ? [
           {
             id: 'weekly-plan',
-            name: 'Kế hoạch tuần',
+            name: 'Study Plan (Kế hoạch học tập)',
             path: '/weekly-plan',
             icon: Calendar,
           },
