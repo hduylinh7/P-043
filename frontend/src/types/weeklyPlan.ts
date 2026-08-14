@@ -12,6 +12,16 @@ export interface PlanTask {
   assignment_id?: string | null;
   title: string;
   description?: string | null;
+  topic?: string | null;
+  what_to_study?: string[] | null;
+  what_to_do?: string[] | null;
+  reason?: string | null;
+  material_id?: string | null;
+  material_title?: string | null;
+  course_id?: string | null;
+  course_name?: string | null;
+  goal_id?: string | null;
+  goal_title?: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   scheduled_date?: string | null;
@@ -60,6 +70,16 @@ export interface UpdateWeeklyPlanPayload {
 export interface CreateTaskPayload {
   title: string;
   description?: string;
+  topic?: string;
+  what_to_study?: string[];
+  what_to_do?: string[];
+  reason?: string;
+  material_id?: string;
+  material_title?: string;
+  course_id?: string;
+  course_name?: string;
+  goal_id?: string;
+  goal_title?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
   scheduled_date?: string;
@@ -74,6 +94,16 @@ export interface CreateTaskPayload {
 export interface UpdateTaskPayload {
   title?: string;
   description?: string;
+  topic?: string;
+  what_to_study?: string[];
+  what_to_do?: string[];
+  reason?: string;
+  material_id?: string;
+  material_title?: string;
+  course_id?: string;
+  course_name?: string;
+  goal_id?: string;
+  goal_title?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
   scheduled_date?: string;
@@ -87,6 +117,9 @@ export interface UpdateTaskPayload {
 
 export interface PlannerAgentRequestPayload {
   week_start?: string;
+  start_date?: string;
+  end_date?: string;
+  days?: number;
   request?: string;
 }
 

@@ -21,6 +21,8 @@ from src.models.weekly_plan import (
 )
 
 
+import json
+
 def parse_datetime(val: datetime | str | None) -> datetime | None:
     if val is None:
         return None
@@ -33,17 +35,71 @@ def parse_datetime(val: datetime | str | None) -> datetime | None:
         return None
 
 
+def pack_task_description(
+    description: str | None = None,
+    topic: str | None = None,
+    what_to_study: list[str] | None = None,
+    what_to_do: list[str] | None = None,
+    reason: str | None = None,
+    material_id: str | None = None,
+    material_title: str | None = None,
+    course_id: str | None = None,
+    course_name: str | None = None,
+    goal_id: str | None = None,
+    goal_title: str | None = None,
+) -> str | None:
+    has_meta = any([
+        topic, what_to_study, what_to_do, reason, material_id, material_title, course_id, course_name, goal_id, goal_title
+    ])
+    if not has_meta:
+        return description
+
+    meta = {
+        "description": description,
+        "topic": topic,
+        "what_to_study": what_to_study or [],
+        "what_to_do": what_to_do or [],
+        "reason": reason,
+        "material_id": material_id,
+        "material_title": material_title,
+        "course_id": course_id,
+        "course_name": course_name,
+        "goal_id": goal_id,
+        "goal_title": goal_title,
+    }
+    return json.dumps(meta, ensure_ascii=False)
+
+
 def serialize_task(task: Task) -> PlanTaskResponse:
     # Handle string vs enum values safely
     priority_val = str(task.priority.value) if hasattr(task.priority, "value") else str(task.priority)
     status_val = str(task.status.value) if hasattr(task.status, "value") else str(task.status)
+
+    meta = {}
+    if task.description and task.description.startswith("{") and task.description.endswith("}"):
+        try:
+            meta = json.loads(task.description)
+        except Exception:
+            meta = {}
+
+    clean_desc = meta.get("description") if meta else task.description
 
     return PlanTaskResponse(
         id=task.id,
         weekly_goal_id=task.weekly_goal_id,
         assignment_id=task.assignment_id,
         title=task.title,
-        description=task.description,
+        description=clean_desc,
+        topic=meta.get("topic") or task.title,
+        what_to_study=meta.get("what_to_study") or [],
+        what_to_do=meta.get("what_to_do") or [],
+        reason=meta.get("reason"),
+        material_id=meta.get("material_id"),
+        material_title=meta.get("material_title"),
+        course_id=meta.get("course_id"),
+        course_name=meta.get("course_name"),
+        goal_id=meta.get("goal_id"),
+        goal_title=meta.get("goal_title"),
         priority=priority_val,
         status=status_val,
         scheduled_date=task.scheduled_date,
@@ -305,11 +361,25 @@ class WeeklyPlanService:
                                 detail=f"Trùng lịch! Khung giờ ({payload.start_time} - {payload.end_time}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
                             )
 
+        packed_desc = pack_task_description(
+            description=payload.description,
+            topic=payload.topic,
+            what_to_study=payload.what_to_study,
+            what_to_do=payload.what_to_do,
+            reason=payload.reason,
+            material_id=payload.material_id,
+            material_title=payload.material_title,
+            course_id=payload.course_id,
+            course_name=payload.course_name,
+            goal_id=payload.goal_id,
+            goal_title=payload.goal_title,
+        )
+
         task = Task(
             weekly_goal_id=plan.id,
             assignment_id=payload.assignment_id,
             title=payload.title,
-            description=payload.description,
+            description=packed_desc,
             priority=normalize_priority(payload.priority),
             status=payload.status,
             scheduled_date=sched_dt,
@@ -346,8 +416,40 @@ class WeeklyPlanService:
 
         if payload.title is not None:
             task.title = payload.title
-        if payload.description is not None:
-            task.description = payload.description
+        if (
+            payload.description is not None
+            or payload.topic is not None
+            or payload.what_to_study is not None
+            or payload.what_to_do is not None
+            or payload.reason is not None
+            or payload.material_id is not None
+            or payload.material_title is not None
+            or payload.course_id is not None
+            or payload.course_name is not None
+            or payload.goal_id is not None
+            or payload.goal_title is not None
+        ):
+            # Unpack existing meta if any
+            existing_meta = {}
+            if task.description and task.description.startswith("{") and task.description.endswith("}"):
+                try:
+                    existing_meta = json.loads(task.description)
+                except Exception:
+                    existing_meta = {}
+
+            task.description = pack_task_description(
+                description=payload.description if payload.description is not None else existing_meta.get("description"),
+                topic=payload.topic if payload.topic is not None else existing_meta.get("topic"),
+                what_to_study=payload.what_to_study if payload.what_to_study is not None else existing_meta.get("what_to_study"),
+                what_to_do=payload.what_to_do if payload.what_to_do is not None else existing_meta.get("what_to_do"),
+                reason=payload.reason if payload.reason is not None else existing_meta.get("reason"),
+                material_id=payload.material_id if payload.material_id is not None else existing_meta.get("material_id"),
+                material_title=payload.material_title if payload.material_title is not None else existing_meta.get("material_title"),
+                course_id=payload.course_id if payload.course_id is not None else existing_meta.get("course_id"),
+                course_name=payload.course_name if payload.course_name is not None else existing_meta.get("course_name"),
+                goal_id=payload.goal_id if payload.goal_id is not None else existing_meta.get("goal_id"),
+                goal_title=payload.goal_title if payload.goal_title is not None else existing_meta.get("goal_title"),
+            )
         if payload.priority is not None:
             task.priority = normalize_priority(payload.priority)
         if payload.status is not None:

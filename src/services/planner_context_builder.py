@@ -15,8 +15,10 @@ from src.db.models.planning.goal import Goal
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
+from src.db.models.learning.course_material import CourseMaterial
 from src.models.planner_context import (
     AssignmentContextDTO,
+    CourseMaterialContextDTO,
     CurrentWeeklyPlanContextDTO,
     GoalContextDTO,
     PlanTaskContextDTO,
@@ -32,7 +34,6 @@ def format_iso(dt: datetime | date | str | None) -> str | None:
     if isinstance(dt, (datetime, date)):
         return dt.strftime("%Y-%m-%d")
     return str(dt).split("T")[0]
-
 
 
 def parse_week_start(val: datetime | date | str | None) -> date:
@@ -110,7 +111,7 @@ class PlannerContextBuilder:
             for g in active_goals
         ]
 
-        # 3. Enrolled Courses & Upcoming Assignments
+        # 3. Enrolled Courses, Upcoming Assignments & Course Materials
         enroll_stmt = select(Enrollment.course_id).where(
             (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
         )
@@ -118,6 +119,8 @@ class PlannerContextBuilder:
         course_ids = enroll_res.scalars().all()
 
         assignment_dtos: list[AssignmentContextDTO] = []
+        course_material_dtos: list[CourseMaterialContextDTO] = []
+
         if course_ids:
             # Query completed/submitted assignments for student
             sub_stmt = select(Submission.assignment_id).where(
@@ -167,11 +170,29 @@ class PlannerContextBuilder:
                     )
                 )
 
-        # 4. Active Personal Tasks (Deprecated / Removed)
-        personal_task_dtos = []
+            # Query available course materials for student's enrolled courses
+            mat_stmt = (
+                select(CourseMaterial)
+                .options(selectinload(CourseMaterial.course))
+                .where(CourseMaterial.course_id.in_(course_ids))
+            )
+            mat_res = await db.execute(mat_stmt)
+            materials = mat_res.scalars().all()
 
-        # 5. Current Weekly Plan for requested week
-        start_dt_tz = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+            for m in materials:
+                c_name = m.course.name if m.course else None
+                course_material_dtos.append(
+                    CourseMaterialContextDTO(
+                        id=m.id,
+                        course_id=m.course_id,
+                        course_name=c_name,
+                        title=m.title,
+                        file_name=m.file_name,
+                        material_type=m.type or "document",
+                    )
+                )
+
+        # 4. Current Weekly Plan for requested week
         plan_stmt = (
             select(WeeklyGoal)
             .options(selectinload(WeeklyGoal.tasks))
@@ -189,22 +210,40 @@ class PlannerContextBuilder:
 
         current_weekly_plan_dto: CurrentWeeklyPlanContextDTO | None = None
         if matched_plan:
-            task_dtos = [
-                PlanTaskContextDTO(
-                    id=t.id,
-                    title=t.title,
-                    description=t.description,
-                    status=t.status.value if hasattr(t.status, "value") else str(t.status),
-                    priority=t.priority.value if hasattr(t.priority, "value") else str(t.priority),
-                    scheduled_date=format_iso(t.scheduled_date),
-                    start_time=t.start_time,
-                    end_time=t.end_time,
-                    estimated_duration=t.estimated_minutes,
-                    source_type=t.source_type or "MANUAL",
-                    source_id=t.source_id,
+            task_dtos = []
+            for t in (matched_plan.tasks or []):
+                meta = {}
+                if t.description and t.description.startswith("{") and t.description.endswith("}"):
+                    try:
+                        meta = json.loads(t.description)
+                    except Exception:
+                        meta = {}
+
+                task_dtos.append(
+                    PlanTaskContextDTO(
+                        id=t.id,
+                        title=t.title,
+                        description=meta.get("description") or (t.description if not meta else None),
+                        topic=meta.get("topic"),
+                        what_to_study=meta.get("what_to_study") or [],
+                        what_to_do=meta.get("what_to_do") or [],
+                        reason=meta.get("reason"),
+                        material_id=meta.get("material_id"),
+                        material_title=meta.get("material_title"),
+                        course_id=meta.get("course_id"),
+                        course_name=meta.get("course_name"),
+                        goal_id=meta.get("goal_id"),
+                        goal_title=meta.get("goal_title"),
+                        status=t.status.value if hasattr(t.status, "value") else str(t.status),
+                        priority=t.priority.value if hasattr(t.priority, "value") else str(t.priority),
+                        scheduled_date=format_iso(t.scheduled_date),
+                        start_time=t.start_time,
+                        end_time=t.end_time,
+                        estimated_duration=t.estimated_minutes,
+                        source_type=t.source_type or "MANUAL",
+                        source_id=t.source_id,
+                    )
                 )
-                for t in (matched_plan.tasks or [])
-            ]
 
             plan_status = (
                 matched_plan.status.value
@@ -222,12 +261,12 @@ class PlannerContextBuilder:
                 tasks=task_dtos,
             )
 
-        # 6. Assemble PlannerContext
+        # 5. Assemble PlannerContext
         return PlannerContext(
             student=StudentContextDTO(id=student_id),
             planning_period=planning_period,
             goals=goal_dtos,
             assignments=assignment_dtos,
-            personal_tasks=personal_task_dtos,
+            course_materials=course_material_dtos,
             current_weekly_plan=current_weekly_plan_dto,
         )
