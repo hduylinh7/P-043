@@ -19,9 +19,6 @@ import {
   Progress,
   Checkbox,
   Tooltip,
-  Radio,
-  Space,
-  Divider,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -51,18 +48,10 @@ import {
   PaperClipOutlined,
   SendOutlined,
   FolderOpenOutlined,
-  QuestionCircleOutlined,
-  FileExcelOutlined,
-  CheckOutlined,
-  FileDoneOutlined,
-  SearchOutlined,
-  FilterOutlined,
-  SaveOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
 
 import { motion } from 'framer-motion';
-import dayjs from 'dayjs';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
@@ -74,16 +63,11 @@ import { CourseMaterial } from '../types/material';
 import {
   Assignment,
   AssignmentAnalytics,
-  AssignmentQuestion,
-  AssignmentQuestionPayload,
-  AssignmentSubmissionsOverview,
   Checklist,
   PriorityLevel,
   ProgressStatus,
-  QuestionType,
   Submission,
 } from '../types/assignment';
-
 
 export const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -144,211 +128,19 @@ export const CourseDetailPage: React.FC = () => {
   const [submissionFileList, setSubmissionFileList] = useState<any[]>([]);
   const [submissionNotes, setSubmissionNotes] = useState<string>('');
   const [submittingSolution, setSubmittingSolution] = useState<boolean>(false);
-  const [undoingTurnIn, setUndoingTurnIn] = useState<boolean>(false);
 
   // Download Loading States
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
   const [downloadingSubmissionId, setDownloadingSubmissionId] = useState<string | null>(null);
 
-  // Instructor Submissions Roster & Overview State
+  // Instructor Submissions Roster Modal State
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState<boolean>(false);
-  const [submissionsOverview, setSubmissionsOverview] = useState<AssignmentSubmissionsOverview | null>(null);
+  const [assignmentSubmissions, setAssignmentSubmissions] = useState<Submission[]>([]);
   const [loadingSubmissionsRoster, setLoadingSubmissionsRoster] = useState<boolean>(false);
   const [selectedAssignmentForSubmissions, setSelectedAssignmentForSubmissions] = useState<Assignment | null>(null);
 
-  // Search & Filter State
-  const [submissionSearchQuery, setSubmissionSearchQuery] = useState<string>('');
-  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<string>('ALL');
-  const [gradingStatusFilter, setGradingStatusFilter] = useState<string>('ALL');
-
-  // Student Grading Drawer/Modal State
-  const [isGradingDrawerOpen, setIsGradingDrawerOpen] = useState<boolean>(false);
-  const [selectedSubmissionForGrading, setSelectedSubmissionForGrading] = useState<Submission | null>(null);
-  const [questionScores, setQuestionScores] = useState<Record<string, number>>({});
-  const [questionFeedbacks, setQuestionFeedbacks] = useState<Record<string, string>>({});
-  const [generalFeedback, setGeneralFeedback] = useState<string>('');
-  const [submittingGrade, setSubmittingGrade] = useState<boolean>(false);
-
   const [createAssignmentForm] = Form.useForm();
   const [editAssignmentForm] = Form.useForm();
-
-  // Question Management State (Instructor Create/Edit)
-  const [questions, setQuestions] = useState<AssignmentQuestionPayload[]>([]);
-  const [activeQuestionIdx, setActiveQuestionIdx] = useState<number>(0);
-  const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
-  const [assignmentModalTab, setAssignmentModalTab] = useState<string>('details');
-
-  // CSV Question Import Modal State
-  const [isCsvModalOpen, setIsCsvModalOpen] = useState<boolean>(false);
-  const [csvFileList, setCsvFileList] = useState<any[]>([]);
-  const [importingCsv, setImportingCsv] = useState<boolean>(false);
-
-  // Student Question Answers State
-  const [studentAnswers, setStudentAnswers] = useState<Record<string, any>>({});
-  const [viewingAssignmentTab, setViewingAssignmentTab] = useState<string>('overview');
-
-  // Question Management Handlers
-  const handleAddQuestion = () => {
-    const newQ: AssignmentQuestionPayload = {
-      question_type: 'MULTIPLE_CHOICE',
-      question_text: `Câu hỏi ${questions.length + 1}`,
-      points: 1.0,
-      display_order: questions.length,
-      options: [
-        { option_text: 'Lựa chọn A', is_correct: true, display_order: 0 },
-        { option_text: 'Lựa chọn B', is_correct: false, display_order: 1 },
-      ],
-    };
-    const updated = [...questions, newQ];
-    setQuestions(updated);
-    setActiveQuestionIdx(updated.length - 1);
-  };
-
-  const handleUpdateActiveQuestion = (field: string, val: any) => {
-    if (questions.length === 0 || activeQuestionIdx >= questions.length) return;
-    const updated = [...questions];
-    updated[activeQuestionIdx] = {
-      ...updated[activeQuestionIdx],
-      [field]: val,
-    };
-    setQuestions(updated);
-  };
-
-  const handleDeleteQuestion = (index: number) => {
-    const updated = questions.filter((_, i) => i !== index);
-    setQuestions(updated);
-    if (activeQuestionIdx >= updated.length) {
-      setActiveQuestionIdx(Math.max(0, updated.length - 1));
-    }
-  };
-
-  const handleMoveQuestion = (index: number, direction: 'up' | 'down') => {
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === questions.length - 1) return;
-    const targetIdx = direction === 'up' ? index - 1 : index + 1;
-    const updated = [...questions];
-    const temp = updated[index];
-    updated[index] = updated[targetIdx];
-    updated[targetIdx] = temp;
-    setQuestions(updated);
-    setActiveQuestionIdx(targetIdx);
-  };
-
-  const handleAddOptionToActiveQuestion = () => {
-    if (questions.length === 0 || activeQuestionIdx >= questions.length) return;
-    const currentQ = questions[activeQuestionIdx];
-    const currentOpts = currentQ.options || [];
-    const newOpt = {
-      option_text: `Lựa chọn ${String.fromCharCode(65 + currentOpts.length)}`,
-      is_correct: false,
-      display_order: currentOpts.length,
-    };
-    handleUpdateActiveQuestion('options', [...currentOpts, newOpt]);
-  };
-
-  const handleUpdateOption = (optIdx: number, field: string, val: any) => {
-    if (questions.length === 0 || activeQuestionIdx >= questions.length) return;
-    const currentQ = questions[activeQuestionIdx];
-    const currentOpts = [...(currentQ.options || [])];
-    if (field === 'is_correct' && val === true) {
-      currentOpts.forEach((o, i) => {
-        o.is_correct = i === optIdx;
-      });
-    } else {
-      currentOpts[optIdx] = { ...currentOpts[optIdx], [field]: val };
-    }
-    handleUpdateActiveQuestion('options', currentOpts);
-  };
-
-  const handleDeleteOption = (optIdx: number) => {
-    if (questions.length === 0 || activeQuestionIdx >= questions.length) return;
-    const currentQ = questions[activeQuestionIdx];
-    const currentOpts = (currentQ.options || []).filter((_, i) => i !== optIdx);
-    handleUpdateActiveQuestion('options', currentOpts);
-  };
-
-  const handleParseCsvFile = async (file: File) => {
-    setImportingCsv(true);
-    try {
-      const text = await file.text();
-      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-      if (lines.length <= 1) {
-        message.warning('Tập tin CSV không chứa dữ liệu câu hỏi.');
-        return;
-      }
-      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ''));
-      const parsedQuestions: AssignmentQuestionPayload[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
-        if (cols.length === 0 || !cols[0]) continue;
-
-        const row: Record<string, string> = {};
-        headers.forEach((h, idx) => {
-          row[h] = cols[idx] || '';
-        });
-
-        let qType: QuestionType = (row['question_type'] || row['type'] || 'SHORT_ANSWER').toUpperCase() as QuestionType;
-        if (!['MULTIPLE_CHOICE', 'ESSAY', 'SHORT_ANSWER'].includes(qType)) {
-          qType = row['option_1'] ? 'MULTIPLE_CHOICE' : 'SHORT_ANSWER';
-        }
-        const qText = row['question_text'] || row['question'] || row['text'] || cols[0];
-        const pts = parseFloat(row['points'] || '1.0') || 1.0;
-        const expAns = row['expected_answer'] || row['answer'] || row['rubric'] || '';
-
-        const opts: any[] = [];
-        if (qType === 'MULTIPLE_CHOICE') {
-          const rawCorrect = (row['correct_option'] || row['correct'] || '').trim();
-          let correctIdx = -1;
-
-          if (/^\d+$/.test(rawCorrect)) {
-            correctIdx = parseInt(rawCorrect, 10) - 1;
-          } else if (/^option[_-]?(\d+)$/i.test(rawCorrect)) {
-            const match = rawCorrect.match(/^option[_-]?(\d+)$/i);
-            if (match) correctIdx = parseInt(match[1], 10) - 1;
-          } else if (/^[a-f]$/i.test(rawCorrect)) {
-            correctIdx = rawCorrect.toUpperCase().charCodeAt(0) - 65;
-          }
-
-          for (let o = 1; o <= 6; o++) {
-            const optVal = row[`option_${o}`] || row[`option${o}`];
-            if (optVal) {
-              const isCorr = (correctIdx >= 0 && o - 1 === correctIdx) || rawCorrect.toLowerCase() === optVal.toLowerCase();
-              opts.push({
-                option_text: optVal,
-                is_correct: isCorr,
-                display_order: o - 1,
-              });
-            }
-          }
-        }
-
-        parsedQuestions.push({
-          question_type: qType,
-          question_text: qText,
-          points: pts,
-          display_order: questions.length + parsedQuestions.length,
-          expected_answer: expAns,
-          options: opts.length > 0 ? opts : undefined,
-        });
-      }
-
-      if (parsedQuestions.length > 0) {
-        setQuestions((prev) => [...prev, ...parsedQuestions]);
-        message.success(`Nhập thành công ${parsedQuestions.length} câu hỏi từ tệp CSV!`);
-        setIsCsvModalOpen(false);
-        setCsvFileList([]);
-      } else {
-        message.warning('Không đọc được câu hỏi nào từ tệp CSV.');
-      }
-    } catch (err) {
-      console.error('CSV Parse Error:', err);
-      message.error('Không thể đọc tệp CSV. Vui lòng kiểm tra định dạng.');
-    } finally {
-      setImportingCsv(false);
-    }
-  };
-
 
   const fetchDetail = async () => {
     if (!courseId) return;
@@ -390,24 +182,11 @@ export const CourseDetailPage: React.FC = () => {
     }
   };
 
-  const [searchParams] = useSearchParams();
-  const targetAssignmentId = searchParams.get('assignment') || searchParams.get('assignmentId');
-
   useEffect(() => {
     fetchDetail();
     fetchMaterials();
     fetchAssignments();
   }, [courseId]);
-
-  useEffect(() => {
-    if (targetAssignmentId && assignments.length > 0) {
-      const found = assignments.find((a) => a.id === targetAssignmentId);
-      if (found) {
-        setViewingAssignment(found);
-        setIsDetailAssignmentModalOpen(true);
-      }
-    }
-  }, [targetAssignmentId, assignments]);
 
   const handleUploadMaterial = async (values: any) => {
     if (!courseId || fileList.length === 0) {
@@ -494,20 +273,17 @@ export const CourseDetailPage: React.FC = () => {
   };
 
   // Assignment Actions
-  const handleCreateAssignment = async (values: any, statusOverride?: string) => {
+  const handleCreateAssignment = async (values: any) => {
     if (!courseId) return;
     setSubmittingAssignment(true);
     try {
-      const finalStatus = statusOverride || values.status || 'ACTIVE';
       const newAssignment = await assignmentService.createAssignment(courseId, {
         title: values.title,
         description: values.description,
-        available_from: values.available_from ? new Date(values.available_from).toISOString() : undefined,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : undefined,
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
-        status: finalStatus,
+        status: values.status || 'ACTIVE',
         priority: values.priority || 'MEDIUM',
-        questions: questions,
       });
 
       // Upload reference file if attached
@@ -516,12 +292,10 @@ export const CourseDetailPage: React.FC = () => {
         await assignmentService.uploadAttachment(newAssignment.id, attachFile);
       }
 
-      message.success(finalStatus === 'DRAFT' ? 'Lưu bản nháp bài tập thành công!' : 'Tạo bài tập thành công!');
+      message.success('Tạo bài tập mới thành công!');
       setIsCreateAssignmentModalOpen(false);
       createAssignmentForm.resetFields();
       setAssignmentAttachmentList([]);
-      setQuestions([]);
-      setActiveQuestionIdx(0);
       fetchAssignments();
     } catch (err: any) {
       console.error('Create assignment error:', err);
@@ -534,25 +308,9 @@ export const CourseDetailPage: React.FC = () => {
   const handleOpenEditAssignment = (assignment: Assignment) => {
     setEditingAssignment(assignment);
     setAssignmentAttachmentList([]);
-    setQuestions(
-      (assignment.questions || []).map((q) => ({
-        question_type: q.question_type,
-        question_text: q.question_text,
-        points: q.points,
-        display_order: q.display_order,
-        expected_answer: q.expected_answer,
-        options: (q.options || []).map((o) => ({
-          option_text: o.option_text,
-          is_correct: o.is_correct,
-          display_order: o.display_order,
-        })),
-      }))
-    );
-    setActiveQuestionIdx(0);
     editAssignmentForm.setFieldsValue({
       title: assignment.title,
       description: assignment.description,
-      available_from: assignment.available_from ? assignment.available_from.slice(0, 16) : '',
       due_date: assignment.due_date ? assignment.due_date.slice(0, 16) : '',
       estimated_hours: assignment.estimated_hours,
       status: assignment.status || 'ACTIVE',
@@ -561,26 +319,18 @@ export const CourseDetailPage: React.FC = () => {
     setIsEditAssignmentModalOpen(true);
   };
 
-  const handleEditAssignment = async (values: any, statusOverride?: string) => {
+  const handleEditAssignment = async (values: any) => {
     if (!editingAssignment) return;
     setSubmittingAssignment(true);
     try {
-      const finalStatus = statusOverride || values.status || editingAssignment.status || 'ACTIVE';
       await assignmentService.updateAssignment(editingAssignment.id, {
         title: values.title,
         description: values.description,
-        available_from: values.available_from ? new Date(values.available_from).toISOString() : undefined,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : undefined,
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
-        status: finalStatus,
+        status: values.status,
         priority: values.priority,
       });
-
-      // Sync questions for existing assignment
-      // Replace/re-add questions if modified
-      for (const q of questions) {
-        await assignmentService.addQuestion(editingAssignment.id, q);
-      }
 
       // Upload reference file if attached
       if (assignmentAttachmentList.length > 0) {
@@ -592,8 +342,6 @@ export const CourseDetailPage: React.FC = () => {
       setIsEditAssignmentModalOpen(false);
       setEditingAssignment(null);
       setAssignmentAttachmentList([]);
-      setQuestions([]);
-      setActiveQuestionIdx(0);
       editAssignmentForm.resetFields();
       fetchAssignments();
     } catch (err: any) {
@@ -603,7 +351,6 @@ export const CourseDetailPage: React.FC = () => {
       setSubmittingAssignment(false);
     }
   };
-
 
   const handleDeleteAssignment = async (assignmentId: string) => {
     try {
@@ -617,6 +364,19 @@ export const CourseDetailPage: React.FC = () => {
   };
 
   // Phase 2: Checklist & Submissions Operations
+  const [searchParams] = useSearchParams();
+  const targetAssignmentId = searchParams.get('assignment') || searchParams.get('assignmentId');
+
+  useEffect(() => {
+    if (targetAssignmentId && assignments.length > 0) {
+      const found = assignments.find((a) => a.id === targetAssignmentId);
+      if (found) {
+        setViewingAssignment(found);
+        setIsDetailAssignmentModalOpen(true);
+      }
+    }
+  }, [targetAssignmentId, assignments]);
+
   const refreshViewingAssignment = async (assignmentId: string) => {
     try {
       const updatedAssignment = await assignmentService.getAssignmentDetail(assignmentId);
@@ -647,48 +407,18 @@ export const CourseDetailPage: React.FC = () => {
 
   const handleStudentSubmitAssignment = async () => {
     if (!viewingAssignment) return;
-
-    // Format student answers from Tab 2
-    let formattedAnswersText = '';
-    if (viewingAssignment.questions && viewingAssignment.questions.length > 0) {
-      const answerLines: string[] = [];
-      viewingAssignment.questions.forEach((q, idx) => {
-        const ansVal = studentAnswers[q.id];
-        if (ansVal !== undefined && ansVal !== null && String(ansVal).trim() !== '') {
-          if (q.question_type === 'MULTIPLE_CHOICE' && q.options) {
-            const selectedOpt = q.options.find((opt) => opt.id === ansVal);
-            const optText = selectedOpt ? selectedOpt.option_text : ansVal;
-            answerLines.push(`Câu ${idx + 1}: ${optText}`);
-          } else {
-            answerLines.push(`Câu ${idx + 1}: ${ansVal}`);
-          }
-        }
-      });
-      if (answerLines.length > 0) {
-        formattedAnswersText = `[Bài làm trắc nghiệm & tự luận]:\n` + answerLines.join('\n');
-      }
-    }
-
-    const hasFile = submissionFileList.length > 0;
-    const hasNotes = submissionNotes.trim().length > 0;
-    const hasAnswers = formattedAnswersText.length > 0;
-
-    if (!hasFile && !hasNotes && !hasAnswers) {
-      message.error('Vui lòng trả lời câu hỏi trắc nghiệm/tự luận, chọn tập tin nộp bài hoặc nhập ghi chú trước khi bấm Nộp Bài.');
+    if (submissionFileList.length === 0 && !submissionNotes.trim()) {
+      message.error('Vui lòng chọn tập tin nộp bài hoặc nhập ghi chú trước khi bấm Nộp Bài.');
       return;
     }
 
-    const finalNotes = submissionNotes.trim()
-      ? (formattedAnswersText ? `${submissionNotes.trim()}\n\n${formattedAnswersText}` : submissionNotes.trim())
-      : formattedAnswersText;
-
     setSubmittingSolution(true);
     try {
-      const submitFile = hasFile ? (submissionFileList[0].originFileObj || submissionFileList[0]) : null;
+      const submitFile = submissionFileList.length > 0 ? (submissionFileList[0].originFileObj || submissionFileList[0]) : null;
       const result = await assignmentService.submitAssignment(
         viewingAssignment.id,
         submitFile,
-        finalNotes || undefined
+        submissionNotes.trim() || undefined
       );
       message.success('Nộp bài tập thành công!');
       setMySubmission(result);
@@ -702,154 +432,18 @@ export const CourseDetailPage: React.FC = () => {
     }
   };
 
-  const handleUndoTurnIn = async () => {
-    if (!viewingAssignment) return;
-    setUndoingTurnIn(true);
-    try {
-      const result = await assignmentService.undoTurnIn(viewingAssignment.id);
-      message.success('Đã hủy nộp bài thành công! Bạn có thể chỉnh sửa lại các câu trả lời.');
-      setMySubmission(result);
-      await refreshViewingAssignment(viewingAssignment.id);
-    } catch (err: any) {
-      console.error('Undo turn in error:', err);
-      message.error(err.response?.data?.detail || 'Không thể hủy nộp bài.');
-    } finally {
-      setUndoingTurnIn(false);
-    }
-  };
-
-  const parseStudentAnswersFromSubmissionText = (text: string, questionsList: AssignmentQuestion[]) => {
-    const result: Record<string, string> = {};
-    if (!text || !questionsList || questionsList.length === 0) return result;
-
-    const lines = text.split('\n');
-    questionsList.forEach((q, idx) => {
-      const prefix = `Câu ${idx + 1}:`;
-      for (const line of lines) {
-        if (line.trim().startsWith(prefix)) {
-          const ans = line.trim().substring(prefix.length).trim();
-          result[q.id] = ans;
-          break;
-        }
-      }
-    });
-
-    // Fallback: If no question prefix "Câu X:" was matched, but submission text is present
-    if (Object.keys(result).length === 0 && text.trim()) {
-      let cleanText = text.trim();
-      if (cleanText.includes('[Bài làm trắc nghiệm & tự luận]:')) {
-        cleanText = cleanText.split('[Bài làm trắc nghiệm & tự luận]:')[1].trim();
-      }
-      if (questionsList.length > 0 && cleanText) {
-        result[questionsList[0].id] = cleanText;
-      }
-    }
-
-    return result;
-  };
-
   const handleOpenInstructorSubmissionsRoster = async (assignment: Assignment) => {
     setSelectedAssignmentForSubmissions(assignment);
     setSubmissionsModalOpen(true);
     setLoadingSubmissionsRoster(true);
-    setSubmissionSearchQuery('');
-    setSubmissionStatusFilter('ALL');
-    setGradingStatusFilter('ALL');
     try {
-      const overview = await assignmentService.getAssignmentSubmissions(assignment.id);
-      setSubmissionsOverview(overview);
+      const subs = await assignmentService.getAssignmentSubmissions(assignment.id);
+      setAssignmentSubmissions(subs);
     } catch (err: any) {
       console.error('Get submissions roster error:', err);
       message.error(err.response?.data?.detail || 'Không thể tải danh sách bài nộp.');
     } finally {
       setLoadingSubmissionsRoster(false);
-    }
-  };
-
-  const handleOpenGradingModal = (submission: Submission) => {
-    setSelectedSubmissionForGrading(submission);
-
-    let savedScores: Record<string, number> = {};
-    let savedFeedbacks: Record<string, string> = {};
-    let savedGeneralFeedback = '';
-
-    if (submission.feedback) {
-      try {
-        const parsed = JSON.parse(submission.feedback);
-        if (parsed.questionScores) savedScores = parsed.questionScores;
-        if (parsed.questionFeedbacks) savedFeedbacks = parsed.questionFeedbacks;
-        if (parsed.generalFeedback) savedGeneralFeedback = parsed.generalFeedback;
-      } catch (e) {
-        savedGeneralFeedback = submission.feedback;
-      }
-    }
-
-    const questionsList = selectedAssignmentForSubmissions?.questions || [];
-    const parsedAnswers = parseStudentAnswersFromSubmissionText(submission.submission_text || '', questionsList);
-
-    questionsList.forEach((q) => {
-      if (savedScores[q.id] === undefined) {
-        if (q.question_type === 'MULTIPLE_CHOICE' && q.options) {
-          const studentAnsText = parsedAnswers[q.id];
-          const correctOption = q.options.find((opt) => opt.is_correct);
-          if (correctOption && studentAnsText) {
-            if (
-              studentAnsText.toLowerCase().trim() === correctOption.option_text.toLowerCase().trim() ||
-              studentAnsText === correctOption.id
-            ) {
-              savedScores[q.id] = q.points;
-            } else {
-              savedScores[q.id] = 0;
-            }
-          } else {
-            savedScores[q.id] = 0;
-          }
-        } else {
-          savedScores[q.id] = 0;
-        }
-      }
-    });
-
-    setQuestionScores(savedScores);
-    setQuestionFeedbacks(savedFeedbacks);
-    setGeneralFeedback(savedGeneralFeedback);
-    setIsGradingDrawerOpen(true);
-  };
-
-  const handleSaveGrade = async () => {
-    if (!selectedSubmissionForGrading || !selectedAssignmentForSubmissions) return;
-
-    const questionsList = selectedAssignmentForSubmissions.questions || [];
-    let calculatedTotalScore = 0;
-    questionsList.forEach((q) => {
-      calculatedTotalScore += questionScores[q.id] || 0;
-    });
-
-    const feedbackPayload = JSON.stringify({
-      questionScores,
-      questionFeedbacks,
-      generalFeedback,
-    });
-
-    setSubmittingGrade(true);
-    try {
-      await assignmentService.gradeSubmission(selectedSubmissionForGrading.id, {
-        score: calculatedTotalScore,
-        grade: 'GRADED',
-        feedback: feedbackPayload,
-      });
-
-      message.success('Lưu điểm và nhận xét thành công!');
-      setIsGradingDrawerOpen(false);
-
-      // Refresh overview
-      const updatedOverview = await assignmentService.getAssignmentSubmissions(selectedAssignmentForSubmissions.id);
-      setSubmissionsOverview(updatedOverview);
-    } catch (err: any) {
-      console.error('Grade submission error:', err);
-      message.error(err.response?.data?.detail || 'Không thể lưu điểm bài nộp.');
-    } finally {
-      setSubmittingGrade(false);
     }
   };
 
@@ -1089,438 +683,15 @@ export const CourseDetailPage: React.FC = () => {
     },
   ];
 
-  const renderQuestionManagerUI = () => {
-    const totalPts = questions.reduce((acc, q) => acc + (q.points || 0), 0);
-    const activeQ = questions[activeQuestionIdx];
-
-    const filteredQs = questions.filter(
-      (q, idx) =>
-        `Câu ${idx + 1}`.toLowerCase().includes(questionSearchQuery.toLowerCase()) ||
-        q.question_text.toLowerCase().includes(questionSearchQuery.toLowerCase())
-    );
-
-    return (
-      <div className="space-y-4 pt-2">
-        {/* Header Toolbar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Tag color="indigo" className="font-bold text-xs px-3 py-1 rounded-xl border-0">
-              Tổng số: {questions.length} câu hỏi
-            </Tag>
-            <Tag color="gold" className="font-bold text-xs px-3 py-1 rounded-xl border-0">
-              Tổng điểm: {totalPts} điểm
-            </Tag>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              type="default"
-              icon={<FileExcelOutlined className="text-emerald-600" />}
-              onClick={() => setIsCsvModalOpen(true)}
-              className="rounded-xl text-xs font-semibold"
-            >
-              Nhập CSV câu hỏi
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAddQuestion}
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold"
-            >
-              Thêm Câu Hỏi
-            </Button>
-          </div>
-        </div>
-
-        {questions.length === 0 ? (
-          <Empty
-            description={
-              <span className="text-xs text-slate-400">
-                Chưa có câu hỏi nào. Bấm <strong>&quot;Thêm Câu Hỏi&quot;</strong> hoặc <strong>&quot;Nhập CSV câu hỏi&quot;</strong> để tạo.
-              </span>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[400px]">
-            {/* Left Question Selector (Sidebar for 50+ questions) */}
-            <div className="lg:col-span-4 rounded-2xl border p-3 space-y-3 bg-white dark:bg-slate-950 flex flex-col max-h-[460px]">
-              <Input
-                placeholder="Tìm câu hỏi..."
-                value={questionSearchQuery}
-                onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                allowClear
-                size="small"
-                className="rounded-lg"
-              />
-
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {questions.map((q, idx) => {
-                  const isSelected = idx === activeQuestionIdx;
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => setActiveQuestionIdx(idx)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-2 ${isSelected
-                        ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
-                        }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono font-extrabold text-xs text-indigo-600 dark:text-indigo-400">
-                            #{idx + 1}
-                          </span>
-                          <Tag
-                            color={
-                              q.question_type === 'MULTIPLE_CHOICE'
-                                ? 'blue'
-                                : q.question_type === 'ESSAY'
-                                  ? 'purple'
-                                  : 'orange'
-                            }
-                            className="rounded-full text-[10px] font-semibold px-2 py-0 border-0"
-                          >
-                            {q.question_type === 'MULTIPLE_CHOICE'
-                              ? 'Trắc nghiệm'
-                              : q.question_type === 'ESSAY'
-                                ? 'Tự luận'
-                                : 'Trả lời ngắn'}
-                          </Tag>
-                          <span className="text-[11px] font-bold text-slate-500">{q.points}đ</span>
-                        </div>
-                        <p className="text-xs text-slate-700 dark:text-slate-300 truncate m-0 font-medium">
-                          {q.question_text || 'Chưa nhập nội dung'}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<UpOutlined className="text-[10px]" />}
-                          disabled={idx === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveQuestion(idx, 'up');
-                          }}
-                        />
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<DownOutlined className="text-[10px]" />}
-                          disabled={idx === questions.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveQuestion(idx, 'down');
-                          }}
-                        />
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined className="text-[10px]" />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteQuestion(idx);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right Panel: Active Question Editor */}
-            {activeQ && (
-              <div className="lg:col-span-8 rounded-2xl border p-5 space-y-4 bg-white dark:bg-slate-950 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                    <span className="font-bold text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                      <EditOutlined />
-                      <span>Chỉnh sửa Câu hỏi #{activeQuestionIdx + 1}</span>
-                    </span>
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleDeleteQuestion(activeQuestionIdx)}
-                      className="text-xs"
-                    >
-                      Xóa câu hỏi này
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Loại câu hỏi</label>
-                      <Select
-                        value={activeQ.question_type}
-                        onChange={(val) => handleUpdateActiveQuestion('question_type', val)}
-                        className="w-full rounded-xl"
-                      >
-                        <Select.Option value="MULTIPLE_CHOICE">Trắc Nghiệm (Multiple Choice)</Select.Option>
-                        <Select.Option value="ESSAY">Tự Luận (Essay)</Select.Option>
-                        <Select.Option value="SHORT_ANSWER">Trả Lời Ngắn (Short Answer)</Select.Option>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Thang điểm</label>
-                      <InputNumber
-                        min={0.5}
-                        step={0.5}
-                        value={activeQ.points}
-                        onChange={(val) => handleUpdateActiveQuestion('points', val || 1.0)}
-                        className="w-full rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Nội dung câu hỏi</label>
-                    <Input.TextArea
-                      rows={3}
-                      value={activeQ.question_text}
-                      onChange={(e) => handleUpdateActiveQuestion('question_text', e.target.value)}
-                      placeholder="Nhập nội dung câu hỏi..."
-                      className="rounded-xl"
-                    />
-                  </div>
-
-                  {/* Multiple Choice Options Editor */}
-                  {activeQ.question_type === 'MULTIPLE_CHOICE' && (
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase text-slate-500">Danh sách lựa chọn</span>
-                        <Button
-                          type="dashed"
-                          size="small"
-                          icon={<PlusOutlined />}
-                          onClick={handleAddOptionToActiveQuestion}
-                          className="rounded-lg text-xs"
-                        >
-                          Thêm Lựa Chọn
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        {(activeQ.options || []).map((opt, oIdx) => (
-                          <div key={oIdx} className="flex items-center gap-2">
-                            <Radio
-                              checked={opt.is_correct}
-                              onChange={(e) => handleUpdateOption(oIdx, 'is_correct', e.target.checked)}
-                              title="Tích chọn làm đáp án đúng"
-                            />
-                            <Input
-                              value={opt.option_text}
-                              onChange={(e) => handleUpdateOption(oIdx, 'option_text', e.target.value)}
-                              placeholder={`Lựa chọn ${String.fromCharCode(65 + oIdx)}`}
-                              className="rounded-xl flex-1"
-                            />
-                            {opt.is_correct && (
-                              <Tag color="success" className="rounded-lg px-2 py-0.5 text-xs font-bold border-0">
-                                ĐÁP ÁN ĐÚNG
-                              </Tag>
-                            )}
-                            <Button
-                              type="text"
-                              danger
-                              icon={<DeleteOutlined />}
-                              onClick={() => handleDeleteOption(oIdx)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Essay Rubric / Expected Answer */}
-                  {activeQ.question_type === 'ESSAY' && (
-                    <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 block mb-1">
-                        Đáp án mẫu / Biểu điểm hướng dẫn chấm (Rubric)
-                      </label>
-                      <Input.TextArea
-                        rows={3}
-                        value={activeQ.expected_answer || ''}
-                        onChange={(e) => handleUpdateActiveQuestion('expected_answer', e.target.value)}
-                        placeholder="Nhập đáp án gợi ý hoặc tiêu chí chấm bài..."
-                        className="rounded-xl"
-                      />
-                    </div>
-                  )}
-
-                  {/* Short Answer Expected Answer */}
-                  {activeQ.question_type === 'SHORT_ANSWER' && (
-                    <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Đáp án đúng chuẩn</label>
-                      <Input
-                        value={activeQ.expected_answer || ''}
-                        onChange={(e) => handleUpdateActiveQuestion('expected_answer', e.target.value)}
-                        placeholder="Nhập câu trả lời ngắn đúng..."
-                        className="rounded-xl"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Filtered Submissions Roster List
-  const filteredSubmissionsList = (submissionsOverview?.submissions || []).filter((sub) => {
-    const matchesSearch =
-      !submissionSearchQuery.trim() ||
-      (sub.student_name || '').toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
-      (sub.student_email || '').toLowerCase().includes(submissionSearchQuery.toLowerCase());
-
-    let matchesSubmissionStatus = true;
-    if (submissionStatusFilter === 'Submitted') {
-      matchesSubmissionStatus = sub.student_status === 'Submitted' || sub.student_status === 'Late';
-    } else if (submissionStatusFilter === 'Not Submitted') {
-      matchesSubmissionStatus = sub.student_status === 'Not Submitted';
-    } else if (submissionStatusFilter === 'Late') {
-      matchesSubmissionStatus = sub.student_status === 'Late' || sub.is_late === true;
-    }
-
-    let matchesGradingStatus = true;
-    if (gradingStatusFilter === 'Graded') {
-      matchesGradingStatus = sub.grading_status === 'Graded';
-    } else if (gradingStatusFilter === 'Pending') {
-      matchesGradingStatus = sub.grading_status === 'Pending';
-    }
-
-    return matchesSearch && matchesSubmissionStatus && matchesGradingStatus;
-  });
-
-  const submissionColumns = [
-    {
-      title: 'Sinh Viên (Student)',
-      dataIndex: 'student_name',
-      key: 'student_name',
-      render: (text: string, record: Submission) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="bg-indigo-600 text-white font-bold shrink-0">
-            {(text || 'S').charAt(0).toUpperCase()}
-          </Avatar>
-          <div>
-            <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">{text || 'Sinh viên'}</div>
-            <div className="text-xs text-slate-400 font-mono">{record.student_email}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Trạng Thái Nộp',
-      dataIndex: 'student_status',
-      key: 'student_status',
-      render: (status?: string, record?: Submission) => {
-        if (status === 'Late' || record?.is_late) {
-          return (
-            <Tag color="orange" className="rounded-full px-2.5 py-0.5 text-xs font-bold border-0">
-              NỘP MUỘN (LATE)
-            </Tag>
-          );
-        }
-        if (status === 'Submitted' || record?.submitted_at) {
-          return (
-            <Tag color="green" icon={<CheckCircleOutlined />} className="rounded-full px-2.5 py-0.5 text-xs font-bold border-0">
-              ĐÃ NỘP (SUBMITTED)
-            </Tag>
-          );
-        }
-        return (
-          <Tag color="default" className="rounded-full px-2.5 py-0.5 text-xs font-semibold border-0 text-slate-500">
-            CHƯA NỘP
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Thời Gian Nộp',
-      dataIndex: 'submitted_at',
-      key: 'submitted_at',
-      render: (val?: string) => (
-        <span className="text-xs text-slate-500 font-mono">
-          {val ? new Date(val).toLocaleString('vi-VN') : '-'}
-        </span>
-      ),
-    },
-    {
-      title: 'Điểm Số (Score)',
-      dataIndex: 'score',
-      key: 'score',
-      render: (val: number | null | undefined, record: Submission) => {
-        if (!record.submitted_at && record.student_status === 'Not Submitted') {
-          return <span className="text-xs text-slate-400 font-mono">-</span>;
-        }
-        const totalPts = submissionsOverview?.total_points || selectedAssignmentForSubmissions?.total_points || 0;
-        if (val !== null && val !== undefined) {
-          return (
-            <span className="font-mono font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
-              {val} / {totalPts}
-            </span>
-          );
-        }
-        return <span className="font-mono text-xs text-slate-400 italic">-- / {totalPts}</span>;
-      },
-    },
-    {
-      title: 'Trạng Thái Chấm',
-      dataIndex: 'grading_status',
-      key: 'grading_status',
-      render: (gStatus?: string, record?: Submission) => {
-        if (!record?.submitted_at && record?.student_status === 'Not Submitted') {
-          return <span className="text-xs text-slate-400 font-mono">-</span>;
-        }
-        if (gStatus === 'Graded' || record?.score !== null) {
-          return (
-            <Tag color="success" icon={<CheckOutlined />} className="rounded-full px-2.5 py-0.5 text-xs font-bold border-0">
-              ĐÃ CHẤM
-            </Tag>
-          );
-        }
-        return (
-          <Tag color="warning" icon={<ClockCircleOutlined />} className="rounded-full px-2.5 py-0.5 text-xs font-bold border-0">
-            CHỜ CHẤM
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Hành Động',
-      key: 'actions',
-      render: (_: any, record: Submission) => {
-        const hasSub = record.submitted_at || record.student_status !== 'Not Submitted';
-        return (
-          <Button
-            type={hasSub ? 'primary' : 'default'}
-            size="small"
-            icon={<FileDoneOutlined />}
-            onClick={() => handleOpenGradingModal(record)}
-            className={`rounded-xl text-xs font-semibold ${hasSub ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : ''
-              }`}
-          >
-            {hasSub ? 'Xem & Chấm Bài' : 'Xem Chi Tiết'}
-          </Button>
-        );
-      },
-    },
-  ];
-
   return (
     <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       <Sidebar />
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto">
         {/* Top Bar */}
-        <header className={`px-6 py-4 border-b sticky top-0 z-10 backdrop-blur-md flex items-center justify-between ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'
-          }`}>
+        <header className={`px-6 py-4 border-b sticky top-0 z-10 backdrop-blur-md flex items-center justify-between ${
+          isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-200'
+        }`}>
           <div className="flex items-center gap-4">
             <Button
               type="text"
@@ -1567,8 +738,9 @@ export const CourseDetailPage: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-6 sm:p-8 rounded-3xl border shadow-sm ${isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
-              }`}
+            className={`p-6 sm:p-8 rounded-3xl border shadow-sm ${
+              isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
+            }`}
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
@@ -1600,13 +772,6 @@ export const CourseDetailPage: React.FC = () => {
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Học kỳ:</span>
                   <span>{course.term || 'Fall 2026'}</span>
                 </div>
-                {course.start_date && course.end_date && (
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <ClockCircleOutlined className="text-emerald-500" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Thời gian học:</span>
-                    <span>{dayjs(course.start_date).format('DD/MM/YYYY')} - {dayjs(course.end_date).format('DD/MM/YYYY')}</span>
-                  </div>
-                )}
               </div>
             </div>
           </motion.div>
@@ -2032,138 +1197,99 @@ export const CourseDetailPage: React.FC = () => {
           setIsCreateAssignmentModalOpen(false);
           createAssignmentForm.resetFields();
           setAssignmentAttachmentList([]);
-          setQuestions([]);
-          setActiveQuestionIdx(0);
         }}
         footer={null}
         destroyOnClose
         centered
-        width={920}
         className="rounded-2xl overflow-hidden"
       >
         <Form
           form={createAssignmentForm}
           layout="vertical"
-          onFinish={(vals) => handleCreateAssignment(vals, vals.status)}
+          onFinish={handleCreateAssignment}
           requiredMark="optional"
-          className="mt-4"
+          className="mt-4 space-y-4"
         >
-          <Tabs
-            activeKey={assignmentModalTab}
-            onChange={(k) => setAssignmentModalTab(k)}
-            items={[
-              {
-                key: 'details',
-                label: '1. Thông tin chung',
-                children: (
-                  <div className="space-y-4 pt-2">
-                    <Form.Item
-                      name="title"
-                      label={<span className="font-semibold text-xs uppercase">Tên bài tập *</span>}
-                      rules={[{ required: true, message: 'Vui lòng nhập tên bài tập' }]}
-                    >
-                      <Input placeholder="Ví dụ: Kiểm tra giữa kỳ - Lập trình Python & AI" size="large" className="rounded-xl" />
-                    </Form.Item>
+          <Form.Item
+            name="title"
+            label={<span className="font-semibold text-xs uppercase">Tên bài tập</span>}
+            rules={[{ required: true, message: 'Vui lòng nhập tên bài tập' }]}
+          >
+            <Input placeholder="Ví dụ: RAG Project - Lập trình AI companion" size="large" className="rounded-xl" />
+          </Form.Item>
 
-                    <Form.Item
-                      name="description"
-                      label={<span className="font-semibold text-xs uppercase">Mô tả chi tiết / Hướng dẫn</span>}
-                    >
-                      <Input.TextArea rows={3} placeholder="Nhập yêu cầu bài tập và hướng dẫn sinh viên..." className="rounded-xl" />
-                    </Form.Item>
+          <Form.Item
+            name="description"
+            label={<span className="font-semibold text-xs uppercase">Mô tả chi tiết / Hướng dẫn</span>}
+          >
+            <Input.TextArea rows={3} placeholder="Nhập yêu cầu bài tập..." className="rounded-xl" />
+          </Form.Item>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <Form.Item
-                        name="available_from"
-                        label={<span className="font-semibold text-xs uppercase">Thời gian có sẵn (Start)</span>}
-                      >
-                        <Input type="datetime-local" size="large" className="rounded-xl" />
-                      </Form.Item>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Form.Item
+              name="priority"
+              label={<span className="font-semibold text-xs uppercase">Mức độ ưu tiên</span>}
+              initialValue="MEDIUM"
+            >
+              <Select size="large" className="rounded-xl">
+                <Select.Option value="LOW">LOW</Select.Option>
+                <Select.Option value="MEDIUM">MEDIUM</Select.Option>
+                <Select.Option value="HIGH">HIGH</Select.Option>
+                <Select.Option value="CRITICAL">CRITICAL</Select.Option>
+              </Select>
+            </Form.Item>
 
-                      <Form.Item
-                        name="due_date"
-                        label={<span className="font-semibold text-xs uppercase">Hạn nộp bài (Deadline)</span>}
-                      >
-                        <Input type="datetime-local" size="large" className="rounded-xl" />
-                      </Form.Item>
+            <Form.Item
+              name="due_date"
+              label={<span className="font-semibold text-xs uppercase">Hạn nộp bài</span>}
+            >
+              <Input type="datetime-local" size="large" className="rounded-xl" />
+            </Form.Item>
 
-                      <Form.Item
-                        name="estimated_hours"
-                        label={<span className="font-semibold text-xs uppercase">Thời gian ước tính (Giờ)</span>}
-                      >
-                        <InputNumber min={0} step={0.5} placeholder="12" size="large" className="w-full rounded-xl" />
-                      </Form.Item>
-                    </div>
+            <Form.Item
+              name="estimated_hours"
+              label={<span className="font-semibold text-xs uppercase">Số giờ ước tính</span>}
+            >
+              <InputNumber min={0} step={0.5} placeholder="Ví dụ: 12" size="large" className="w-full rounded-xl" />
+            </Form.Item>
+          </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Form.Item
-                        name="priority"
-                        label={<span className="font-semibold text-xs uppercase">Mức độ ưu tiên</span>}
-                        initialValue="MEDIUM"
-                      >
-                        <Select size="large" className="rounded-xl">
-                          <Select.Option value="LOW">LOW</Select.Option>
-                          <Select.Option value="MEDIUM">MEDIUM</Select.Option>
-                          <Select.Option value="HIGH">HIGH</Select.Option>
-                          <Select.Option value="CRITICAL">CRITICAL</Select.Option>
-                        </Select>
-                      </Form.Item>
+          <Form.Item
+            name="status"
+            label={<span className="font-semibold text-xs uppercase">Trạng thái</span>}
+            initialValue="ACTIVE"
+          >
+            <Select size="large" className="rounded-xl">
+              <Select.Option value="ACTIVE">Hoạt động (ACTIVE)</Select.Option>
+              <Select.Option value="ARCHIVED">Lưu trữ (ARCHIVED)</Select.Option>
+            </Select>
+          </Form.Item>
 
-                      <Form.Item
-                        name="status"
-                        label={<span className="font-semibold text-xs uppercase">Trạng thái phát hành</span>}
-                        initialValue="ACTIVE"
-                      >
-                        <Select size="large" className="rounded-xl">
-                          <Select.Option value="ACTIVE">Phát hành ngay (ACTIVE)</Select.Option>
-                          <Select.Option value="DRAFT">Lưu bản nháp (DRAFT - Sinh viên không thấy)</Select.Option>
-                        </Select>
-                      </Form.Item>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'questions',
-                label: `2. Ngân hàng câu hỏi (${questions.length})`,
-                children: renderQuestionManagerUI(),
-              },
-              {
-                key: 'attachment',
-                label: '3. Đính kèm đề bài',
-                children: (
-                  <div className="py-6 space-y-4 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                    <PaperClipOutlined className="text-3xl text-indigo-500" />
-                    <div className="text-xs text-slate-500">
-                      Tải lên tập tin đề bài chi tiết hoặc tài liệu tham khảo (PDF, DOCX, ZIP...)
-                    </div>
-                    <Upload
-                      beforeUpload={(file) => {
-                        setAssignmentAttachmentList([file]);
-                        return false;
-                      }}
-                      fileList={assignmentAttachmentList}
-                      onRemove={() => setAssignmentAttachmentList([])}
-                      maxCount={1}
-                    >
-                      <Button icon={<UploadOutlined />} className="rounded-xl">
-                        Chọn tập tin đề bài
-                      </Button>
-                    </Upload>
-                  </div>
-                ),
-              },
-            ]}
-          />
+          {/* Instructor File Attachment */}
+          <Form.Item
+            label={<span className="font-semibold text-xs uppercase">Đính kèm tập tin đề bài / Tài liệu tham khảo</span>}
+          >
+            <Upload
+              beforeUpload={(file) => {
+                setAssignmentAttachmentList([file]);
+                return false;
+              }}
+              fileList={assignmentAttachmentList}
+              onRemove={() => setAssignmentAttachmentList([])}
+              maxCount={1}
+            >
+              <Button icon={<PaperClipOutlined />} className="rounded-xl">
+                Tải lên tập tin đề bài (PDF, DOCX...)
+              </Button>
+            </Upload>
+          </Form.Item>
 
-          <div className="flex items-center justify-between pt-4 border-t mt-4">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
             <Button
               onClick={() => {
                 setIsCreateAssignmentModalOpen(false);
                 createAssignmentForm.resetFields();
                 setAssignmentAttachmentList([]);
-                setQuestions([]);
-                setActiveQuestionIdx(0);
               }}
               className="rounded-xl"
             >
@@ -2186,7 +1312,7 @@ export const CourseDetailPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <EditOutlined />
-            <span>Chỉnh Sửa Bài Tập (Giảng Viên)</span>
+            <span>Chỉnh Sửa Bài Tập</span>
           </div>
         }
         open={isEditAssignmentModalOpen}
@@ -2194,139 +1320,103 @@ export const CourseDetailPage: React.FC = () => {
           setIsEditAssignmentModalOpen(false);
           setEditingAssignment(null);
           setAssignmentAttachmentList([]);
-          setQuestions([]);
-          setActiveQuestionIdx(0);
           editAssignmentForm.resetFields();
         }}
         footer={null}
         destroyOnClose
         centered
-        width={920}
         className="rounded-2xl overflow-hidden"
       >
         <Form
           form={editAssignmentForm}
           layout="vertical"
-          onFinish={(vals) => handleEditAssignment(vals, vals.status)}
+          onFinish={handleEditAssignment}
           requiredMark="optional"
-          className="mt-4"
+          className="mt-4 space-y-4"
         >
-          <Tabs
-            activeKey={assignmentModalTab}
-            onChange={(k) => setAssignmentModalTab(k)}
-            items={[
-              {
-                key: 'details',
-                label: '1. Thông tin chung',
-                children: (
-                  <div className="space-y-4 pt-2">
-                    <Form.Item
-                      name="title"
-                      label={<span className="font-semibold text-xs uppercase">Tên bài tập *</span>}
-                      rules={[{ required: true, message: 'Vui lòng nhập tên bài tập' }]}
-                    >
-                      <Input size="large" className="rounded-xl" />
-                    </Form.Item>
+          <Form.Item
+            name="title"
+            label={<span className="font-semibold text-xs uppercase">Tên bài tập</span>}
+            rules={[{ required: true, message: 'Vui lòng nhập tên bài tập' }]}
+          >
+            <Input size="large" className="rounded-xl" />
+          </Form.Item>
 
-                    <Form.Item
-                      name="description"
-                      label={<span className="font-semibold text-xs uppercase">Mô tả chi tiết / Hướng dẫn</span>}
-                    >
-                      <Input.TextArea rows={3} className="rounded-xl" />
-                    </Form.Item>
+          <Form.Item
+            name="description"
+            label={<span className="font-semibold text-xs uppercase">Mô tả chi tiết / Hướng dẫn</span>}
+          >
+            <Input.TextArea rows={3} className="rounded-xl" />
+          </Form.Item>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <Form.Item
-                        name="available_from"
-                        label={<span className="font-semibold text-xs uppercase">Thời gian có sẵn (Start)</span>}
-                      >
-                        <Input type="datetime-local" size="large" className="rounded-xl" />
-                      </Form.Item>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Form.Item
+              name="priority"
+              label={<span className="font-semibold text-xs uppercase">Mức độ ưu tiên</span>}
+            >
+              <Select size="large" className="rounded-xl">
+                <Select.Option value="LOW">LOW</Select.Option>
+                <Select.Option value="MEDIUM">MEDIUM</Select.Option>
+                <Select.Option value="HIGH">HIGH</Select.Option>
+                <Select.Option value="CRITICAL">CRITICAL</Select.Option>
+              </Select>
+            </Form.Item>
 
-                      <Form.Item
-                        name="due_date"
-                        label={<span className="font-semibold text-xs uppercase">Hạn nộp bài (Deadline)</span>}
-                      >
-                        <Input type="datetime-local" size="large" className="rounded-xl" />
-                      </Form.Item>
+            <Form.Item
+              name="due_date"
+              label={<span className="font-semibold text-xs uppercase">Hạn nộp bài</span>}
+            >
+              <Input type="datetime-local" size="large" className="rounded-xl" />
+            </Form.Item>
 
-                      <Form.Item
-                        name="estimated_hours"
-                        label={<span className="font-semibold text-xs uppercase">Thời gian ước tính (Giờ)</span>}
-                      >
-                        <InputNumber min={0} step={0.5} size="large" className="w-full rounded-xl" />
-                      </Form.Item>
-                    </div>
+            <Form.Item
+              name="estimated_hours"
+              label={<span className="font-semibold text-xs uppercase">Số giờ ước tính</span>}
+            >
+              <InputNumber min={0} step={0.5} size="large" className="w-full rounded-xl" />
+            </Form.Item>
+          </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Form.Item
-                        name="priority"
-                        label={<span className="font-semibold text-xs uppercase">Mức độ ưu tiên</span>}
-                      >
-                        <Select size="large" className="rounded-xl">
-                          <Select.Option value="LOW">LOW</Select.Option>
-                          <Select.Option value="MEDIUM">MEDIUM</Select.Option>
-                          <Select.Option value="HIGH">HIGH</Select.Option>
-                          <Select.Option value="CRITICAL">CRITICAL</Select.Option>
-                        </Select>
-                      </Form.Item>
+          <Form.Item
+            name="status"
+            label={<span className="font-semibold text-xs uppercase">Trạng thái</span>}
+          >
+            <Select size="large" className="rounded-xl">
+              <Select.Option value="ACTIVE">Hoạt động (ACTIVE)</Select.Option>
+              <Select.Option value="ARCHIVED">Lưu trữ (ARCHIVED)</Select.Option>
+            </Select>
+          </Form.Item>
 
-                      <Form.Item
-                        name="status"
-                        label={<span className="font-semibold text-xs uppercase">Trạng thái phát hành</span>}
-                      >
-                        <Select size="large" className="rounded-xl">
-                          <Select.Option value="ACTIVE">Phát hành (ACTIVE)</Select.Option>
-                          <Select.Option value="DRAFT">Lưu bản nháp (DRAFT - Sinh viên không thấy)</Select.Option>
-                        </Select>
-                      </Form.Item>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'questions',
-                label: `2. Ngân hàng câu hỏi (${questions.length})`,
-                children: renderQuestionManagerUI(),
-              },
-              {
-                key: 'attachment',
-                label: '3. Đính kèm đề bài',
-                children: (
-                  <div className="py-6 space-y-4 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                    <PaperClipOutlined className="text-3xl text-indigo-500" />
-                    {editingAssignment?.attachment_file_name && (
-                      <p className="text-xs text-slate-500 mb-2">
-                        Tệp hiện tại: <strong>{editingAssignment.attachment_file_name}</strong>
-                      </p>
-                    )}
-                    <Upload
-                      beforeUpload={(file) => {
-                        setAssignmentAttachmentList([file]);
-                        return false;
-                      }}
-                      fileList={assignmentAttachmentList}
-                      onRemove={() => setAssignmentAttachmentList([])}
-                      maxCount={1}
-                    >
-                      <Button icon={<PaperClipOutlined />} className="rounded-xl">
-                        Thay thế tập tin đề bài mới
-                      </Button>
-                    </Upload>
-                  </div>
-                ),
-              },
-            ]}
-          />
+          {/* Instructor Update File Attachment */}
+          <Form.Item
+            label={<span className="font-semibold text-xs uppercase">Cập nhật tập tin đề bài / Tài liệu đính kèm</span>}
+          >
+            {editingAssignment?.attachment_file_name && (
+              <p className="text-xs text-slate-500 mb-2">
+                Tệp hiện tại: <strong>{editingAssignment.attachment_file_name}</strong>
+              </p>
+            )}
+            <Upload
+              beforeUpload={(file) => {
+                setAssignmentAttachmentList([file]);
+                return false;
+              }}
+              fileList={assignmentAttachmentList}
+              onRemove={() => setAssignmentAttachmentList([])}
+              maxCount={1}
+            >
+              <Button icon={<PaperClipOutlined />} className="rounded-xl">
+                Thay thế tập tin đề bài mới
+              </Button>
+            </Upload>
+          </Form.Item>
 
-          <div className="flex items-center justify-between pt-4 border-t mt-4">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
             <Button
               onClick={() => {
                 setIsEditAssignmentModalOpen(false);
                 setEditingAssignment(null);
                 setAssignmentAttachmentList([]);
-                setQuestions([]);
-                setActiveQuestionIdx(0);
                 editAssignmentForm.resetFields();
               }}
               className="rounded-xl"
@@ -2345,64 +1435,12 @@ export const CourseDetailPage: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* CSV Question Import Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 text-emerald-600 font-bold">
-            <FileExcelOutlined />
-            <span>Nhập Câu Hỏi Từ Tệp CSV</span>
-          </div>
-        }
-        open={isCsvModalOpen}
-        onCancel={() => {
-          setIsCsvModalOpen(false);
-          setCsvFileList([]);
-        }}
-        footer={null}
-        destroyOnClose
-        centered
-        className="rounded-2xl overflow-hidden"
-      >
-        <div className="space-y-4 pt-2">
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs space-y-2 text-slate-600 dark:text-slate-400">
-            <div className="font-bold text-slate-800 dark:text-slate-200">Định dạng tiêu đề cột CSV hỗ trợ:</div>
-            <code className="block font-mono bg-slate-200 dark:bg-slate-800 p-2 rounded text-[11px] text-slate-800 dark:text-slate-200 overflow-x-auto">
-              question_type,question_text,points,expected_answer,option_1,option_2,option_3,option_4,correct_option
-            </code>
-            <ul className="list-disc pl-4 space-y-1">
-              <li><strong>question_type</strong>: MULTIPLE_CHOICE, ESSAY, SHORT_ANSWER</li>
-              <li><strong>correct_option</strong>: Số thứ tự đáp án đúng (1, 2, 3...)</li>
-              <li>Tự động nhận diện tới 50+ câu hỏi liên tiếp!</li>
-            </ul>
-          </div>
-
-          <div className="text-center py-4">
-            <Upload
-              accept=".csv"
-              beforeUpload={(file) => {
-                setCsvFileList([file]);
-                handleParseCsvFile(file);
-                return false;
-              }}
-              fileList={csvFileList}
-              onRemove={() => setCsvFileList([])}
-              maxCount={1}
-            >
-              <Button icon={<UploadOutlined />} loading={importingCsv} className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-semibold">
-                Chọn tệp CSV để tải lên
-              </Button>
-            </Upload>
-          </div>
-        </div>
-      </Modal>
-
-
       {/* View Assignment Detail, Checklist & Student Submission Modal */}
       <Modal
         title={
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <BookOutlined />
-            <span>Chi Tiết Bài Tập, Câu Hỏi &amp; Nộp Bài</span>
+            <span>Chi Tiết Bài Tập, Checklist &amp; Nộp Bài</span>
           </div>
         }
         open={isDetailAssignmentModalOpen}
@@ -2429,7 +1467,7 @@ export const CourseDetailPage: React.FC = () => {
           </Button>,
         ]}
         centered
-        width={840}
+        width={760}
         className="rounded-2xl overflow-hidden"
       >
         {viewingAssignment && (
@@ -2441,19 +1479,12 @@ export const CourseDetailPage: React.FC = () => {
                   {viewingAssignment.title}
                 </h3>
                 {getPriorityBadge(viewingAssignment.priority)}
-                {viewingAssignment.status === 'DRAFT' ? (
-                  <Tag color="volcano" className="rounded-full text-xs font-bold border-0">BẢN NHÁP</Tag>
-                ) : (
-                  <Tag color="green" className="rounded-full text-xs font-bold border-0">ĐÃ PHÁT HÀNH</Tag>
-                )}
+                <Tag color={viewingAssignment.status === 'ACTIVE' ? 'blue' : 'default'} className="rounded-full text-xs border-0 font-semibold">
+                  {viewingAssignment.status}
+                </Tag>
               </div>
 
               <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
-                {viewingAssignment.available_from && (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                    Bắt đầu: <strong>{new Date(viewingAssignment.available_from).toLocaleString('vi-VN')}</strong>
-                  </span>
-                )}
                 {viewingAssignment.due_date && (
                   <span>Deadline: <strong>{new Date(viewingAssignment.due_date).toLocaleString('vi-VN')}</strong></span>
                 )}
@@ -2612,7 +1643,7 @@ export const CourseDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
-            </div>
+            )}
 
             {/* Checklist Section */}
             <div className="space-y-4">
@@ -2667,457 +1698,125 @@ export const CourseDetailPage: React.FC = () => {
                     const isEditing = editingChecklistId === chk.id;
                     const isToggling = togglingChecklistId === chk.id;
 
-                  if (isGraded) {
                     return (
-                      <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900 border-emerald-950' : 'bg-emerald-50/70 border-emerald-200'} space-y-3`}>
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs font-bold border-0">
-                              ĐÃ CHẤM ĐIỂM (GRADED)
-                            </Tag>
-                            <span className="text-xs text-slate-500">
-                              Nộp lúc: {mySubmission?.submitted_at ? new Date(mySubmission.submitted_at).toLocaleString('vi-VN') : '---'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-baseline gap-1 font-mono">
-                            <span className="text-xs font-semibold uppercase text-slate-500">Score:</span>
-                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                              {mySubmission?.score}
-                            </span>
-                            <span className="text-sm font-bold text-slate-400">
-                              / {viewingAssignment.total_points || 0} điểm
-                            </span>
-                          </div>
-                        </div>
-
-                        {genFb && (
-                          <div className="pt-2 border-t border-emerald-200 dark:border-emerald-900/50 space-y-1">
-                            <span className="text-xs font-extrabold uppercase text-emerald-700 dark:text-emerald-300 block">
-                              Nhận xét tổng quan của Giảng viên (Instructor Feedback):
-                            </span>
-                            <p className="m-0 text-xs leading-relaxed text-slate-800 dark:text-slate-200 font-medium italic bg-white dark:bg-slate-950 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900">
-                              &quot;{genFb}&quot;
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  if (isSub) {
-                    return (
-                      <div className={`p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-3 ${isDark ? 'bg-slate-900 border-indigo-950' : 'bg-indigo-50/60 border-indigo-200'
-                        }`}>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Tag color="processing" icon={<ClockCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs font-bold border-0">
-                              ĐÃ NỘP BÀI (SUBMITTED)
-                            </Tag>
-                            <span className="text-xs text-slate-500 font-mono">
-                              {mySubmission?.submitted_at ? new Date(mySubmission.submitted_at).toLocaleString('vi-VN') : '---'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 m-0">
-                            Bài làm đã được nộp và khóa chỉnh sửa. Nếu muốn sửa lại, vui lòng bấm <strong>&quot;Undo Turn In&quot; (Hủy Nộp Bài)</strong>.
-                          </p>
-                        </div>
-
-                        <Popconfirm
-                          title="Hủy Nộp Bài (Undo Turn In)?"
-                          description="Undoing your submission will allow you to edit your answers again. You will need to turn in the assignment again after making your changes."
-                          onConfirm={handleUndoTurnIn}
-                          okText="Hủy Nộp Bài"
-                          cancelText="Hủy"
-                          okButtonProps={{ danger: true, loading: undoingTurnIn, className: 'rounded-xl' }}
-                        >
-                          <Button
-                            type="default"
-                            icon={<SyncOutlined />}
-                            loading={undoingTurnIn}
-                            className="rounded-xl border-indigo-400 text-indigo-600 hover:bg-indigo-50 font-semibold text-xs shrink-0"
-                          >
-                            Undo Turn In (Hủy Nộp Bài)
-                          </Button>
-                        </Popconfirm>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className={`p-4 rounded-2xl border flex items-center justify-between flex-wrap gap-3 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
-                      }`}>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Tag color="default" className="rounded-full px-3 py-0.5 text-xs font-semibold border-0 text-slate-500">
-                            CHƯA NỘP (NOT SUBMITTED)
-                          </Tag>
-                        </div>
-                        <p className="text-xs text-slate-500 m-0">
-                          Trả lời các câu hỏi ở Tab 2 hoặc tải lên file bài làm ở Tab 3, sau đó bấm <strong>&quot;Turn In&quot; (Nộp Bài)</strong>.
-                        </p>
-                      </div>
-
-                      <Button
-                        type="primary"
-                        icon={<SendOutlined />}
-                        loading={submittingSolution}
-                        onClick={handleStudentSubmitAssignment}
-                        className="rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs shrink-0"
+                      <div
+                        key={chk.id}
+                        className={`p-3.5 rounded-xl border flex items-start justify-between gap-3 transition-all ${
+                          chk.completed
+                            ? isDark ? 'bg-emerald-950/20 border-emerald-800/40' : 'bg-emerald-50/60 border-emerald-200'
+                            : isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+                        }`}
                       >
-                        Turn In (Nộp Bài)
-                      </Button>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            <Tabs
-              activeKey={viewingAssignmentTab}
-              onChange={(k) => setViewingAssignmentTab(k)}
-              items={[
-                {
-                  key: 'overview',
-                  label: '1. Mô tả & Hướng dẫn',
-                  children: (
-                    <div className="space-y-4 pt-2">
-                      <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                        <h4 className="text-xs font-semibold uppercase text-slate-400 m-0 mb-1">Hướng dẫn chi tiết</h4>
-                        <p className="text-sm leading-relaxed m-0 text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                          {viewingAssignment.description || 'Không có mô tả.'}
-                        </p>
-
-                        {/* Reference Document Download */}
-                        {viewingAssignment.attachment_file_name && (
-                          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                              <PaperClipOutlined className="text-indigo-500" />
-                              <span>Tài liệu đề bài: <strong>{viewingAssignment.attachment_file_name}</strong></span>
-                            </span>
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<DownloadOutlined />}
-                              loading={downloadingAttachmentId === viewingAssignment.id}
-                              onClick={() => handleDownloadAssignmentAttachment(viewingAssignment.id, viewingAssignment.attachment_file_name!)}
-                              className="rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500"
-                            >
-                              Tải Đề Bài
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Derived Progress Bar */}
-                      <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-2`}>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-sm">Tiến độ hoàn thành:</span>
-                          <span className="font-mono font-bold text-lg text-indigo-600 dark:text-indigo-400">
-                            {viewingAssignment.progress_percentage || 0}% ({viewingAssignment.completed_checklist_count || 0}/{viewingAssignment.checklist_count || 0} mục)
-                          </span>
-                        </div>
-                        <Progress
-                          percent={viewingAssignment.progress_percentage || 0}
-                          strokeColor={{ '0%': '#818cf8', '100%': '#4f46e5' }}
-                        />
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'questions',
-                  label: `2. Câu hỏi trắc nghiệm & tự luận (${viewingAssignment.questions?.length || 0})`,
-                  children: (
-                    <div className="space-y-4 pt-2">
-                      {(() => {
-                        const isLocked = Boolean(
-                          mySubmission &&
-                          (mySubmission.status === 'submitted' ||
-                            mySubmission.status === 'SUBMITTED' ||
-                            mySubmission.status === 'graded' ||
-                            mySubmission.status === 'GRADED')
-                        );
-                        const isGraded = Boolean(
-                          mySubmission &&
-                          (mySubmission.score !== null && mySubmission.score !== undefined ||
-                            mySubmission.status === 'graded' ||
-                            mySubmission.status === 'GRADED')
-                        );
-
-                        let qScores: Record<string, number> = {};
-                        let qFbs: Record<string, string> = {};
-                        if (mySubmission?.feedback) {
-                          try {
-                            const p = JSON.parse(mySubmission.feedback);
-                            if (p.questionScores) qScores = p.questionScores;
-                            if (p.questionFeedbacks) qFbs = p.questionFeedbacks;
-                          } catch (e) { }
-                        }
-
-                        return viewingAssignment.questions && viewingAssignment.questions.length > 0 ? (
-                          <div className="space-y-4">
-                            {viewingAssignment.questions.map((q, idx) => (
-                              <div
-                                key={q.id || idx}
-                                className={`p-5 rounded-2xl border space-y-3 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                  <span className="font-bold text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                                    <span>Câu {idx + 1}:</span>
-                                    <Tag
-                                      color={
-                                        q.question_type === 'MULTIPLE_CHOICE'
-                                          ? 'blue'
-                                          : q.question_type === 'ESSAY'
-                                            ? 'purple'
-                                            : 'orange'
-                                      }
-                                      className="rounded-full text-[10px] font-semibold border-0"
-                                    >
-                                      {q.question_type === 'MULTIPLE_CHOICE'
-                                        ? 'Trắc nghiệm'
-                                        : q.question_type === 'ESSAY'
-                                          ? 'Tự luận'
-                                          : 'Trả lời ngắn'}
-                                    </Tag>
-                                  </span>
-
-                                  <div className="flex items-center gap-2">
-                                    {isGraded && (
-                                      <Tag color="emerald" className="rounded-full text-xs font-bold border-0 font-mono">
-                                        Score: {qScores[q.id] ?? 0} / {q.points}đ
-                                      </Tag>
-                                    )}
-                                    <Tag color="gold" className="rounded-full text-xs font-bold border-0">
-                                      {q.points} điểm
-                                    </Tag>
-                                  </div>
-                                </div>
-
-                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 m-0 leading-relaxed">
-                                  {q.question_text}
-                                </p>
-
-                                {q.question_type === 'MULTIPLE_CHOICE' && q.options && (
-                                  <Radio.Group
-                                    disabled={isLocked}
-                                    onChange={(e) => setStudentAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                                    value={studentAnswers[q.id]}
-                                    className="w-full space-y-2 pt-1"
-                                  >
-                                    <Space direction="vertical" className="w-full">
-                                      {q.options.map((opt) => (
-                                        <Radio key={opt.id} value={opt.id} className="text-sm">
-                                          {opt.option_text}
-                                        </Radio>
-                                      ))}
-                                    </Space>
-                                  </Radio.Group>
-                                )}
-
-                                {q.question_type === 'ESSAY' && (
-                                  <Input.TextArea
-                                    disabled={isLocked}
-                                    rows={4}
-                                    placeholder="Nhập câu trả lời tự luận của bạn vào đây..."
-                                    value={studentAnswers[q.id] || ''}
-                                    onChange={(e) => setStudentAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                                    className="rounded-xl"
-                                  />
-                                )}
-
-                                {q.question_type === 'SHORT_ANSWER' && (
-                                  <Input
-                                    disabled={isLocked}
-                                    placeholder="Nhập câu trả lời ngắn..."
-                                    value={studentAnswers[q.id] || ''}
-                                    onChange={(e) => setStudentAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                                    className="rounded-xl"
-                                  />
-                                )}
-
-                                {/* Individual Question Feedback from Instructor */}
-                                {isGraded && (
-                                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs space-y-1">
-                                    <span className="font-extrabold uppercase text-indigo-600 dark:text-indigo-400 block text-[10px]">
-                                      Nhận xét riêng cho câu này (Instructor Feedback):
-                                    </span>
-                                    <p className="m-0 text-slate-700 dark:text-slate-300 font-medium italic bg-indigo-50/50 dark:bg-indigo-950/40 p-2.5 rounded-xl">
-                                      {qFbs[q.id] || 'No feedback provided.'}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-
-                            {!isCourseOwner && !isLocked && (
-                              <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-                                <span className="text-xs text-slate-500">
-                                  Hoàn tất trả lời? Bạn có thể bấm Turn In trực tiếp tại đây.
-                                </span>
-                                <Button
-                                  type="primary"
-                                  icon={<SendOutlined />}
-                                  loading={submittingSolution}
-                                  onClick={handleStudentSubmitAssignment}
-                                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold"
-                                >
-                                  Turn In (Nộp Bài)
-                                </Button>
-                              </div>
-                            )}
+                        {isEditing ? (
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              value={editChecklistTitle}
+                              onChange={(e) => setEditChecklistTitle(e.target.value)}
+                              className="rounded-xl"
+                            />
+                            <Input
+                              value={editChecklistDesc}
+                              onChange={(e) => setEditChecklistDesc(e.target.value)}
+                              placeholder="Mô tả..."
+                              className="rounded-xl"
+                            />
+                            <div className="flex gap-2">
+                              <Button size="small" type="primary" onClick={() => handleUpdateChecklist(chk.id)}>Lưu</Button>
+                              <Button size="small" onClick={() => setEditingChecklistId(null)}>Hủy</Button>
+                            </div>
                           </div>
                         ) : (
-                          <Empty description={<span className="text-xs text-slate-400">Bài tập này chưa tạo danh sách câu hỏi.</span>} />
-                        );
-                      })()}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'submission',
-                  label: '3. Nộp bài tập',
-                  children: (
-                    <div className="pt-2">
-                      {!isCourseOwner && (
-                        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900 border-indigo-950/60' : 'bg-indigo-50/40 border-indigo-100'} space-y-4`}>
-                          {viewingAssignment.questions && viewingAssignment.questions.length > 0 && (
-                            <div className="p-3.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-700 dark:text-indigo-300">
-                              <strong>Lưu ý:</strong> Bài tập này có câu hỏi trắc nghiệm/tự luận. Nếu bạn đã hoàn thành ở Tab 2, bạn chỉ cần bấm <strong>&quot;Turn In&quot;</strong> mà không bắt buộc chọn file đính kèm hay ghi chú.
-                            </div>
-                          )}
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            {/* Student Checkbox */}
+                            <Checkbox
+                              checked={chk.completed}
+                              disabled={isCourseOwner || isToggling}
+                              onChange={(e) => handleToggleChecklistComplete(chk, e.target.checked)}
+                              className="mt-0.5 shrink-0"
+                            />
 
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-base m-0 text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                              <SendOutlined />
-                              <span>Nộp Bài Tập (Student Submission)</span>
-                            </h4>
-                            {mySubmission && (mySubmission.status === 'submitted' || mySubmission.status === 'SUBMITTED' || mySubmission.status === 'graded' || mySubmission.status === 'GRADED') ? (
-                              <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs border-0 font-bold">
-                                ĐÃ NỘP BÀI (SUBMITTED)
-                              </Tag>
-                            ) : (
-                              <Tag color="default" className="rounded-full px-3 py-0.5 text-xs border-0 font-semibold text-slate-500">
-                                CHƯA NỘP (NOT SUBMITTED)
-                              </Tag>
-                            )}
+                            <div className="min-w-0">
+                              <div className={`font-semibold text-sm ${chk.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                                {idx + 1}. {chk.title}
+                              </div>
+                              {chk.description && (
+                                <p className="text-xs text-slate-400 m-0 mt-0.5">{chk.description}</p>
+                              )}
+                              {chk.completed && chk.completed_at && (
+                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono block mt-1">
+                                  ✓ Hoàn thành lúc: {new Date(chk.completed_at).toLocaleString('vi-VN')}
+                                </span>
+                              )}
+                            </div>
                           </div>
+                        )}
 
-                          {loadingMySubmission ? (
-                            <Spin size="small" />
-                          ) : (
-                            <div className="space-y-3 text-xs">
-                              {mySubmission && (
-                                <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'} space-y-2`}>
-                                  <div className="flex items-center justify-between text-slate-500">
-                                    <span>Thời gian nộp: <strong>{mySubmission.submitted_at ? new Date(mySubmission.submitted_at).toLocaleString('vi-VN') : 'Mới nộp'}</strong></span>
-                                    {mySubmission.score !== null && mySubmission.score !== undefined && (
-                                      <span className="font-bold text-emerald-600 text-sm">Điểm: {mySubmission.score} / {viewingAssignment.total_points || 0}</span>
-                                    )}
-                                  </div>
-
-                                  {mySubmission.file_name && (
-                                    <div className="flex items-center justify-between pt-1">
-                                      <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                        <PaperClipOutlined className="text-indigo-500" />
-                                        <span>{mySubmission.file_name}</span>
-                                      </span>
-                                      <Button
-                                        type="dashed"
-                                        size="small"
-                                        icon={<DownloadOutlined />}
-                                        loading={downloadingSubmissionId === mySubmission.id}
-                                        onClick={() => handleDownloadSubmissionFile(mySubmission.id, mySubmission.file_name!)}
-                                        className="rounded-lg text-xs"
-                                      >
-                                        Tải Bài Đã Nộp
-                                      </Button>
-                                    </div>
-                                  )}
-
-                                  {mySubmission.submission_text && (
-                                    <p className="text-slate-600 dark:text-slate-400 m-0 pt-1 italic">
-                                      &quot;{mySubmission.submission_text}&quot;
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Submission Upload Controls (Disabled if turned in) */}
-                              {!(mySubmission && (mySubmission.status === 'submitted' || mySubmission.status === 'SUBMITTED' || mySubmission.status === 'graded' || mySubmission.status === 'GRADED')) && (
-                                <div className="space-y-3">
-                                  <div>
-                                    <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                                      {mySubmission ? 'Nộp tập tin bài làm mới (Tải đè)' : 'Tải lên tập tin bài làm (PDF, ZIP, DOCX, TXT...)'}
-                                    </span>
-                                    <Upload
-                                      beforeUpload={(file) => {
-                                        setSubmissionFileList([file]);
-                                        return false;
-                                      }}
-                                      fileList={submissionFileList}
-                                      onRemove={() => setSubmissionFileList([])}
-                                      maxCount={1}
-                                    >
-                                      <Button icon={<UploadOutlined />} className="rounded-xl">
-                                        Chọn tập tin bài làm
-                                      </Button>
-                                    </Upload>
-                                  </div>
-
-                                  <div>
-                                    <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                                      Ghi chú nộp bài / Lời nhắn cho giảng viên
-                                    </span>
-                                    <Input.TextArea
-                                      rows={2}
-                                      placeholder="Nhập ghi chú nộp bài..."
-                                      value={submissionNotes}
-                                      onChange={(e) => setSubmissionNotes(e.target.value)}
-                                      className="rounded-xl"
-                                    />
-                                  </div>
-
-                                  <div className="flex justify-end pt-1">
-                                    <Button
-                                      type="primary"
-                                      icon={<SendOutlined />}
-                                      loading={submittingSolution}
-                                      onClick={handleStudentSubmitAssignment}
-                                      className="rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold"
-                                    >
-                                      Turn In (Nộp Bài Tập)
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
+                        {/* Instructor Controls */}
+                        {isCourseOwner && !isEditing && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Tooltip title="Di chuyển lên">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<UpOutlined />}
+                                disabled={idx === 0}
+                                onClick={() => handleReorderChecklist(chk.id, 'up')}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Di chuyển xuống">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<DownOutlined />}
+                                disabled={idx === viewingAssignment.checklists!.length - 1}
+                                onClick={() => handleReorderChecklist(chk.id, 'down')}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Sửa">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={() => {
+                                  setEditingChecklistId(chk.id);
+                                  setEditChecklistTitle(chk.title);
+                                  setEditChecklistDesc(chk.description || '');
+                                }}
+                              />
+                            </Tooltip>
+                            <Popconfirm
+                              title="Xóa mục này?"
+                              onConfirm={() => handleDeleteChecklist(chk.id)}
+                              okText="Xóa"
+                              cancelText="Hủy"
+                              okButtonProps={{ danger: true }}
+                            >
+                              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                            </Popconfirm>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>
 
-      {/* Instructor Submissions Roster & Overview Modal */}
+      {/* Instructor Submissions Roster Modal */}
       <Modal
         title={
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <FolderOpenOutlined />
-            <span>Tổng Quan &amp; Danh Sách Bài Nộp Sinh Viên</span>
+            <span>Danh Sách Bài Nộp Sinh Viên</span>
           </div>
         }
         open={submissionsModalOpen}
         onCancel={() => {
           setSubmissionsModalOpen(false);
-          setSubmissionsOverview(null);
+          setAssignmentSubmissions([]);
           setSelectedAssignmentForSubmissions(null);
         }}
         footer={[
@@ -3126,117 +1825,23 @@ export const CourseDetailPage: React.FC = () => {
           </Button>,
         ]}
         centered
-        width={980}
+        width={760}
         className="rounded-2xl overflow-hidden"
       >
         {selectedAssignmentForSubmissions && (
-          <div className="mt-4 space-y-5">
-            {/* Header Assignment Overview Info */}
-            <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-3`}>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h4 className="font-extrabold text-lg m-0 text-slate-900 dark:text-white">
-                    {submissionsOverview?.assignment_title || selectedAssignmentForSubmissions.title}
-                  </h4>
-                  <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-0.5">
-                    Môn học: {submissionsOverview?.course_title || detail?.course.name}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap text-xs">
-                  {submissionsOverview?.due_date && (
-                    <Tag color="volcano" icon={<ClockCircleOutlined />} className="rounded-full font-semibold border-0">
-                      Deadline: {new Date(submissionsOverview.due_date).toLocaleString('vi-VN')}
-                    </Tag>
-                  )}
-                  <Tag color="indigo" className="rounded-full font-bold border-0">
-                    {submissionsOverview?.question_count || selectedAssignmentForSubmissions.question_count || 0} câu hỏi ({submissionsOverview?.total_points || selectedAssignmentForSubmissions.total_points || 0} điểm)
-                  </Tag>
-                </div>
-              </div>
-
-              {/* 5 Summary Stat Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
-                <div className={`p-3 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <span className="text-[11px] font-semibold text-slate-400 block uppercase">Tổng SV ghi danh</span>
-                  <span className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400">
-                    {submissionsOverview?.total_students || 0}
-                  </span>
-                </div>
-
-                <div className={`p-3 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-emerald-50/60 border-emerald-200'}`}>
-                  <span className="text-[11px] font-semibold text-emerald-600 block uppercase">Đã nộp bài</span>
-                  <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                    {submissionsOverview?.submitted_count || 0}
-                  </span>
-                </div>
-
-                <div className={`p-3 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-amber-50/60 border-amber-200'}`}>
-                  <span className="text-[11px] font-semibold text-amber-600 block uppercase">Nộp muộn (Late)</span>
-                  <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
-                    {submissionsOverview?.late_count || 0}
-                  </span>
-                </div>
-
-                <div className={`p-3 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-                  <span className="text-[11px] font-semibold text-slate-500 block uppercase">Chưa nộp</span>
-                  <span className="text-xl font-extrabold text-slate-600 dark:text-slate-400">
-                    {submissionsOverview?.not_submitted_count || 0}
-                  </span>
-                </div>
-
-                <div className={`p-3 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-purple-50/60 border-purple-200'}`}>
-                  <span className="text-[11px] font-semibold text-purple-600 block uppercase">Đã chấm / Chờ</span>
-                  <span className="text-xl font-extrabold text-purple-600 dark:text-purple-400">
-                    {submissionsOverview?.graded_count || 0} / {submissionsOverview?.pending_count || 0}
-                  </span>
-                </div>
-              </div>
+          <div className="mt-4 space-y-4">
+            <div className="border-b pb-3">
+              <h4 className="font-bold text-base m-0">{selectedAssignmentForSubmissions.title}</h4>
+              <p className="text-xs text-slate-400 m-0 mt-1">Tổng cộng {assignmentSubmissions.length} lượt nộp bài</p>
             </div>
 
-            {/* Search & Filter Controls */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <Input
-                placeholder="Tìm sinh viên theo tên hoặc email..."
-                prefix={<SearchOutlined className="text-slate-400" />}
-                value={submissionSearchQuery}
-                onChange={(e) => setSubmissionSearchQuery(e.target.value)}
-                allowClear
-                className="rounded-xl flex-1"
-              />
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <Select
-                  value={submissionStatusFilter}
-                  onChange={(val) => setSubmissionStatusFilter(val)}
-                  className="w-36 rounded-xl"
-                  title="Lọc trạng thái nộp bài"
-                >
-                  <Select.Option value="ALL">Tất cả nộp bài</Select.Option>
-                  <Select.Option value="Submitted">Đã nộp bài</Select.Option>
-                  <Select.Option value="Not Submitted">Chưa nộp bài</Select.Option>
-                  <Select.Option value="Late">Nộp muộn (Late)</Select.Option>
-                </Select>
-
-                <Select
-                  value={gradingStatusFilter}
-                  onChange={(val) => setGradingStatusFilter(val)}
-                  className="w-36 rounded-xl"
-                  title="Lọc trạng thái chấm điểm"
-                >
-                  <Select.Option value="ALL">Tất cả chấm điểm</Select.Option>
-                  <Select.Option value="Graded">Đã chấm điểm</Select.Option>
-                  <Select.Option value="Pending">Chờ chấm điểm</Select.Option>
-                </Select>
-              </div>
-            </div>
-
-            {/* Student Submission Table */}
             {loadingSubmissionsRoster ? (
               <div className="py-12 text-center">
                 <Spin />
-                <p className="text-xs text-slate-400 mt-2">Đang tải danh sách nộp bài sinh viên...</p>
+                <p className="text-xs text-slate-400 mt-2">Đang tải danh sách nộp bài...</p>
               </div>
+            ) : assignmentSubmissions.length === 0 ? (
+              <Empty description="Chưa có sinh viên nào nộp bài tập này." />
             ) : (
               <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
                 {assignmentSubmissions.map((sub) => (
@@ -3291,295 +1896,6 @@ export const CourseDetailPage: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-        )}
-      </Modal>
-
-      {/* Individual Student Submission & Grading Drawer/Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
-            <FileDoneOutlined />
-            <span>Chấm Bài &amp; Nhận Xét Sinh Viên</span>
-          </div>
-        }
-        open={isGradingDrawerOpen}
-        onCancel={() => {
-          setIsGradingDrawerOpen(false);
-          setSelectedSubmissionForGrading(null);
-        }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setIsGradingDrawerOpen(false);
-              setSelectedSubmissionForGrading(null);
-            }}
-            className="rounded-xl"
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={submittingGrade}
-            onClick={handleSaveGrade}
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
-          >
-            Lưu Điểm &amp; Nhận Xét
-          </Button>,
-        ]}
-        centered
-        width={880}
-        className="rounded-2xl overflow-hidden"
-      >
-        {selectedSubmissionForGrading && selectedAssignmentForSubmissions && (
-          <div className="mt-4 space-y-6 max-h-[70vh] overflow-y-auto pr-1">
-            {/* Header Student & Submission Info Card */}
-            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-3`}>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-3">
-                  <Avatar className="bg-indigo-600 text-white font-bold shrink-0">
-                    {(selectedSubmissionForGrading.student_name || 'S').charAt(0).toUpperCase()}
-                  </Avatar>
-                  <div>
-                    <h3 className="font-extrabold text-base m-0 text-slate-900 dark:text-white">
-                      {selectedSubmissionForGrading.student_name || 'Sinh viên'}
-                    </h3>
-                    <p className="text-xs text-slate-400 font-mono m-0">
-                      {selectedSubmissionForGrading.student_email}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  {selectedSubmissionForGrading.is_late || selectedSubmissionForGrading.student_status === 'Late' ? (
-                    <Tag color="orange" className="rounded-full px-3 py-0.5 text-xs font-bold border-0">
-                      NỘP MUỘN (LATE)
-                    </Tag>
-                  ) : selectedSubmissionForGrading.submitted_at ? (
-                    <Tag color="green" icon={<CheckCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs font-bold border-0">
-                      ĐÚNG HẠN (ON TIME)
-                    </Tag>
-                  ) : (
-                    <Tag color="default" className="rounded-full px-3 py-0.5 text-xs font-bold border-0">
-                      CHƯA NỘP
-                    </Tag>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs border-t border-slate-200 dark:border-slate-800">
-                <div>
-                  <span className="text-slate-400 uppercase font-semibold block mb-0.5">Bài tập</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{selectedAssignmentForSubmissions.title}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 uppercase font-semibold block mb-0.5">Thời gian nộp</span>
-                  <span className="font-mono text-slate-700 dark:text-slate-300">
-                    {selectedSubmissionForGrading.submitted_at
-                      ? new Date(selectedSubmissionForGrading.submitted_at).toLocaleString('vi-VN')
-                      : 'Chưa nộp bài'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Submission File Download Button */}
-              {selectedSubmissionForGrading.file_name && selectedSubmissionForGrading.has_file && (
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5 font-medium">
-                    <PaperClipOutlined className="text-indigo-500 text-base" />
-                    <span>File bài làm: <strong>{selectedSubmissionForGrading.file_name}</strong></span>
-                  </span>
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<DownloadOutlined />}
-                    loading={downloadingSubmissionId === selectedSubmissionForGrading.id}
-                    onClick={() => handleDownloadSubmissionFile(selectedSubmissionForGrading.id, selectedSubmissionForGrading.file_name!)}
-                    className="rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500 font-semibold"
-                  >
-                    Tải Bài Đã Nộp
-                  </Button>
-                </div>
-              )}
-
-              {/* Raw Submission Text / Notes from Student */}
-              {selectedSubmissionForGrading.submission_text && (
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="text-xs font-bold uppercase text-slate-500 block">
-                    Nội dung bài làm / Ghi chú nộp bài của Sinh viên:
-                  </span>
-                  <p className="m-0 text-xs text-slate-800 dark:text-slate-200 font-medium italic bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
-                    {selectedSubmissionForGrading.submission_text}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Total Score & Grading Status Banner */}
-            <div className={`p-4 rounded-2xl border flex items-center justify-between ${isDark ? 'bg-slate-900 border-indigo-950/80' : 'bg-indigo-50/70 border-indigo-200'
-              }`}>
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-indigo-600 text-white shrink-0">
-                  <FileDoneOutlined className="text-xl" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 uppercase block">Tổng điểm bài nộp</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                      {selectedAssignmentForSubmissions.questions
-                        ? selectedAssignmentForSubmissions.questions.reduce((acc, q) => acc + (questionScores[q.id] || 0), 0)
-                        : selectedSubmissionForGrading.score || 0}
-                    </span>
-                    <span className="text-sm font-bold text-slate-400 font-mono">
-                      / {selectedAssignmentForSubmissions.total_points || 0} điểm
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <Tag color="success" className="rounded-full px-3 py-1 text-xs font-bold border-0">
-                ĐANG CHẤM BÀI (GRADING)
-              </Tag>
-            </div>
-
-            {/* Question-by-Question Detailed Review & Grading */}
-            <div className="space-y-4">
-              <h4 className="font-extrabold text-base m-0 text-slate-900 dark:text-white flex items-center gap-2">
-                <BookOutlined className="text-indigo-500" />
-                <span>Chi Tiết Từng Câu Hỏi &amp; Chấm Điểm</span>
-              </h4>
-
-              {selectedAssignmentForSubmissions.questions && selectedAssignmentForSubmissions.questions.length > 0 ? (
-                <div className="space-y-4">
-                  {selectedAssignmentForSubmissions.questions.map((q, idx) => {
-                    const studentAnsMap = parseStudentAnswersFromSubmissionText(
-                      selectedSubmissionForGrading.submission_text || '',
-                      selectedAssignmentForSubmissions.questions || []
-                    );
-                    const studentAnsText = studentAnsMap[q.id] || 'Chưa trả lời';
-                    const isMCQ = q.question_type === 'MULTIPLE_CHOICE';
-                    const correctOpt = isMCQ && q.options ? q.options.find((opt) => opt.is_correct) : null;
-                    const isCorrect =
-                      isMCQ &&
-                      correctOpt &&
-                      (studentAnsText.toLowerCase().trim() === correctOpt.option_text.toLowerCase().trim() ||
-                        studentAnsText === correctOpt.id);
-
-                    return (
-                      <div
-                        key={q.id || idx}
-                        className={`p-5 rounded-2xl border space-y-3 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-                          }`}
-                      >
-                        {/* Question Header */}
-                        <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-100 dark:border-slate-800 pb-2">
-                          <span className="font-bold text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                            <span>Câu {idx + 1}:</span>
-                            <Tag
-                              color={q.question_type === 'MULTIPLE_CHOICE' ? 'blue' : q.question_type === 'ESSAY' ? 'purple' : 'orange'}
-                              className="rounded-full text-[10px] font-semibold border-0"
-                            >
-                              {q.question_type === 'MULTIPLE_CHOICE' ? 'Trắc nghiệm' : q.question_type === 'ESSAY' ? 'Tự luận' : 'Trả lời ngắn'}
-                            </Tag>
-                          </span>
-
-                          <div className="flex items-center gap-2">
-                            {isMCQ && (
-                              <Tag color={isCorrect ? 'success' : 'error'} className="rounded-full text-xs font-bold border-0">
-                                {isCorrect ? '✓ CHÍNH XÁC' : '✗ CHƯA ĐÚNG'}
-                              </Tag>
-                            )}
-                            <Tag color="gold" className="rounded-full text-xs font-bold border-0">
-                              Thang điểm: {q.points} điểm
-                            </Tag>
-                          </div>
-                        </div>
-
-                        {/* Question Text */}
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 m-0 leading-relaxed">
-                          {q.question_text}
-                        </p>
-
-                        {/* Answers Box */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                          {/* Student Answer */}
-                          <div className={`p-3 rounded-xl border text-xs space-y-1 ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                            }`}>
-                            <span className="font-bold text-slate-500 uppercase block text-[10px]">Câu trả lời của Sinh viên:</span>
-                            <p className="m-0 font-semibold text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
-                              {studentAnsText}
-                            </p>
-                          </div>
-
-                          {/* Correct Answer / Rubric */}
-                          <div className={`p-3 rounded-xl border text-xs space-y-1 ${isDark ? 'bg-emerald-950/20 border-emerald-800/40' : 'bg-emerald-50/60 border-emerald-200'
-                            }`}>
-                            <span className="font-bold text-emerald-600 block uppercase text-[10px]">
-                              {isMCQ ? 'Đáp án đúng chuẩn:' : 'Gợi ý đáp án / Rubric hướng dẫn:'}
-                            </span>
-                            <p className="m-0 font-semibold text-emerald-800 dark:text-emerald-200 whitespace-pre-wrap">
-                              {isMCQ ? (correctOpt ? correctOpt.option_text : 'Chưa thiết lập đáp án đúng') : (q.expected_answer || 'Không có rubric mẫu')}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Score Input & Question Feedback */}
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 items-start">
-                          <div className="sm:col-span-4 space-y-1">
-                            <label className="text-[11px] font-bold uppercase text-slate-500 block">
-                              Điểm cho câu này
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <InputNumber
-                                min={0}
-                                max={q.points}
-                                step={0.5}
-                                value={questionScores[q.id] ?? (isMCQ ? (isCorrect ? q.points : 0) : 0)}
-                                onChange={(val) => setQuestionScores((prev) => ({ ...prev, [q.id]: val || 0 }))}
-                                className="rounded-xl flex-1"
-                              />
-                              <span className="text-xs font-bold text-slate-400 font-mono">/ {q.points}đ</span>
-                            </div>
-                          </div>
-
-                          <div className="sm:col-span-8 space-y-1">
-                            <label className="text-[11px] font-bold uppercase text-slate-500 block">
-                              Nhận xét riêng cho câu hỏi này (Feedback)
-                            </label>
-                            <Input.TextArea
-                              rows={1}
-                              placeholder="Nhập ghi chú / góp ý chi tiết cho câu hỏi..."
-                              value={questionFeedbacks[q.id] || ''}
-                              onChange={(e) => setQuestionFeedbacks((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                              className="rounded-xl"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <Empty description="Bài tập này không có ngân hàng câu hỏi." />
-              )}
-
-              {/* General Submission Feedback */}
-              <div className="space-y-2 pt-2">
-                <label className="text-xs font-bold uppercase text-slate-500 block">
-                  Nhận xét &amp; Đánh giá tổng quan toàn bộ bài tập (General Instructor Feedback)
-                </label>
-                <Input.TextArea
-                  rows={3}
-                  placeholder="Nhập nhận xét tổng quan bài nộp dành cho sinh viên..."
-                  value={generalFeedback}
-                  onChange={(e) => setGeneralFeedback(e.target.value)}
-                  className="rounded-2xl"
-                />
-              </div>
-            </div>
           </div>
         )}
       </Modal>
