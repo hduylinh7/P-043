@@ -41,15 +41,13 @@ class AssignmentContextDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PersonalTaskContextDTO(BaseModel):
+class CourseMaterialContextDTO(BaseModel):
     id: str
+    course_id: str
+    course_name: str | None = None
     title: str
-    description: str | None = None
-    category: str = "STUDY"
-    priority: str = "MEDIUM"
-    status: str = "NOT_STARTED"
-    due_date: str | None = None
-    estimated_hours: float | None = None
+    file_name: str
+    material_type: str = "document"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -58,6 +56,16 @@ class PlanTaskContextDTO(BaseModel):
     id: str
     title: str
     description: str | None = None
+    topic: str | None = None
+    what_to_study: list[str] = Field(default_factory=list)
+    what_to_do: list[str] = Field(default_factory=list)
+    reason: str | None = None
+    material_id: str | None = None
+    material_title: str | None = None
+    course_id: str | None = None
+    course_name: str | None = None
+    goal_id: str | None = None
+    goal_title: str | None = None
     status: str = "todo"
     priority: str = "medium"
     scheduled_date: str | None = None
@@ -87,7 +95,8 @@ class PlannerContext(BaseModel):
     planning_period: PlanningPeriodDTO
     goals: list[GoalContextDTO] = Field(default_factory=list)
     assignments: list[AssignmentContextDTO] = Field(default_factory=list)
-    personal_tasks: list[PersonalTaskContextDTO] = Field(default_factory=list)
+    course_materials: list[CourseMaterialContextDTO] = Field(default_factory=list)
     current_weekly_plan: CurrentWeeklyPlanContextDTO | None = None
 
     model_config = ConfigDict(from_attributes=True)
+

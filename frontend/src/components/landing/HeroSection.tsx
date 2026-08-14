@@ -106,14 +106,14 @@ export const HeroSection: React.FC = () => {
             {/* Main Interactive Card */}
             <div className={`rounded-3xl border p-6 shadow-2xl relative backdrop-blur-xl ${
               themeMode === 'dark'
-                ? 'bg-slate-900/90 border-slate-800 shadow-indigo-950/30'
+                ? 'bg-slate-900/90 border-slate-800 shadow-emerald-950/30'
                 : 'bg-white/90 border-slate-200/80 shadow-slate-200'
             }`}>
               
               {/* Header inside mockup */}
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 rounded-full bg-minecraft-grass flex items-center justify-center text-white font-bold shadow-md">
                     <RobotOutlined className="text-xl" />
                   </div>
                   <div>
@@ -124,15 +124,15 @@ export const HeroSection: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Tag color="blue" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                <Tag color="green" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   GPT-4o Agent
                 </Tag>
               </div>
 
               {/* Chat simulation snippet */}
               <div className="space-y-4 text-xs font-sans mb-6">
-                <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3.5 rounded-2xl rounded-tl-none border border-indigo-100 dark:border-indigo-900/50">
-                  <p className="text-indigo-950 dark:text-indigo-200 m-0 leading-relaxed font-medium">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-2xl rounded-tl-none border border-emerald-100 dark:border-emerald-900/50">
+                  <p className="text-emerald-950 dark:text-emerald-200 m-0 leading-relaxed font-medium">
                     👋 Hello Linh! Based on your upcoming Machine Learning assignment, I generated a 3-step revision plan for today.
                   </p>
                 </div>
@@ -147,10 +147,10 @@ export const HeroSection: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
                 <div className="flex justify-between items-center text-xs mb-2">
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Weekly Learning Goal</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400">85% Completed</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">85% Completed</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full w-[85%]" />
+                  <div className="bg-minecraft-grass h-full rounded-full w-[85%]" />
                 </div>
               </div>
             </div>
@@ -176,8 +176,8 @@ export const HeroSection: React.FC = () => {
               animate={{ y: [0, 8, 0] }}
               transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
             >
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-                <ClockCircleOutlined className="text-lg text-indigo-500" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <ClockCircleOutlined className="text-lg text-emerald-500" />
               </div>
               <div>
                 <p className="text-xs text-slate-500 m-0 font-medium">Assignment Alert</p>

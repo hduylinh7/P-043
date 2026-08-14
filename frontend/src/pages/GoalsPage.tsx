@@ -263,9 +263,7 @@ export const GoalsPage: React.FC = () => {
         </div>
 
         {/* Filter & Sorting Controls */}
-        <div className={`p-4 rounded-2xl border-2 flex flex-wrap items-center gap-3 justify-between ${
-          isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-        }`}>
+        <div className="card-voxel-3d flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
               <FilterOutlined /> Lọc:
@@ -355,21 +353,17 @@ export const GoalsPage: React.FC = () => {
               const priorityInfo = PRIORITY_CONFIG[goal.priority] || PRIORITY_CONFIG.MEDIUM;
 
               return (
-                <Card
+                <div
                   key={goal.id}
-                  hoverable
-                  className={`rounded-2xl transition-all border ${
-                    isDark ? 'bg-slate-900/90 border-slate-800 hover:border-blue-500/50' : 'bg-white border-slate-200 shadow-sm hover:shadow-md'
-                  }`}
-                  bodyStyle={{ padding: '20px' }}
+                  className="card-voxel-3d flex flex-col h-full justify-between"
                 >
                   <div className="flex flex-col h-full justify-between space-y-4">
                     <div className="space-y-3">
                       {/* Category & Priority Badges */}
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <Tag className="rounded-full px-3 py-0.5 border-0 font-semibold text-xs flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60">
+                        <span className="badge-voxel-green text-xs">
                           {categoryInfo.icon} {categoryInfo.label}
-                        </Tag>
+                        </span>
                         <Tag color={priorityInfo.color} className="rounded-full px-2.5 py-0.5 text-xs font-bold border-0">
                           Ưu tiên {priorityInfo.label}
                         </Tag>
@@ -381,7 +375,7 @@ export const GoalsPage: React.FC = () => {
                           setViewingGoal(goal);
                           setIsDetailModalOpen(true);
                         }}
-                        className="font-bold text-base m-0 leading-snug cursor-pointer hover:text-blue-500 transition-colors line-clamp-2"
+                        className="font-bold text-base m-0 leading-snug cursor-pointer hover:text-emerald-500 transition-colors line-clamp-2"
                       >
                         {goal.title}
                       </h3>
@@ -397,7 +391,7 @@ export const GoalsPage: React.FC = () => {
                       <div className="text-xs text-slate-400 flex items-center gap-3 pt-1 flex-wrap">
                         {goal.target_date ? (
                           <span className="flex items-center gap-1">
-                            <CalendarOutlined className="text-blue-500" />
+                            <CalendarOutlined className="text-emerald-500" />
                             <span>Mục tiêu: {new Date(goal.target_date).toLocaleDateString('vi-VN')}</span>
                           </span>
                         ) : (
@@ -427,7 +421,7 @@ export const GoalsPage: React.FC = () => {
                           <Button
                             type="text"
                             size="small"
-                            icon={<EditOutlined className="text-slate-400 hover:text-blue-500" />}
+                            icon={<EditOutlined className="text-slate-400 hover:text-emerald-500" />}
                             onClick={() => handleOpenEdit(goal)}
                           />
                         </Tooltip>
@@ -450,7 +444,7 @@ export const GoalsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>
@@ -507,7 +501,7 @@ export const GoalsPage: React.FC = () => {
               <Button onClick={() => setIsCreateModalOpen(false)} className="rounded-xl">
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" loading={submitting} className="rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold">
+              <Button type="primary" htmlType="submit" loading={submitting} className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold">
                 Tạo Mục Tiêu
               </Button>
             </div>
@@ -575,7 +569,7 @@ export const GoalsPage: React.FC = () => {
               <Button onClick={() => setIsEditModalOpen(false)} className="rounded-xl">
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" loading={submitting} className="rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold">
+              <Button type="primary" htmlType="submit" loading={submitting} className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold">
                 Lưu Thay Đổi
               </Button>
             </div>
@@ -591,7 +585,7 @@ export const GoalsPage: React.FC = () => {
             <Button key="edit" onClick={() => { setIsDetailModalOpen(false); if (viewingGoal) handleOpenEdit(viewingGoal); }} className="rounded-xl">
               Chỉnh Sửa
             </Button>,
-            <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)} className="rounded-xl bg-blue-600">
+            <Button key="close" type="primary" onClick={() => setIsDetailModalOpen(false)} className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 text-white">
               Đóng
             </Button>,
           ]}
@@ -608,7 +602,7 @@ export const GoalsPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <Tag className="rounded-full px-3 py-0.5 font-semibold text-blue-500 bg-blue-50 border-0">
+                <Tag className="rounded-full px-3 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-0">
                   {CATEGORY_CONFIG[viewingGoal.category]?.label}
                 </Tag>
                 <Tag color={PRIORITY_CONFIG[viewingGoal.priority]?.color} className="rounded-full px-3 py-0.5 font-bold border-0">
@@ -637,11 +631,11 @@ export const GoalsPage: React.FC = () => {
 
               {/* Related information placeholder for future task linking & AI Planner */}
               <div className={`p-4 rounded-xl border border-dashed flex items-start gap-3 ${
-                isDark ? 'bg-blue-950/20 border-blue-800/60 text-blue-200' : 'bg-blue-50/60 border-blue-200 text-blue-900'
+                isDark ? 'bg-emerald-950/20 border-emerald-800/60 text-emerald-200' : 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
               }`}>
-                <RocketOutlined className="text-xl text-blue-500 shrink-0 mt-0.5" />
+                <RocketOutlined className="text-xl text-emerald-500 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <h5 className="font-bold text-xs m-0 flex items-center gap-1.5 text-blue-500">
+                  <h5 className="font-bold text-xs m-0 flex items-center gap-1.5 text-emerald-500">
                     <LinkOutlined /> Liên kết nhiệm vụ & AI Planner (Sắp ra mắt)
                   </h5>
                   <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 m-0">

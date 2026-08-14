@@ -4,10 +4,30 @@ from pydantic import BaseModel, ConfigDict, Field
 class PlannerAgentRequest(BaseModel):
     week_start: str | None = Field(
         default=None,
-        description="Optional start date of weekly plan (YYYY-MM-DD). Defaults to current week Monday.",
+        description="Optional start date of planning period (YYYY-MM-DD).",
+    )
+    start_date: str | None = Field(
+        default=None,
+        description="Optional explicit start date of planning period (YYYY-MM-DD).",
+    )
+    end_date: str | None = Field(
+        default=None,
+        description="Optional explicit end date of planning period (YYYY-MM-DD).",
+    )
+    days: int | None = Field(
+        default=None,
+        description="Optional duration in days for the study plan.",
+    )
+    assignment_id: str | None = Field(
+        default=None,
+        description="Optional target assignment ID to generate a focused study roadmap.",
+    )
+    assignment_ids: list[str] | None = Field(
+        default=None,
+        description="Optional list of target assignment IDs to include in planning.",
     )
     request: str | None = Field(
-        default="Tự động lập kế hoạch học tập tối ưu cho tuần này.",
+        default="Tự động lập kế hoạch học tập tối ưu.",
         description="Student prompt, goals, or instructions for the Planner Agent.",
     )
 

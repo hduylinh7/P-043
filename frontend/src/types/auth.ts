@@ -5,6 +5,9 @@ export interface User {
   is_active: boolean;
   is_verified?: boolean;
   roles?: string[];
+  avatar_url?: string;
+  account_tier?: string;
+  inventory_item?: string;
 }
 
 export interface AssignRolePayload {

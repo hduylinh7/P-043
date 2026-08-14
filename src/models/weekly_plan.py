@@ -9,6 +9,16 @@ TaskSourceType = Literal["ASSIGNMENT", "PERSONAL_TASK", "GOAL", "MANUAL"]
 class PlanTaskCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(default=None)
+    topic: str | None = Field(default=None)
+    what_to_study: list[str] = Field(default_factory=list)
+    what_to_do: list[str] = Field(default_factory=list)
+    reason: str | None = Field(default=None)
+    material_id: str | None = Field(default=None)
+    material_title: str | None = Field(default=None)
+    course_id: str | None = Field(default=None)
+    course_name: str | None = Field(default=None)
+    goal_id: str | None = Field(default=None)
+    goal_title: str | None = Field(default=None)
     priority: str = Field(default="medium")
     status: str = Field(default="todo")
     scheduled_date: datetime | str | None = Field(default=None)
@@ -18,11 +28,28 @@ class PlanTaskCreateRequest(BaseModel):
     source_type: str = Field(default="MANUAL")
     source_id: str | None = Field(default=None)
     assignment_id: str | None = Field(default=None)
+    started_at: datetime | str | None = Field(default=None)
+    completed_at: datetime | str | None = Field(default=None)
+    actual_duration: int | None = Field(default=None)
+    completed_activities: list[str] = Field(default_factory=list)
+    reflection_data: dict | None = Field(default=None)
+    ai_insight: str | None = Field(default=None)
+    suggested_next_focus: str | None = Field(default=None)
 
 
 class PlanTaskUpdateRequest(BaseModel):
     title: str | None = None
     description: str | None = None
+    topic: str | None = None
+    what_to_study: list[str] | None = None
+    what_to_do: list[str] | None = None
+    reason: str | None = None
+    material_id: str | None = None
+    material_title: str | None = None
+    course_id: str | None = None
+    course_name: str | None = None
+    goal_id: str | None = None
+    goal_title: str | None = None
     priority: str | None = None
     status: str | None = None
     scheduled_date: datetime | str | None = None
@@ -32,10 +59,25 @@ class PlanTaskUpdateRequest(BaseModel):
     source_type: str | None = None
     source_id: str | None = None
     assignment_id: str | None = None
+    started_at: datetime | str | None = None
+    completed_at: datetime | str | None = None
+    actual_duration: int | None = None
+    completed_activities: list[str] | None = None
+    reflection_data: dict | None = None
+    ai_insight: str | None = None
+    suggested_next_focus: str | None = None
 
 
 class PlanTaskStatusUpdateRequest(BaseModel):
     status: str = Field(..., description="New task status: todo, in_progress, completed, skipped")
+
+
+class PlanTaskReflectionRequest(BaseModel):
+    what_learned: str | None = Field(default=None, description="What did you learn today?")
+    understood_well: str | None = Field(default=None, description="What did you understand well?")
+    struggling_with: str | None = Field(default=None, description="What are you still struggling with?")
+    understanding_level: str | None = Field(default="mostly", description="not_understood, partially, mostly, fully")
+    achieved_goal: str | None = Field(default="yes", description="yes, partially, no")
 
 
 class PlanTaskResponse(BaseModel):
@@ -44,6 +86,16 @@ class PlanTaskResponse(BaseModel):
     assignment_id: str | None = None
     title: str
     description: str | None = None
+    topic: str | None = None
+    what_to_study: list[str] = Field(default_factory=list)
+    what_to_do: list[str] = Field(default_factory=list)
+    reason: str | None = None
+    material_id: str | None = None
+    material_title: str | None = None
+    course_id: str | None = None
+    course_name: str | None = None
+    goal_id: str | None = None
+    goal_title: str | None = None
     priority: str = "medium"
     status: str = "todo"
     scheduled_date: datetime | str | None = None
@@ -53,6 +105,13 @@ class PlanTaskResponse(BaseModel):
     estimated_minutes: int | None = None
     source_type: str = "MANUAL"
     source_id: str | None = None
+    started_at: datetime | str | None = None
+    completed_at: datetime | str | None = None
+    actual_duration: int | None = None
+    completed_activities: list[str] = Field(default_factory=list)
+    reflection_data: dict | None = None
+    ai_insight: str | None = None
+    suggested_next_focus: str | None = None
     created_at: datetime | str
     updated_at: datetime | str
 

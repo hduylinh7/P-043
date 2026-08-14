@@ -9,13 +9,13 @@ export const HowItWorksSection: React.FC = () => {
   const steps = [
     {
       number: '01',
-      icon: <UserAddOutlined className="text-2xl text-indigo-600 dark:text-indigo-400" />,
+      icon: <UserAddOutlined className="text-2xl text-emerald-600 dark:text-emerald-400" />,
       title: 'Create your account',
       description: 'Sign up in under 60 seconds with your email or Google account. Free for students.',
     },
     {
       number: '02',
-      icon: <SolutionOutlined className="text-2xl text-purple-600 dark:text-purple-400" />,
+      icon: <SolutionOutlined className="text-2xl text-amber-500 dark:text-amber-400" />,
       title: 'Set your learning goals',
       description: 'Input your courses, assignment deadlines, and desired GPA targets into your dashboard.',
     },
@@ -35,7 +35,7 @@ export const HowItWorksSection: React.FC = () => {
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3">
             SIMPLE WORKFLOW
           </h2>
           <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${

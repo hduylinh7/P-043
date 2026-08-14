@@ -111,6 +111,7 @@ async def chat(
                 "material_id": material_id,
                 "user_id": user_id,
                 "recent_messages": history_langchain_msgs,
+                "study_session_context": request.study_session_context,
             })
         else:
             result = await PersonalLearningCompanionAgent.run(
@@ -118,6 +119,7 @@ async def chat(
                 current_user=current_user,
                 query=request.message,
                 recent_messages=history_langchain_msgs,
+                study_session_context=request.study_session_context,
             )
 
         ai_response = result.get("response", "No response generated.")

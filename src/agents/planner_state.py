@@ -11,6 +11,10 @@ class PlannerAgentState(TypedDict, total=False):
     db: AsyncSession
     current_user: UserResponse
     week_start: str
+    week_end: str
+    start_date: str
+    end_date: str | None
+    assignment_id: str | None
     user_request: str
     context: PlannerContext | dict[str, Any]
     plan_decision: dict[str, Any]

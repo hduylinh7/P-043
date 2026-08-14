@@ -19,11 +19,15 @@ class MinIOStorageService(StorageService):
         self.settings = settings or get_settings()
         self.bucket_name = self.settings.s3_bucket
 
+        provider = self.settings.storage_provider.lower()
+        default_region = "auto" if provider == "r2" else "us-east-1"
+        region = self.settings.s3_region or default_region
+
         client_kwargs: dict[str, Any] = {
             "service_name": "s3",
             "aws_access_key_id": self.settings.s3_access_key,
             "aws_secret_access_key": self.settings.s3_secret_key,
-            "region_name": self.settings.s3_region or "us-east-1",
+            "region_name": region,
             "config": Config(s3={"addressing_style": "path"}),
         }
 
@@ -39,13 +43,14 @@ class MinIOStorageService(StorageService):
             self.client.head_bucket(Bucket=self.bucket_name)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
-            if error_code in ("404", "NoSuchBucket"):
+            if str(error_code) in ("404", "NoSuchBucket", "403"):
                 try:
-                    logger.info(f"Bucket {self.bucket_name} not found. Creating bucket...")
-                    if self.settings.s3_region and self.settings.s3_region != "us-east-1":
+                    logger.info(f"Bucket {self.bucket_name} check/creation attempting...")
+                    region = self.settings.s3_region
+                    if region and region not in ("us-east-1", "auto"):
                         self.client.create_bucket(
                             Bucket=self.bucket_name,
-                            CreateBucketConfiguration={"LocationConstraint": self.settings.s3_region},
+                            CreateBucketConfiguration={"LocationConstraint": region},
                         )
                     else:
                         self.client.create_bucket(Bucket=self.bucket_name)

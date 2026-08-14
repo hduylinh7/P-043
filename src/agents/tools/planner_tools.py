@@ -19,7 +19,11 @@ from src.models.weekly_plan import (
     WeeklyPlanCreateRequest,
     WeeklyPlanResponse,
 )
-from src.services.planner_context_builder import PlannerContextBuilder, parse_week_start
+from src.services.planner_context_builder import (
+    PlannerContextBuilder,
+    parse_date_val,
+    parse_week_start,
+)
 from src.services.weekly_plan_service import WeeklyPlanService, parse_datetime
 
 VALID_SOURCE_TYPES = {"ASSIGNMENT", "PERSONAL_TASK", "GOAL", "MANUAL"}
@@ -40,10 +44,18 @@ class PlannerTools:
         db: AsyncSession,
         current_user: UserResponse,
         week_start: str | date | datetime | None = None,
+        start_date: str | date | datetime | None = None,
+        end_date: str | date | datetime | None = None,
+        target_assignment_id: str | None = None,
     ) -> PlannerContext:
         """Fetch normalized Planner Context for the authenticated student."""
         return await PlannerContextBuilder.build_context(
-            db=db, current_user=current_user, week_start=week_start
+            db=db,
+            current_user=current_user,
+            week_start=week_start,
+            start_date_val=start_date,
+            end_date_val=end_date,
+            target_assignment_id=target_assignment_id,
         )
 
     @classmethod
@@ -83,20 +95,18 @@ class PlannerTools:
         week_start: str,
         title: str,
         description: str | None = None,
+        week_end: str | None = None,
     ) -> WeeklyPlanResponse:
-        """Create a new Weekly Plan for the authenticated student after verifying no duplicate exists."""
+        """Create a new Weekly Plan for the authenticated student or return existing if present."""
         cls._ensure_student(current_user)
         start_date = parse_week_start(week_start)
 
         # Check for duplicate plan for the same week
         existing = await cls.get_current_weekly_plan(db, current_user, week_start=start_date)
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Weekly plan already exists for week starting {start_date.strftime('%Y-%m-%d')}.",
-            )
+            return existing
 
-        end_date = start_date + timedelta(days=6)
+        end_date = parse_date_val(week_end) if week_end else (start_date + timedelta(days=6))
         payload = WeeklyPlanCreateRequest(
             title=title,
             description=description,
@@ -114,6 +124,16 @@ class PlannerTools:
         weekly_plan_id: str,
         title: str,
         description: str | None = None,
+        topic: str | None = None,
+        what_to_study: list[str] | None = None,
+        what_to_do: list[str] | None = None,
+        reason: str | None = None,
+        material_id: str | None = None,
+        material_title: str | None = None,
+        course_id: str | None = None,
+        course_name: str | None = None,
+        goal_id: str | None = None,
+        goal_title: str | None = None,
         scheduled_date: str | None = None,
         start_time: str | None = None,
         end_time: str | None = None,
@@ -122,23 +142,34 @@ class PlannerTools:
         source_type: str = "MANUAL",
         source_id: str | None = None,
     ) -> PlanTaskResponse:
-        """Create a task inside a Weekly Plan with full range, time, and source validation."""
+        """Create a study session task inside a Plan with full range, time, material, and source validation."""
         cls._ensure_student(current_user)
 
         # 1. Verify plan exists and belongs to current student
         plan = await WeeklyPlanService.get_weekly_plan_detail(db, weekly_plan_id, current_user)
 
-        # 2. Validate scheduled_date belongs to plan date range
+        # 2. Dynamically expand plan date range if scheduled_date falls outside current range
         if scheduled_date:
             sched_dt = parse_datetime(scheduled_date)
             plan_start = parse_datetime(plan.week_start_date)
-            plan_end = parse_datetime(plan.week_end_date) if plan.week_end_date else None
+            plan_end = parse_datetime(plan.week_end_date) if plan.week_end_date else plan_start
 
-            if sched_dt and plan_start and plan_end:
-                if not (plan_start.date() <= sched_dt.date() <= plan_end.date()):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"scheduled_date '{scheduled_date}' must fall within weekly plan period ({plan.week_start_date} to {plan.week_end_date}).",
+            if sched_dt and plan_start:
+                s_date = sched_dt.date()
+                p_s = plan_start.date()
+                p_e = plan_end.date() if plan_end else p_s
+
+                if s_date < p_s or s_date > p_e:
+                    new_s = min(p_s, s_date)
+                    new_e = max(p_e, s_date)
+                    await WeeklyPlanService.update_weekly_plan(
+                        db=db,
+                        plan_id=weekly_plan_id,
+                        payload=WeeklyPlanUpdateRequest(
+                            week_start_date=new_s.strftime("%Y-%m-%d"),
+                            week_end_date=new_e.strftime("%Y-%m-%d"),
+                        ),
+                        current_user=current_user,
                     )
 
         # 3. Validate time range (start_time < end_time)
@@ -180,6 +211,16 @@ class PlannerTools:
         payload = PlanTaskCreateRequest(
             title=title,
             description=description,
+            topic=topic,
+            what_to_study=what_to_study or [],
+            what_to_do=what_to_do or [],
+            reason=reason,
+            material_id=material_id,
+            material_title=material_title,
+            course_id=course_id,
+            course_name=course_name,
+            goal_id=goal_id or (source_id if clean_source_type == "GOAL" else None),
+            goal_title=goal_title,
             priority=normalize_priority(priority),
             status="todo",
             scheduled_date=scheduled_date,

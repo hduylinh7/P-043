@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -30,6 +31,12 @@ import {
   UserOutlined,
   FlagOutlined,
   RobotOutlined,
+  FileTextOutlined,
+  FolderOpenOutlined,
+  LinkOutlined,
+  QuestionCircleOutlined,
+  PlayCircleOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -42,6 +49,8 @@ import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
+import { courseService } from '../services/courseService';
+import { assignmentService } from '../services/assignmentService';
 import {
   PlanTask,
   PlannerAgentResponseResult,
@@ -195,6 +204,7 @@ export const WeeklyPlanPage: React.FC = () => {
   const { user } = useAuth();
   const { themeMode } = useTheme();
   const isDark = themeMode === 'dark';
+  const navigate = useNavigate();
 
   const isStudent = useMemo(() => {
     return !user?.roles || user.roles.includes('student') || user.roles.includes('admin');
@@ -224,6 +234,42 @@ export const WeeklyPlanPage: React.FC = () => {
   const [aiResultModalOpen, setAiResultModalOpen] = useState<boolean>(false);
   const [aiResultData, setAiResultData] = useState<PlannerAgentResponseResult | null>(null);
 
+  // Available Assignments for Roadmap Planning
+  const [availableAssignments, setAvailableAssignments] = useState<any[]>([]);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (isAIModalOpen && isStudent) {
+      const loadAssignments = async () => {
+        try {
+          const courses = await courseService.getStudentCourses();
+          const allAssignments: any[] = [];
+          for (const c of courses) {
+            try {
+              const list = await assignmentService.getCourseAssignments(c.id);
+              list.forEach((a: any) => {
+                allAssignments.push({
+                  ...a,
+                  course_name: c.name,
+                });
+              });
+            } catch (err) {
+              console.error(err);
+            }
+          }
+          setAvailableAssignments(allAssignments);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      loadAssignments();
+    }
+  }, [isAIModalOpen, isStudent]);
+
+  const selectedAssignment = useMemo(() => {
+    return availableAssignments.find((a) => a.id === selectedAssignmentId);
+  }, [availableAssignments, selectedAssignmentId]);
+
   // Active week date range
   const weekStart = useMemo(() => currentMonday.startOf('day'), [currentMonday]);
   const weekEnd = useMemo(() => currentMonday.add(6, 'day').endOf('day'), [currentMonday]);
@@ -233,21 +279,26 @@ export const WeeklyPlanPage: React.FC = () => {
   }, [currentMonday]);
 
   // Fetch Weekly Plans
-  const fetchWeeklyPlans = async () => {
+  const fetchWeeklyPlans = async (targetPlanId?: string) => {
     try {
       setLoading(true);
       const plans = await weeklyPlanService.getWeeklyPlans();
       setWeeklyPlans(plans);
 
-      // Find plan matching active week
-      const currentPlan = plans.find((p) => {
-        const pStart = dayjs(p.week_start_date);
-        return pStart.isSame(weekStart, 'day') || (pStart.isAfter(weekStart.subtract(1, 'day')) && pStart.isBefore(weekEnd));
-      });
+      let matchedPlan: WeeklyPlan | undefined;
+      if (targetPlanId) {
+        matchedPlan = plans.find((p) => p.id === targetPlanId);
+      }
+      if (!matchedPlan) {
+        matchedPlan = plans.find((p) => {
+          const pStart = dayjs(p.week_start_date);
+          return pStart.isSame(weekStart, 'day') || (pStart.isAfter(weekStart.subtract(1, 'day')) && pStart.isBefore(weekEnd));
+        }) || plans[0];
+      }
 
-      setActivePlan(currentPlan || null);
+      setActivePlan(matchedPlan || null);
     } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể tải Kế hoạch tuần');
+      message.error(err.response?.data?.detail || 'Không thể tải Kế hoạch học tập');
     } finally {
       setLoading(false);
     }
@@ -266,7 +317,7 @@ export const WeeklyPlanPage: React.FC = () => {
   const handleCreatePlan = async (values: any) => {
     try {
       const payload = {
-        title: values.title || `Kế hoạch tuần ${weekStart.format('DD/MM')} - ${weekEnd.format('DD/MM/YYYY')}`,
+        title: values.title || `Kế hoạch học tập ${weekStart.format('DD/MM')} - ${weekEnd.format('DD/MM/YYYY')}`,
         description: values.description,
         week_start_date: weekStart.toISOString(),
         week_end_date: weekEnd.toISOString(),
@@ -274,12 +325,12 @@ export const WeeklyPlanPage: React.FC = () => {
       };
 
       const newPlan = await weeklyPlanService.createWeeklyPlan(payload);
-      message.success('Tạo Kế hoạch tuần mới thành công!');
+      message.success('Tạo Kế hoạch học tập mới thành công!');
       setIsCreatePlanModalOpen(false);
       planForm.resetFields();
-      fetchWeeklyPlans();
+      fetchWeeklyPlans(newPlan.id);
     } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch tuần');
+      message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch học tập');
     }
   };
 
@@ -287,17 +338,23 @@ export const WeeklyPlanPage: React.FC = () => {
   const handleGenerateAIPlan = async () => {
     setIsGeneratingAI(true);
     try {
-      const payload = {
+      const payload: any = {
         week_start: weekStart.format('YYYY-MM-DD'),
+        start_date: dayjs().format('YYYY-MM-DD'),
+        assignment_id: selectedAssignmentId || undefined,
         request: aiPlanRequest.trim() || undefined,
       };
+      const targetDueDate = selectedAssignment?.due_date || selectedAssignment?.due_at;
+      if (targetDueDate) {
+        payload.end_date = dayjs(targetDueDate).format('YYYY-MM-DD');
+      }
       const res = await weeklyPlanService.generateAIPlan(payload);
-      message.success('Tạo Kế hoạch AI thành công!');
+      message.success('Tạo Study Plan AI thành công!');
       setAiResultData(res);
       setIsAIModalOpen(false);
       setAiResultModalOpen(true);
       setAiPlanRequest('');
-      fetchWeeklyPlans();
+      await fetchWeeklyPlans(res.weekly_plan_id || undefined);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch bằng AI. Vui lòng thử lại.');
     } finally {
@@ -430,6 +487,19 @@ export const WeeklyPlanPage: React.FC = () => {
     }
   };
 
+  // Start / Continue Study Session
+  const handleStartStudySession = async (task: PlanTask) => {
+    try {
+      if (task.status === 'todo' || task.status === 'TODO') {
+        await weeklyPlanService.startStudySession(task.id);
+      }
+      setDetailTask(null);
+      navigate(`/study-session/${task.id}`);
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Không thể bắt đầu buổi học');
+    }
+  };
+
   // Map Tasks by Day and Time
   const tasksByDay = useMemo(() => {
     const map: Record<number, PlanTask[]> = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
@@ -465,52 +535,42 @@ export const WeeklyPlanPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <CalendarOutlined className="text-emerald-500 text-2xl" />
                 <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Weekly Plan (Kế hoạch tuần)
+                  Study Plan (Kế hoạch học tập)
                 </h1>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Lên lịch biểu cá nhân, quản lý nhiệm vụ và thời gian biểu trong tuần
+                Lập kế hoạch học tập cá nhân hóa được cá nhân hóa từ Bài tập, Tài liệu môn học và Mục tiêu cá nhân
               </p>
             </div>
 
             {/* Week Navigation Header */}
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-                }`}>
-                <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevWeek} title="Tuần trước" />
-                <span className="font-semibold text-sm px-2">
+            <div className="flex items-center gap-2 overflow-x-auto shrink-0 pb-1 max-w-full">
+              <div className="card-voxel-3d flex items-center gap-1 py-1 px-2.5 shrink-0">
+                <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevWeek} title="Khoảng trước" />
+                <span className="font-extrabold text-xs sm:text-sm px-1.5 whitespace-nowrap">
                   {weekStart.format('DD MMM')} - {weekEnd.format('DD MMM, YYYY')}
                 </span>
-                <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextWeek} title="Tuần sau" />
-                <Button type="text" size="small" onClick={handleToday} className="ml-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextWeek} title="Khoảng sau" />
+                <Button type="text" size="small" onClick={handleToday} className="ml-1 text-emerald-600 dark:text-emerald-400 font-extrabold">
                   Hôm nay
                 </Button>
               </div>
 
               {/* View Mode Toggle Button */}
-              <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-amber-900/5 border-amber-900/10'
-                }`}>
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => setViewMode('calendar')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar'
-                    ? 'bg-minecraft-grass text-white shadow-sm'
-                    : isDark
-                      ? 'text-slate-400 hover:text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  className={viewMode === 'calendar' ? 'tab-voxel-active text-xs py-1.5 px-3 shrink-0' : 'tab-voxel-inactive text-xs py-1.5 px-3 shrink-0'}
                 >
-                  <CalendarOutlined /> Calendar View
+                  <CalendarOutlined />
+                  <span>Calendar View</span>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list'
-                    ? 'bg-minecraft-grass text-white shadow-sm'
-                    : isDark
-                      ? 'text-slate-400 hover:text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  className={viewMode === 'list' ? 'tab-voxel-active text-xs py-1.5 px-3 shrink-0' : 'tab-voxel-inactive text-xs py-1.5 px-3 shrink-0'}
                 >
-                  <UnorderedListOutlined /> List View
+                  <UnorderedListOutlined />
+                  <span>List View</span>
                 </button>
               </div>
 
@@ -518,10 +578,10 @@ export const WeeklyPlanPage: React.FC = () => {
               {isStudent && (
                 <button
                   onClick={() => setIsAIModalOpen(true)}
-                  className="btn-voxel-gold text-xs px-4 py-2"
+                  className="btn-voxel-gold text-xs px-3.5 py-2 shrink-0 flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <RobotOutlined />
-                  <span>AI Plan My Week</span>
+                  <span>AI Lập Study Plan</span>
                 </button>
               )}
 
@@ -529,7 +589,7 @@ export const WeeklyPlanPage: React.FC = () => {
               {activePlan && (
                 <button
                   onClick={() => openTaskModal()}
-                  className="btn-voxel-green text-xs px-4 py-2"
+                  className="btn-voxel-green text-xs px-3.5 py-2 shrink-0 flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <PlusOutlined />
                   <span>Thêm nhiệm vụ</span>
@@ -584,34 +644,32 @@ export const WeeklyPlanPage: React.FC = () => {
               {viewMode === 'calendar' && (
                 <div className="space-y-3">
                   {/* Priority Legend Bar */}
-                  <div className={`flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-sm ${isDark ? 'bg-slate-900/80 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
-                    }`}>
-                    <div className="flex items-center gap-2 text-slate-400 font-bold">
-                      <FlagOutlined className="text-blue-500" />
+                  <div className="card-voxel-3d p-3 px-5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-slate-400 font-extrabold uppercase tracking-wider">
+                      <FlagOutlined className="text-emerald-500" />
                       <span>Phân loại cấp độ ưu tiên:</span>
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50"></span>
-                        <span className="text-rose-600 dark:text-rose-400 font-bold">Khẩn cấp (Urgent)</span>
+                    <div className="flex items-center gap-3 flex-wrap font-bold">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/15 border-2 border-rose-500/30 text-rose-700 dark:text-rose-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm"></span>
+                        <span>Khẩn cấp (Urgent)</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></span>
-                        <span className="text-amber-600 dark:text-amber-400 font-bold">Cao (High)</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border-2 border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></span>
+                        <span>Cao (High)</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></span>
-                        <span className="text-blue-600 dark:text-blue-400 font-bold">Trung bình (Medium)</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-500/15 border-2 border-blue-500/30 text-blue-700 dark:text-blue-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span>
+                        <span>Trung bình (Medium)</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Thấp (Low)</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>
+                        <span>Thấp (Low)</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`rounded-2xl border overflow-hidden shadow-xl ${isDark ? 'bg-[#0f0d1b] border-slate-800' : 'bg-white border-slate-200'
-                    }`}>
+                  <div className="card-voxel-3d p-0 overflow-hidden">
                     {/* Grid Header: Days of Week */}
                     <div className={`grid grid-cols-8 border-b text-center font-semibold text-xs tracking-wider uppercase sticky top-0 z-20 ${isDark ? 'bg-slate-900/90 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                       }`}>
@@ -770,41 +828,43 @@ export const WeeklyPlanPage: React.FC = () => {
                     return (
                       <div
                         key={dayIdx}
-                        className={`rounded-2xl border p-5 transition-all ${isDark
-                          ? 'bg-[#0f0d1b] border-slate-800'
-                          : 'bg-white border-slate-200 shadow-sm'
-                          } ${isToday ? 'ring-2 ring-blue-500/40' : ''}`}
+                        className={`card-voxel-3d space-y-4 ${
+                          isToday ? 'border-minecraft-grass shadow-voxel' : ''
+                        }`}
                       >
                         {/* Day Section Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-800/40 mb-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-base font-bold ${isToday ? 'text-blue-500' : isDark ? 'text-white' : 'text-slate-900'}`}>
-                              {DAY_NAMES_FULL[dayIdx]}
+                        <div className="flex items-center justify-between pb-3 border-b-2 border-slate-200 dark:border-minecraft-obsidianBorder">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-base font-extrabold flex items-center gap-2 ${isToday ? 'text-emerald-600 dark:text-emerald-400' : isDark ? 'text-white' : 'text-slate-900'}`}>
+                              📅 {DAY_NAMES_FULL[dayIdx]}
                             </span>
-                            <span className="text-xs text-slate-400 font-mono">
-                              ({day.format('DD/MM/YYYY')})
+                            <span className="badge-voxel-green text-xs font-mono font-extrabold">
+                              {day.format('DD/MM/YYYY')}
                             </span>
                             {isToday && (
-                              <Tag color="blue" className="rounded-full px-2 text-[10px]">Hôm nay</Tag>
+                              <span className="badge-voxel-green text-xs font-extrabold bg-minecraft-grass text-white border-minecraft-grassBorder">
+                                Hôm nay
+                              </span>
                             )}
                           </div>
 
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<PlusOutlined />}
+                          <button
+                            type="button"
                             onClick={() => openTaskModal(undefined, day)}
-                            className="text-blue-500 hover:text-blue-400 text-xs font-semibold"
+                            className="btn-voxel-green text-xs px-3.5 py-1.5 font-bold flex items-center gap-1.5"
                           >
-                            Thêm nhiệm vụ
-                          </Button>
+                            <PlusOutlined />
+                            <span>Thêm nhiệm vụ</span>
+                          </button>
                         </div>
 
                         {/* Task List under this Day */}
                         {dayTasks.length === 0 ? (
-                          <p className="text-xs text-slate-500 italic py-2">Chưa có nhiệm vụ nào cho ngày này.</p>
+                          <div className="py-6 text-center text-xs text-slate-400 font-medium italic">
+                            Chưa có nhiệm vụ nào được lên lịch cho ngày này.
+                          </div>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {dayTasks.map((task) => {
                               const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
                               const pKey = (task.priority || 'medium').toLowerCase();
@@ -815,54 +875,49 @@ export const WeeklyPlanPage: React.FC = () => {
                                 <div
                                   key={task.id}
                                   onClick={() => setDetailTask(task)}
-                                  className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-md overflow-hidden ${isCompleted
-                                      ? isDark
-                                        ? 'bg-slate-900/60 border-slate-800 opacity-60'
-                                        : 'bg-slate-100/90 border-slate-200 opacity-65'
-                                      : isDark
-                                        ? `${theme.cardBgDark} ${theme.borderDark} text-slate-100 ${theme.glowHover}`
-                                        : `${theme.cardBgLight} ${theme.borderLight} text-slate-900 ${theme.glowHover}`
-                                    }`}
+                                  className={`card-voxel-3d p-4 cursor-pointer transition-all hover:-translate-y-1 relative overflow-hidden ${
+                                    isCompleted ? 'opacity-65 line-through' : ''
+                                  }`}
                                 >
-                                  <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${isCompleted ? 'bg-slate-400/50' : theme.accentBorder}`} />
-                                  <div className="pl-2">
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div className="flex items-center gap-2">
+                                  <div className={`absolute top-0 bottom-0 left-0 w-2 ${isCompleted ? 'bg-slate-400' : theme.accentBorder}`} />
+                                  <div className="pl-2 space-y-2">
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <div className="flex items-center gap-2 min-w-0">
                                         <Button
                                           type="text"
                                           size="small"
-                                          icon={<CheckCircleOutlined className={isCompleted ? 'text-emerald-500' : 'text-slate-400'} />}
+                                          icon={<CheckCircleOutlined className={isCompleted ? 'text-emerald-500 text-base' : 'text-slate-400 text-base'} />}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleToggleTaskStatus(task);
                                           }}
                                         />
-                                        <h3 className={`font-bold text-sm truncate ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                                        <h3 className={`font-extrabold text-sm truncate m-0 ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                                           {task.title}
                                         </h3>
                                       </div>
 
-                                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText}`}>
+                                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-xl border-2 shrink-0 ${theme.badgeBg} ${theme.badgeText}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${theme.dotColor}`} />
                                         {theme.label}
                                       </span>
                                     </div>
 
                                     {task.description && (
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 pl-8">
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 m-0 pl-7 font-medium">
                                         {task.description}
                                       </p>
                                     )}
 
-                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-black/5 dark:border-white/5 pl-8">
-                                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-[11px] font-medium">
+                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200 dark:border-slate-800 pl-7">
+                                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-[11px] font-bold">
                                         <ClockCircleOutlined />
                                         <span>
-                                          {task.start_time || 'Chưa định thời gian'} {task.end_time ? `- ${task.end_time}` : ''}
+                                          {task.start_time || 'Chưa định giờ'} {task.end_time ? `- ${task.end_time}` : ''}
                                         </span>
                                       </div>
 
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400">
                                         {sourceConf.icon} {sourceConf.label.split(' ')[0]}
                                       </span>
                                     </div>
@@ -909,58 +964,83 @@ export const WeeklyPlanPage: React.FC = () => {
 
       {/* CREATE / EDIT TASK MODAL */}
       <Modal
-        title={editingTask ? 'Chỉnh sửa Nhiệm vụ' : 'Thêm Nhiệm vụ vào Kế hoạch'}
+        title={
+          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-extrabold text-base">
+            <PlusOutlined className="text-emerald-500" />
+            <span>{editingTask ? 'Chỉnh Sửa Nhiệm Vụ' : 'Thêm Nhiệm Vụ Vào Kế Hoạch'}</span>
+          </div>
+        }
         open={isTaskModalOpen}
         onCancel={() => setIsTaskModalOpen(false)}
-        onOk={() => taskForm.submit()}
-        okText={editingTask ? 'Lưu thay đổi' : 'Thêm Nhiệm vụ'}
-        cancelText="Hủy"
-        width={560}
+        footer={null}
+        destroyOnClose
+        centered
+        width={580}
+        className="rounded-2xl overflow-hidden"
       >
-        <Form form={taskForm} layout="vertical" onFinish={handleSaveTask} className="mt-4">
+        <Form form={taskForm} layout="vertical" onFinish={handleSaveTask} className="mt-2 space-y-2">
           <Form.Item
             name="title"
-            label="Tên Nhiệm vụ"
+            label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Tên Nhiệm vụ</span>}
             rules={[{ required: true, message: 'Vui lòng nhập tên nhiệm vụ' }]}
           >
-            <Input placeholder="Ví dụ: Luyện đề TOEIC, Viết API RAG..." />
+            <Input placeholder="Ví dụ: Luyện đề TOEIC, Viết API RAG..." className="rounded-xl border-2 p-2.5 font-medium text-sm" />
           </Form.Item>
 
-          <Form.Item name="description" label="Mô tả chi tiết">
-            <TextArea rows={2} placeholder="Nội dung cần thực hiện..." />
+          <Form.Item
+            name="description"
+            label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Mô tả chi tiết</span>}
+          >
+            <TextArea rows={2} placeholder="Nội dung cần thực hiện..." className="rounded-xl border-2 p-2.5 font-medium text-sm" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="scheduled_date"
-              label="Ngày thực hiện"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Ngày thực hiện</span>}
               rules={[{ required: true, message: 'Chọn ngày' }]}
             >
-              <DatePicker format="DD/MM/YYYY" className="w-full" />
+              <DatePicker format="DD/MM/YYYY" className="w-full rounded-xl border-2 p-2" />
             </Form.Item>
 
-            <Form.Item name="source_type" label="Nguồn nhiệm vụ (Task Source)">
-              <Select options={Object.entries(SOURCE_CONFIG).map(([key, val]) => ({ label: val.label, value: key }))} />
+            <Form.Item
+              name="source_type"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Nguồn nhiệm vụ (Source)</span>}
+            >
+              <Select options={Object.entries(SOURCE_CONFIG).map(([key, val]) => ({ label: val.label, value: key }))} size="large" className="rounded-xl" />
             </Form.Item>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Form.Item name="start_time" label="Giờ bắt đầu">
-              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} />
+            <Form.Item
+              name="start_time"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Giờ bắt đầu</span>}
+            >
+              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} size="large" />
             </Form.Item>
 
-            <Form.Item name="end_time" label="Giờ kết thúc">
-              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} />
+            <Form.Item
+              name="end_time"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Giờ kết thúc</span>}
+            >
+              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} size="large" />
             </Form.Item>
 
-            <Form.Item name="estimated_duration" label="Thời lượng (Phút)">
-              <InputNumber min={15} step={15} className="w-full" placeholder="60" />
+            <Form.Item
+              name="estimated_duration"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Thời lượng (Phút)</span>}
+            >
+              <InputNumber min={15} step={15} className="w-full" size="large" placeholder="60" />
             </Form.Item>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="priority" label="Độ ưu tiên">
+            <Form.Item
+              name="priority"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Độ ưu tiên</span>}
+            >
               <Select
+                size="large"
                 options={[
                   { label: 'Thấp (Low)', value: 'low' },
                   { label: 'Trung bình (Medium)', value: 'medium' },
@@ -970,8 +1050,12 @@ export const WeeklyPlanPage: React.FC = () => {
               />
             </Form.Item>
 
-            <Form.Item name="status" label="Trạng thái">
+            <Form.Item
+              name="status"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Trạng thái</span>}
+            >
               <Select
+                size="large"
                 options={[
                   { label: 'Cần làm (Todo)', value: 'todo' },
                   { label: 'Đang làm (In Progress)', value: 'in_progress' },
@@ -981,27 +1065,51 @@ export const WeeklyPlanPage: React.FC = () => {
               />
             </Form.Item>
           </div>
+
+          {/* 3D Voxel Footer Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsTaskModalOpen(false)}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={() => taskForm.submit()}
+              className="btn-voxel-green text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2"
+            >
+              <PlusOutlined />
+              <span>{editingTask ? 'Lưu Thay Đổi' : 'Thêm Nhiệm Vụ'}</span>
+            </button>
+          </div>
         </Form>
       </Modal>
 
-      {/* TASK DETAIL MODAL */}
+      {/* STUDY SESSION DETAIL MODAL */}
       {detailTask && (
         <Modal
           title={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pr-6">
               <Tag color={PRIORITY_CONFIG[detailTask.priority]?.color || 'blue'}>
                 {PRIORITY_CONFIG[detailTask.priority]?.label || detailTask.priority}
               </Tag>
-              <span className="font-bold text-base">{detailTask.title}</span>
+              <span className="font-extrabold text-base text-slate-900 dark:text-white truncate">
+                📖 {detailTask.topic || detailTask.title}
+              </span>
             </div>
           }
           open={!!detailTask}
           onCancel={() => setDetailTask(null)}
+          width={650}
+          centered
+          className="rounded-2xl overflow-hidden"
           footer={[
             <Popconfirm
               key="delete"
-              title="Xóa nhiệm vụ"
-              description="Bạn có chắc chắn muốn xóa nhiệm vụ này khỏi kế hoạch?"
+              title="Xóa buổi học này?"
+              description="Bạn có chắc chắn muốn xóa buổi học này khỏi Study Plan?"
               onConfirm={() => handleDeleteTask(detailTask.id)}
               okText="Xóa"
               cancelText="Hủy"
@@ -1014,113 +1122,322 @@ export const WeeklyPlanPage: React.FC = () => {
               Chỉnh sửa
             </Button>,
             <Button
-              key="toggle"
+              key="start-workspace"
               type="primary"
+              size="large"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleStartStudySession(detailTask)}
+              className="bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder font-extrabold px-6 rounded-xl shadow-md text-white"
+            >
+              {detailTask.status === 'in_progress' || detailTask.status === 'IN_PROGRESS'
+                ? '⚡ Tiếp tục Học tập (Workspace)'
+                : detailTask.status === 'completed' || detailTask.status === 'COMPLETED'
+                ? '🔍 Xem Workspace Buổi học'
+                : '▶ Start Study Session (Bắt đầu học)'}
+            </Button>,
+            <Button
+              key="toggle"
+              type="default"
               icon={<CheckCircleOutlined />}
               onClick={() => handleToggleTaskStatus(detailTask)}
-              className={detailTask.status === 'completed' || detailTask.status === 'COMPLETED' ? 'bg-amber-600' : 'bg-emerald-600'}
+              className="rounded-xl font-bold"
             >
-              {detailTask.status === 'completed' || detailTask.status === 'COMPLETED' ? 'Đánh dấu Cần làm' : 'Đánh dấu Hoàn thành'}
+              {detailTask.status === 'completed' || detailTask.status === 'COMPLETED'
+                ? 'Đánh dấu Chưa học'
+                : 'Đánh dấu Hoàn thành'}
             </Button>,
           ]}
         >
-          <div className="space-y-4 py-3">
-            {detailTask.description && (
-              <div>
-                <p className="text-xs text-slate-400 font-medium mb-1">Mô tả:</p>
-                <p className="text-sm bg-slate-800/30 p-3 rounded-lg border border-slate-700/40">
-                  {detailTask.description}
-                </p>
+          <div className="space-y-4 py-2 text-xs">
+            {/* Header info bar */}
+            <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
+              isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-amber-50/70 border-amber-200/60'
+            }`}>
+              <div className="flex items-center gap-2 font-mono font-bold text-slate-700 dark:text-slate-300">
+                <ClockCircleOutlined className="text-emerald-500" />
+                <span>
+                  {detailTask.scheduled_date ? dayjs(detailTask.scheduled_date).format('DD/MM/YYYY') : 'Chưa xếp ngày'}
+                  {' · '}
+                  {detailTask.start_time || '--:--'} – {detailTask.end_time || '--:--'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-400">Thời lượng dự kiến:</span>
+                <span className="font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  {detailTask.estimated_duration || detailTask.estimated_minutes || 60} phút
+                </span>
+              </div>
+            </div>
+
+            {/* Course & Topic */}
+            {detailTask.course_name && (
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <BookOutlined className="text-blue-500 text-base" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-blue-400 block">Khóa học / Mon học:</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white">{detailTask.course_name}</span>
+                  </div>
+                </div>
+                {detailTask.course_id && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<FolderOpenOutlined />}
+                    onClick={() => {
+                      setDetailTask(null);
+                      navigate(`/courses/${detailTask.course_id}`);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-500 font-semibold"
+                  >
+                    Xem Khóa học
+                  </Button>
+                )}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <p className="text-slate-400 font-medium">Thời gian scheduled:</p>
-                <p className="font-semibold mt-0.5">
-                  {detailTask.scheduled_date ? dayjs(detailTask.scheduled_date).format('DD/MM/YYYY') : 'Chưa định ngày'}{' '}
-                  ({detailTask.start_time || '--:--'} - {detailTask.end_time || '--:--'})
+            {/* What to study (Nội dung cần học) */}
+            {detailTask.what_to_study && detailTask.what_to_study.length > 0 && (
+              <div className="p-3.5 rounded-xl border bg-emerald-500/5 border-emerald-500/20 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs uppercase tracking-wider">
+                  <BookOutlined />
+                  <span>Nội dung cần học (What to study):</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 pl-1 text-slate-700 dark:text-slate-300 font-medium">
+                  {detailTask.what_to_study.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* What to do (Hoạt động cần làm) */}
+            {detailTask.what_to_do && detailTask.what_to_do.length > 0 && (
+              <div className="p-3.5 rounded-xl border bg-purple-500/5 border-purple-500/20 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-extrabold text-xs uppercase tracking-wider">
+                  <FileTextOutlined />
+                  <span>Hoạt động thực hiện (What to do):</span>
+                </div>
+                <div className="space-y-1 pl-1 text-slate-700 dark:text-slate-300 font-medium">
+                  {detailTask.what_to_do.map((act, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <span className="font-mono text-purple-500 font-bold shrink-0">{idx + 1}.</span>
+                      <span>{act.replace(/^\d+\.\s*/, '')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Course Material (Tài liệu học tập liên quan) */}
+            <div className="p-3.5 rounded-xl border bg-slate-500/5 border-slate-500/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-slate-400 font-extrabold text-xs uppercase tracking-wider">
+                  <FileTextOutlined className="text-amber-500" />
+                  <span>Tài liệu học tập (Course Material):</span>
+                </div>
+              </div>
+
+              {detailTask.material_title && detailTask.material_title !== "No matching course material was found." ? (
+                <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <span className="font-extrabold text-amber-700 dark:text-amber-300 text-xs truncate">
+                    📄 {detailTask.material_title}
+                  </span>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<LinkOutlined />}
+                    onClick={() => {
+                      setDetailTask(null);
+                      if (detailTask.course_id) {
+                        navigate(`/courses/${detailTask.course_id}`);
+                      } else {
+                        navigate('/courses');
+                      }
+                    }}
+                    className="bg-amber-600 hover:bg-amber-500 font-bold text-xs shrink-0"
+                  >
+                    Open Material
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg bg-slate-800/20 text-slate-400 italic text-xs">
+                  No matching course material was found.
+                </div>
+              )}
+            </div>
+
+            {/* Related Assignment & Goal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {detailTask.assignment_id && (
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-blue-400 block">Bài tập liên quan (Assignment):</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs truncate">
+                      {detailTask.title}
+                    </span>
+                    <Button
+                      type="default"
+                      size="small"
+                      icon={<LinkOutlined />}
+                      onClick={() => {
+                        setDetailTask(null);
+                        const cId = detailTask.course_id || 'all';
+                        navigate(`/courses/${cId}?assignment=${detailTask.assignment_id}`);
+                      }}
+                      className="text-xs font-bold shrink-0"
+                    >
+                      Open Assignment
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {detailTask.goal_title && (
+                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-purple-400 block">Mục tiêu cá nhân (Personal Goal):</span>
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs block truncate">
+                    🎯 {detailTask.goal_title}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Reason / Explanation */}
+            {detailTask.reason && (
+              <div className="p-3.5 rounded-xl border bg-blue-500/5 border-blue-500/20 space-y-1">
+                <div className="flex items-center gap-1.5 text-blue-500 font-extrabold text-xs uppercase tracking-wider">
+                  <QuestionCircleOutlined />
+                  <span>Tại sao đề xuất buổi học này (Why recommended):</span>
+                </div>
+                <p className="text-slate-700 dark:text-slate-300 font-medium m-0 leading-relaxed">
+                  {detailTask.reason}
                 </p>
               </div>
-
-              <div>
-                <p className="text-slate-400 font-medium">Thời lượng dự kiến:</p>
-                <p className="font-semibold mt-0.5">{detailTask.estimated_duration || detailTask.estimated_minutes || 60} phút</p>
-              </div>
-
-              <div>
-                <p className="text-slate-400 font-medium">Nguồn nhiệm vụ (Task Source):</p>
-                <Tag color={SOURCE_CONFIG[detailTask.source_type]?.color || 'blue'} className="mt-1">
-                  {SOURCE_CONFIG[detailTask.source_type]?.label || detailTask.source_type}
-                </Tag>
-              </div>
-
-              <div>
-                <p className="text-slate-400 font-medium">Trạng thái:</p>
-                <Tag color={detailTask.status === 'completed' || detailTask.status === 'COMPLETED' ? 'green' : 'gold'} className="mt-1">
-                  {detailTask.status}
-                </Tag>
-              </div>
-            </div>
+            )}
           </div>
         </Modal>
       )}
 
-      {/* AI PLAN MY WEEK REQUEST MODAL */}
+      {/* AI PLAN REQUEST MODAL */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-purple-500 font-bold text-lg">
-            <RobotOutlined className="text-xl" />
-            <span>AI Plan My Week (Tự động lập kế hoạch)</span>
+          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-extrabold text-base">
+            <RobotOutlined className="text-xl text-emerald-500" />
+            <span>AI Lập Study Plan Tự Động</span>
           </div>
         }
         open={isAIModalOpen}
         onCancel={() => !isGeneratingAI && setIsAIModalOpen(false)}
         footer={null}
         destroyOnClose
+        centered
+        width={540}
+        className="rounded-2xl overflow-hidden"
       >
         <div className="space-y-4 py-2">
-          <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs">
-            <span className="font-semibold text-purple-400">Khoảng thời gian lên lịch: </span>
-            <span className="font-bold text-slate-200">
-              {weekStart.format('DD/MM/YYYY')} - {weekEnd.format('DD/MM/YYYY')}
-            </span>
+          {/* Assignment Selector for Focused Study Roadmap */}
+          <div>
+            <label className={`block text-xs font-extrabold mb-1.5 uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              🎯 Chọn Bài tập để lập Lộ trình học tập (Tùy chọn):
+            </label>
+            <Select
+              allowClear
+              placeholder="Chọn bài tập cần lên lộ trình (Ví dụ: Assignment 2...)"
+              size="large"
+              value={selectedAssignmentId}
+              onChange={(val) => setSelectedAssignmentId(val)}
+              className="w-full"
+              options={availableAssignments.map((a) => {
+                const aDue = a.due_date || a.due_at;
+                return {
+                  label: `📚 [${a.course_name || 'Môn học'}] ${a.title} ${aDue ? `(Deadline: ${dayjs(aDue).format('DD/MM/YYYY')})` : ''}`,
+                  value: a.id,
+                };
+              })}
+            />
+          </div>
+
+          <div className={`p-4 rounded-2xl border-2 space-y-1 ${
+            isDark
+              ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100'
+              : 'bg-emerald-50/80 border-minecraft-grassBorder text-slate-900 shadow-sm'
+          }`}>
+            <div className="flex items-center justify-between text-sm flex-wrap gap-2">
+              <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Khoảng thời gian lập lộ trình:</span>
+              <span className="badge-voxel-green text-xs font-extrabold px-3 py-1">
+                📅 {selectedAssignment && (selectedAssignment.due_date || selectedAssignment.due_at)
+                  ? `Hôm nay (${dayjs().format('DD/MM')}) ➔ Deadline (${dayjs(selectedAssignment.due_date || selectedAssignment.due_at).format('DD/MM/YYYY')})`
+                  : `Tự động linh hoạt theo Hạn nộp Bài tập (Từ hôm nay ${dayjs().format('DD/MM')})`
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Quick preset suggestions */}
+          <div>
+            <label className={`block text-xs font-extrabold mb-1.5 uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Gợi ý yêu cầu nhanh:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'Chuẩn bị làm bài tập trong 5 ngày tới',
+                'Lên kế hoạch học tập 2 tuần tới',
+                'Tập trung ôn tập theo Mục tiêu cá nhân',
+                'Lập lịch học chuẩn bị cho kỳ thi sắp tới',
+              ].map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setAiPlanRequest(preset)}
+                  className="text-xs font-medium px-3 py-1 rounded-xl border bg-black/5 dark:bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors"
+                >
+                  ✨ {preset}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1 text-slate-300">
-              Bạn muốn tập trung vào điều gì tuần này? (Tùy chọn)
+            <label className={`block text-xs font-extrabold mb-1.5 uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Nhu cầu học tập của bạn (Tùy chỉnh):
             </label>
             <TextArea
               rows={4}
               value={aiPlanRequest}
               onChange={(e) => setAiPlanRequest(e.target.value)}
-              placeholder="Ví dụ: Tuần này mình có bài tập môn Python sắp tới hạn, hãy ưu tiên giúp mình xếp lịch làm bài tập và chuẩn bị trước 2 ngày..."
+              placeholder="Ví dụ: Giúp mình chuẩn bị bài tập môn Machine Learning trong 5 ngày tới, đối chiếu bài giảng liên quan..."
               disabled={isGeneratingAI}
+              className="rounded-2xl border-2 font-medium p-3 text-sm focus:border-minecraft-grassBorder shadow-sm"
             />
           </div>
 
           {isGeneratingAI && (
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
+            <div className="p-4 rounded-2xl bg-emerald-500/15 border-2 border-minecraft-grassBorder flex items-center gap-3">
               <Spin size="small" />
-              <span className="text-xs font-medium text-blue-400">
-                🤖 AI đang phân tích bài tập, mục tiêu và xếp lịch tự động cho bạn...
+              <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+                🤖 AI đang phân tích bài tập, tài liệu môn học và tự động lập Study Plan cho bạn...
               </span>
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button onClick={() => setIsAIModalOpen(false)} disabled={isGeneratingAI}>
-              Hủy
-            </Button>
-            <Button
-              type="primary"
-              loading={isGeneratingAI}
-              onClick={handleGenerateAIPlan}
-              className="bg-purple-600 hover:bg-purple-500 rounded-xl font-semibold border-none"
+          <div className="flex justify-end gap-3 pt-3 border-t">
+            <button
+              onClick={() => setIsAIModalOpen(false)}
+              disabled={isGeneratingAI}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             >
-              Tạo Kế Hoạch AI
-            </Button>
+              Hủy
+            </button>
+            <button
+              type="button"
+              disabled={isGeneratingAI}
+              onClick={handleGenerateAIPlan}
+              className="btn-voxel-gold text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2"
+            >
+              <RobotOutlined />
+              <span>Tạo Study Plan AI</span>
+            </button>
           </div>
         </div>
       </Modal>

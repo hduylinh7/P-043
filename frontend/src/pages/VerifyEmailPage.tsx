@@ -155,10 +155,10 @@ export const VerifyEmailPage: React.FC = () => {
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
           isDark
-            ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
-            : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+            ? 'bg-rose-950/60 border-rose-800/80 text-rose-200'
+            : 'bg-rose-50 border-rose-200 text-rose-800'
         }`}>
-          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -263,7 +263,7 @@ export const VerifyEmailPage: React.FC = () => {
               type="button"
               onClick={handleResend}
               disabled={cooldown > 0 || isResending}
-              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:text-slate-400 flex items-center gap-1.5 transition-colors"
+              className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline disabled:text-slate-400 flex items-center gap-1.5 transition-colors"
             >
               {isResending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

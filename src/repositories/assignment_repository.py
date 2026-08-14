@@ -131,12 +131,26 @@ class AssignmentRepository:
                 round((completed_checklists / total_checklists) * 100) if total_checklists > 0 else 0
             )
 
+            sub_stmt = select(Submission).where(
+                (Submission.assignment_id == assignment.id)
+                & (Submission.student_id == student_id)
+            )
+            sub_res = await db.execute(sub_stmt)
+            sub_obj = sub_res.scalar_one_or_none()
+
             prog_stmt = select(StudentAssignmentProgress.progress_status).where(
                 (StudentAssignmentProgress.assignment_id == assignment.id)
                 & (StudentAssignmentProgress.student_id == student_id)
             )
             prog_res = await db.execute(prog_stmt)
-            status_val = prog_res.scalar_one_or_none() or "NOT_STARTED"
+            prog_val = prog_res.scalar_one_or_none()
+
+            if sub_obj and sub_obj.status in (SubmissionStatusEnum.SUBMITTED, SubmissionStatusEnum.GRADED, "SUBMITTED", "GRADED"):
+                status_val = "COMPLETED"
+            elif prog_val:
+                status_val = str(prog_val.value) if hasattr(prog_val, "value") else str(prog_val)
+            else:
+                status_val = "NOT_STARTED"
 
             items.append({
                 "assignment": assignment,
@@ -435,6 +449,24 @@ class AssignmentRepository:
             sub.status = SubmissionStatusEnum.SUBMITTED
             db.add(sub)
 
+        # Upsert StudentAssignmentProgress to COMPLETED
+        prog_stmt = select(StudentAssignmentProgress).where(
+            (StudentAssignmentProgress.assignment_id == assignment_id)
+            & (StudentAssignmentProgress.student_id == student_id)
+        )
+        prog_res = await db.execute(prog_stmt)
+        prog_obj = prog_res.scalar_one_or_none()
+        if not prog_obj:
+            prog_obj = StudentAssignmentProgress(
+                assignment_id=assignment_id,
+                student_id=student_id,
+                progress_status=ProgressStatusEnum.COMPLETED,
+            )
+            db.add(prog_obj)
+        else:
+            prog_obj.progress_status = ProgressStatusEnum.COMPLETED
+            db.add(prog_obj)
+
         await db.commit()
         await db.refresh(sub)
         return sub
@@ -456,6 +488,17 @@ class AssignmentRepository:
         if sub.status == SubmissionStatusEnum.SUBMITTED:
             sub.status = SubmissionStatusEnum.UNSUBMITTED
             db.add(sub)
+
+            prog_stmt = select(StudentAssignmentProgress).where(
+                (StudentAssignmentProgress.assignment_id == assignment_id)
+                & (StudentAssignmentProgress.student_id == student_id)
+            )
+            prog_res = await db.execute(prog_stmt)
+            prog_obj = prog_res.scalar_one_or_none()
+            if prog_obj:
+                prog_obj.progress_status = ProgressStatusEnum.IN_PROGRESS
+                db.add(prog_obj)
+
             await db.commit()
             await db.refresh(sub)
         return sub
@@ -730,6 +773,15 @@ class AssignmentRepository:
     async def delete_question(db: AsyncSession, question: AssignmentQuestion) -> None:
         await db.delete(question)
         await db.commit()
+
+    @staticmethod
+    async def delete_questions_by_assignment(db: AsyncSession, assignment_id: str) -> None:
+        stmt = select(AssignmentQuestion).where(AssignmentQuestion.assignment_id == assignment_id)
+        res = await db.execute(stmt)
+        questions = list(res.scalars().all())
+        for q in questions:
+            await db.delete(q)
+        await db.flush()
 
     @staticmethod
     async def reorder_questions(db: AsyncSession, items: list[dict]) -> None:

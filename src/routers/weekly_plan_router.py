@@ -7,6 +7,7 @@ from src.db.database import get_db
 from src.models.auth import UserResponse
 from src.models.weekly_plan import (
     PlanTaskCreateRequest,
+    PlanTaskReflectionRequest,
     PlanTaskResponse,
     PlanTaskStatusUpdateRequest,
     PlanTaskUpdateRequest,
@@ -93,6 +94,16 @@ async def create_weekly_plan_task(
     return await WeeklyPlanService.create_task(db, id, payload, current_user)
 
 
+@router.get("/tasks/{id}", response_model=PlanTaskResponse)
+async def get_task_by_id(
+    id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a task by ID."""
+    return await WeeklyPlanService.get_task_by_id(db, id, current_user)
+
+
 @router.put("/tasks/{id}", response_model=PlanTaskResponse)
 async def update_task(
     id: str,
@@ -123,3 +134,14 @@ async def update_task_status(
 ):
     """Update task status (todo, in_progress, completed, skipped)."""
     return await WeeklyPlanService.update_task_status(db, id, payload, current_user)
+
+
+@router.post("/tasks/{id}/reflection", response_model=PlanTaskResponse)
+async def save_task_reflection(
+    id: str,
+    payload: PlanTaskReflectionRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit study session reflection and generate AI learning insights."""
+    return await WeeklyPlanService.save_task_reflection(db, id, payload, current_user)

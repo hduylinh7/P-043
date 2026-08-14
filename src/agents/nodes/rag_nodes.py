@@ -100,7 +100,8 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
         "3. COURSE & ACADEMIC QUESTIONS: For factual or subject-matter questions about course topics, base your answer strictly on the provided course material context.\n"
         "4. ABSENCE OF CONTEXT: If an academic or course topic question cannot be answered using the provided course context, clearly state in the user's language that the uploaded course materials do not contain sufficient information to answer.\n"
         "5. NO FABRICATION: Do NOT invent, speculate, or fabricate academic facts not supported by the context.\n"
-        "6. TONE: Maintain an encouraging, clear, and academically supportive tone."
+        "6. ACADEMIC INTEGRITY: DO NOT solve or give final answers to graded homework/assignments. If asked for assignment answers, explain concepts, give hints, ask guiding questions, and provide similar examples to help the student learn.\n"
+        "7. TONE: Maintain an encouraging, clear, and academically supportive tone."
     )
 
 
@@ -135,10 +136,18 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
             response_text = str(ai_msg.content)
     except Exception as e:
         logger.error(f"Error calling LLM provider: {e}")
-        response_text = (
-            f"I encountered an issue generating a response. "
-            f"Please try again later. (Error: {e})"
-        )
+        err_str = str(e)
+        if "invalid_api_key" in err_str.lower() or "401" in err_str or "Invalid API Key" in err_str:
+            response_text = (
+                "GROQ_API_KEY chưa hợp lệ hoặc chưa được điền trong file .env!\n"
+                "👉 Bạn hãy truy cập https://console.groq.com/keys để tạo API Key miễn phí, sau đó dán vào file .env:\n"
+                "GROQ_API_KEY=gsk_..."
+            )
+        else:
+            response_text = (
+                f"I encountered an issue generating a response. "
+                f"Please try again later. (Error: {e})"
+            )
 
     return {
         "response": response_text,

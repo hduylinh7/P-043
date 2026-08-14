@@ -93,53 +93,78 @@ def parse_task_datetime_from_text(
 
 
 PLANNER_SYSTEM_PROMPT = """
-You are an expert AI Student Study Planner.
+You are an expert AI Student Study Planner for the Learning Companion.
 
 YOUR OBJECTIVE:
-Analyze the student's workload, goals, assignments, personal tasks, and current schedule, then create a realistic, balanced weekly study plan.
+Analyze the student's personal goals, enrolled courses, upcoming assignments, available course materials, and schedule, then generate a realistic, structured Study Plan.
+
+CRITICAL COURSE MATERIAL GROUNDING & NO-HALLUCINATION RULES:
+1. When recommending a study topic, inspect the provided `course_materials` list in the context.
+2. If a matching real course material exists for the topic, include its exact `material_id` and `material_title`.
+3. If NO matching course material can be found in `course_materials`, set `material_id: null` and `material_title: "No matching course material was found."`.
+4. NEVER invent or hallucinate fake lecture titles, book chapters, resource URLs, or course materials!
+
+STUDY SESSION DETAIL REQUIREMENTS:
+For EACH study session, provide:
+- `title`: Short title (e.g., "Random Forest Review")
+- `topic`: Topic name (e.g., "Random Forest")
+- `what_to_study`: List of specific concepts/items to review
+- `what_to_do`: Step-by-step actionable activities
+- `reason`: Clear explanation of why this session is recommended (e.g., upcoming deadline, supporting personal goal)
+- `course_id`: Real course ID from context
+- `course_name`: Course name
+- `material_id`: Matching material ID or null
+- `material_title`: Matching material title or "No matching course material was found."
+- `assignment_id`: Related assignment ID or null
+- `assignment_title`: Related assignment title or null
+- `goal_id`: Related Personal Goal ID or null
+- `goal_title`: Related Personal Goal title or null
 
 ACADEMIC INTEGRITY RULES:
 1. You are a PLANNING assistant only. You MUST NOT complete, write, or solve graded assignments directly.
-2. If the user asks you to "do my assignment" or "write my code", convert the request into study and preparation tasks (e.g., "Read assignment prompt", "Research concepts", "Draft solution", "Test code").
+2. If the user asks to "do my assignment", convert it into study and preparation sessions (e.g. "Review requirements", "Study lecture material", "Draft solution", "Self-test").
 
-CRITICAL EXPLICIT DATE & TIME CONSTRAINTS (STRICTLY ENFORCED):
-1. READ TITLES, DESCRIPTIONS, AND USER REQUESTS CAREFULLY FOR TIME/DAY MENTIONS:
-   If a task title, description, or student request specifies an explicit day of the week (e.g., "thứ 6", "thứ sáu", "thứ 2", "cuối tuần", "Saturday", "Friday") or an explicit time slot / period (e.g., "lúc 20h", "20:00", "buổi tối", "buổi chiều", "buổi sáng"):
-   - You MUST schedule that task on that EXACT requested day of the week and time period!
-   - Relative Mapping: "cuối tuần" / "weekend" = Saturday or Sunday. "buổi tối" = 20:00 - 21:30. "buổi chiều" = 14:00 - 15:30. "buổi sáng" = 09:00 - 10:30.
-   - Example: Task "Đi xem phim" with description "đi xem phim vào cuối tuần... muốn đi vào buổi tối" MUST be scheduled on Saturday ({week_start} + 5 days) at 20:00 - 21:30!
-2. WEEKDAY DATE MAPPING FOR THIS PLANNING PERIOD ({week_start} to {week_end}):
+DATE & TIME CONSTRAINTS:
+1. Check explicit day/time preferences in student request or assignment deadlines.
+2. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
-
-SCHEDULING & PRIORITY RULES:
-1. URGENT ASSIGNMENTS DUE SOON come first. Never schedule a task AFTER its assignment's due date.
-2. Respect explicit day/time preferences in task titles/descriptions before distributing unconstrained tasks.
-3. Break large tasks (e.g. > 2 hours) into smaller, manageable daily sessions across the week.
-4. Distribute unconstrained tasks across Monday to Sunday of the planning period ({week_start} to {week_end}).
-5. Ensure start_time is before end_time (e.g. "19:00" to "21:00").
-6. Do NOT overload a single day (max 3-4 intensive study tasks per day).
-7. priority MUST be strictly one of: "low", "medium", "high", "urgent" (do NOT use "critical" or other strings).
-8. NO TIME OVERLAPS / CONFLICTS: Tasks scheduled on the same date MUST NOT overlap in time slots. Ensure their time ranges do not intersect (e.g. Task 1: 08:00 - 10:00, Task 2: 10:00 - 12:00, Task 3: 14:00 - 16:00).
-9. If total workload exceeds available time, prioritize key items and list skipped items with explanations in warnings/skipped_items.
+3. priority MUST be strictly one of: "low", "medium", "high", "urgent".
+4. Ensure start_time < end_time (e.g. "19:00" to "20:30").
+5. Do NOT overlap sessions on the same day.
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
 {{
-  "plan_title": "Kế hoạch tuần {week_start}",
-  "summary": "Tóm tắt ngắn gọn kế hoạch...",
-  "warnings": ["Cảnh báo nếu khối lượng công việc quá nặng..."],
-  "skipped_items": [{{"title": "Mục bị hoãn", "reason": "Lý do..."}}],
+  "plan_title": "Kế hoạch học tập ({week_start} đến {week_end})",
+  "summary": "Tóm tắt ngắn gọn mục tiêu và định hướng kế hoạch...",
+  "warnings": ["Cảnh báo hoặc lưu ý..."],
+  "skipped_items": [{{"title": "Mục hoãn", "reason": "Lý do..."}}],
   "tasks": [
     {{
-      "title": "Tên nhiệm vụ",
-      "description": "Mô tả chi tiết...",
+      "title": "Random Forest Fundamentals",
+      "topic": "Random Forest",
+      "what_to_study": ["Decision Tree fundamentals", "Random Forest concept", "Ensemble learning"],
+      "what_to_do": [
+        "1. Ôn lại bài giảng liên quan",
+        "2. Xem các ví dụ minh họa",
+        "3. Tóm tắt sự khác biệt giữa Decision Tree và Random Forest"
+      ],
+      "reason": "Bài tập 'Classification Model' sắp tới hạn (19 Aug) và yêu cầu hiểu rõ Random Forest. Hỗ trợ mục tiêu 'Nâng cao Machine Learning'.",
+      "course_id": "course_uuid",
+      "course_name": "Machine Learning",
+      "material_id": "material_uuid_or_null",
+      "material_title": "Lecture 05 — Random Forest",
+      "assignment_id": "assignment_uuid_or_null",
+      "assignment_title": "Classification Model",
+      "goal_id": "goal_uuid_or_null",
+      "goal_title": "Nâng cao Machine Learning",
       "scheduled_date": "YYYY-MM-DD",
       "start_time": "19:00",
-      "end_time": "21:00",
+      "end_time": "20:30",
       "priority": "high",
-      "estimated_duration": 120,
+      "estimated_duration": 90,
       "source_type": "ASSIGNMENT",
-      "source_id": "optional_id"
+      "source_id": "assignment_uuid"
     }}
   ]
 }}
@@ -151,12 +176,23 @@ async def load_context_node(state: PlannerAgentState) -> dict[str, Any]:
     db = state["db"]
     current_user = state["current_user"]
     week_start = state.get("week_start")
+    start_date = state.get("start_date")
+    end_date = state.get("end_date")
+    target_assignment_id = state.get("assignment_id")
 
     try:
-        context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+        context = await PlannerTools.get_planner_context(
+            db,
+            current_user,
+            week_start=week_start,
+            start_date=start_date,
+            end_date=end_date,
+            target_assignment_id=target_assignment_id,
+        )
         return {
             "context": context,
             "week_start": context.planning_period.week_start,
+            "week_end": context.planning_period.week_end,
         }
     except Exception as e:
         logger.error(f"Error loading planner context: {e}")
@@ -169,16 +205,21 @@ async def analyze_and_decide_node(state: PlannerAgentState) -> dict[str, Any]:
         return {}
 
     context = state["context"]
-    user_request = state.get("user_request", "Tự động lập kế hoạch học tập tối ưu cho tuần này.")
+    user_request = state.get("user_request", "Tự động lập kế hoạch học tập tối ưu.")
 
     # Context formatting for prompt
     context_dict = context.model_dump() if hasattr(context, "model_dump") else context
     week_start = context_dict.get("planning_period", {}).get("week_start", state.get("week_start"))
-    week_end = context_dict.get("planning_period", {}).get("week_end")
+    week_end = context_dict.get("planning_period", {}).get("week_end", state.get("week_end"))
 
     start_dt = datetime.strptime(week_start, "%Y-%m-%d").date()
+    end_dt = datetime.strptime(week_end, "%Y-%m-%d").date() if week_end else start_dt + timedelta(days=6)
+    total_days = max(1, (end_dt - start_dt).days + 1)
     days_names = ["Monday (Thứ Hai)", "Tuesday (Thứ Ba)", "Wednesday (Thứ Tư)", "Thursday (Thứ Năm)", "Friday (Thứ Sáu)", "Saturday (Thứ Bảy)", "Sunday (Chủ Nhật)"]
-    mapping_str = "\n".join([f"- {days_names[i]}: {(start_dt + timedelta(days=i)).strftime('%Y-%m-%d')}" for i in range(7)])
+    mapping_str = "\n".join([
+        f"- {(start_dt + timedelta(days=i)).strftime('%Y-%m-%d')} ({days_names[(start_dt + timedelta(days=i)).weekday()]})"
+        for i in range(total_days)
+    ])
 
     system_prompt = PLANNER_SYSTEM_PROMPT.format(
         week_start=week_start,
@@ -190,7 +231,7 @@ async def analyze_and_decide_node(state: PlannerAgentState) -> dict[str, Any]:
 STUDENT REQUEST:
 {user_request}
 
-PLANNER CONTEXT:
+PLANNER CONTEXT (Real database context - Assignments, Courses, Goals, Materials):
 {json.dumps(context_dict, indent=2, ensure_ascii=False)}
 """
 
@@ -225,47 +266,39 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
     tasks = []
     skipped = []
 
-    # Map items from context into fallback tasks
     curr_date = datetime.strptime(week_start, "%Y-%m-%d").date()
+    materials = context_dict.get("course_materials", [])
 
     for idx, ass in enumerate(context_dict.get("assignments", [])):
-        target_day = curr_date + timedelta(days=idx % 5)  # Mon-Fri
+        target_day = curr_date + timedelta(days=idx % 5)
+        matched_mat = next((m for m in materials if m.get("course_id") == ass.get("course_id")), None)
+        mat_id = matched_mat.get("id") if matched_mat else None
+        mat_title = matched_mat.get("title") if matched_mat else "No matching course material was found."
+
         tasks.append({
-            "title": f"Học & Làm {ass.get('title')}",
-            "description": f"Bài tập môn {ass.get('course_name', '')}",
+            "title": f"Ôn tập & Chuẩn bị: {ass.get('title')}",
+            "topic": ass.get("title"),
+            "what_to_study": ["Xem lại kiến thức môn học", "Đọc yêu cầu bài tập"],
+            "what_to_do": ["1. Xem lại bài giảng liên quan", "2. Thực hành kiến thức", "3. Hoàn thành bài tập"],
+            "reason": f"Bài tập môn {ass.get('course_name', '')} sắp tới hạn ({ass.get('due_date', 'N/A')}).",
+            "course_id": ass.get("course_id"),
+            "course_name": ass.get("course_name"),
+            "material_id": mat_id,
+            "material_title": mat_title,
+            "assignment_id": ass.get("id"),
+            "assignment_title": ass.get("title"),
             "scheduled_date": target_day.strftime("%Y-%m-%d"),
             "start_time": "19:00",
-            "end_time": "21:00",
+            "end_time": "20:30",
             "priority": normalize_priority(ass.get("priority", "high")),
-            "estimated_duration": 120,
+            "estimated_duration": 90,
             "source_type": "ASSIGNMENT",
             "source_id": ass.get("id"),
         })
 
-    for idx, ptask in enumerate(context_dict.get("personal_tasks", [])):
-        p_title = ptask.get("title", "")
-        p_desc = ptask.get("description", "")
-        parsed_date, parsed_start, parsed_end = parse_task_datetime_from_text(p_title, p_desc, week_start)
-
-        target_day_str = parsed_date or (curr_date + timedelta(days=(idx + 2) % 7)).strftime("%Y-%m-%d")
-        start_time_str = parsed_start or "14:00"
-        end_time_str = parsed_end or "15:30"
-
-        tasks.append({
-            "title": p_title,
-            "description": p_desc,
-            "scheduled_date": target_day_str,
-            "start_time": start_time_str,
-            "end_time": end_time_str,
-            "priority": normalize_priority(ptask.get("priority", "medium")),
-            "estimated_duration": ptask.get("estimated_duration") or 90,
-            "source_type": "PERSONAL_TASK",
-            "source_id": ptask.get("id"),
-        })
-
     return {
-        "plan_title": f"Kế hoạch tuần {week_start}",
-        "summary": "Đã tự động lập kế hoạch tuần dựa trên danh sách bài tập và nhiệm vụ cá nhân.",
+        "plan_title": f"Kế hoạch học tập {week_start}",
+        "summary": "Đã tự động tạo kế hoạch học tập dựa trên bài tập và tài liệu môn học hiện có.",
         "warnings": [],
         "skipped_items": skipped,
         "tasks": tasks,
@@ -370,6 +403,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
     db = state["db"]
     current_user = state["current_user"]
     week_start = state["week_start"]
+    week_end = state.get("week_end")
     decision = state.get("plan_decision", {})
 
     created_tasks = []
@@ -377,25 +411,25 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
     skipped_items = list(decision.get("skipped_items", []))
     warnings = list(decision.get("warnings", []))
 
-    # 1. Fetch or create Weekly Plan
+    # 1. Fetch or create Plan
     try:
         plan = await PlannerTools.get_current_weekly_plan(db, current_user, week_start=week_start)
         if not plan:
-            plan_title = decision.get("plan_title", f"Kế hoạch tuần {week_start}")
+            plan_title = decision.get("plan_title", f"Kế hoạch học tập {week_start}")
             plan = await PlannerTools.create_weekly_plan(
-                db, current_user, week_start=week_start, title=plan_title
+                db, current_user, week_start=week_start, week_end=week_end, title=plan_title
             )
 
         weekly_plan_id = plan.id
     except Exception as e:
-        logger.error(f"Failed to get/create weekly plan in agent execution: {e}")
+        logger.error(f"Failed to get/create plan in agent execution: {e}")
         return {
-            "error": f"Failed to handle weekly plan: {e}",
+            "error": f"Failed to handle plan: {e}",
             "weekly_plan_id": None,
             "created_tasks": [],
             "updated_tasks": [],
             "skipped_items": skipped_items,
-            "warnings": [f"Lỗi tạo kế hoạch tuần: {e}"],
+            "warnings": [f"Lỗi tạo kế hoạch học tập: {e}"],
         }
 
     # 2. Track existing & newly scheduled tasks to avoid conflicts
@@ -443,8 +477,18 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
                 db=db,
                 current_user=current_user,
                 weekly_plan_id=weekly_plan_id,
-                title=task_data.get("title", "Nhiệm vụ mới"),
+                title=task_data.get("title", "Buổi học tập"),
                 description=task_data.get("description"),
+                topic=task_data.get("topic"),
+                what_to_study=task_data.get("what_to_study"),
+                what_to_do=task_data.get("what_to_do"),
+                reason=task_data.get("reason"),
+                material_id=task_data.get("material_id"),
+                material_title=task_data.get("material_title"),
+                course_id=task_data.get("course_id"),
+                course_name=task_data.get("course_name"),
+                goal_id=task_data.get("goal_id"),
+                goal_title=task_data.get("goal_title"),
                 scheduled_date=raw_date,
                 start_time=eff_start,
                 end_time=eff_end,
@@ -479,7 +523,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
         "updated_tasks": updated_tasks,
         "skipped_items": skipped_items,
         "warnings": warnings,
-        "summary": decision.get("summary", "Đã tạo thành công kế hoạch tuần."),
+        "summary": decision.get("summary", "Đã tạo thành công kế hoạch học tập."),
     }
 
 

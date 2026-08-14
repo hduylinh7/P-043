@@ -40,13 +40,20 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
 
   // Lookup helper to match entity name against authenticated student's data
   const matchEntity = (text: string) => {
-    const cleanText = text.trim();
-    if (!cleanText || !entityContext) return null;
+    if (!text || !entityContext) return null;
+    let cleanText = text.trim();
+    cleanText = cleanText.replace(/^["'“«»”]|["'“«»”]$/g, '').trim();
+    cleanText = cleanText.replace(/^(Bài tập|Khóa học|Môn học|Assignment|Course)\s+/i, '').replace(/^["'“«»”]|["'“«»”]$/g, '').trim();
+
+    if (!cleanText) return null;
 
     // 1. Check Assignments first (exact or case-insensitive title match)
     if (entityContext.assignments) {
       const foundAss = entityContext.assignments.find(
-        (a) => a.title.toLowerCase() === cleanText.toLowerCase()
+        (a) =>
+          a.title.toLowerCase() === cleanText.toLowerCase() ||
+          cleanText.toLowerCase().includes(a.title.toLowerCase()) ||
+          a.title.toLowerCase().includes(cleanText.toLowerCase())
       );
       if (foundAss) {
         return {
@@ -62,7 +69,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
       const foundCourse = entityContext.courses.find(
         (c) =>
           c.name.toLowerCase() === cleanText.toLowerCase() ||
-          (c.code && c.code.toLowerCase() === cleanText.toLowerCase())
+          (c.code && c.code.toLowerCase() === cleanText.toLowerCase()) ||
+          cleanText.toLowerCase().includes(c.name.toLowerCase())
       );
       if (foundCourse) {
         return {
@@ -76,7 +84,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
     // 3. Check Goals (title match)
     if (entityContext.goals) {
       const foundGoal = entityContext.goals.find(
-        (g) => g.title.toLowerCase() === cleanText.toLowerCase()
+        (g) =>
+          g.title.toLowerCase() === cleanText.toLowerCase() ||
+          cleanText.toLowerCase().includes(g.title.toLowerCase())
       );
       if (foundGoal) {
         return {
@@ -95,6 +105,45 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
       <ReactMarkdown
         components={{
           p: ({ children }) => <p className="m-0 mb-2 last:mb-0 leading-relaxed">{children}</p>,
+          a: ({ href, children }) => {
+            const linkStr = href || '';
+            const isInternal = linkStr.startsWith('/') || linkStr.includes('/courses/') || linkStr.includes('/goals');
+            let targetPath = linkStr;
+            if (linkStr.includes('/courses/')) {
+              targetPath = linkStr.substring(linkStr.indexOf('/courses/'));
+            } else if (linkStr.includes('/goals')) {
+              targetPath = linkStr.substring(linkStr.indexOf('/goals'));
+            }
+
+            if (isInternal) {
+              const isAssignment = targetPath.includes('assignment=') || targetPath.includes('assignmentId=');
+              return (
+                <Link
+                  to={targetPath}
+                  className={`font-bold px-2 py-0.5 rounded cursor-pointer transition-colors inline-flex items-center gap-1 border no-underline ${
+                    isAssignment
+                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800/80'
+                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/80 border-blue-200 dark:border-blue-800/80'
+                  }`}
+                  title="Bấm để xem chi tiết"
+                >
+                  <span>{children}</span>
+                  {isAssignment ? <ExportOutlined className="text-[10px] shrink-0" /> : <BookOutlined className="text-[10px] shrink-0" />}
+                </Link>
+              );
+            }
+
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-500 font-medium"
+              >
+                {children}
+              </a>
+            );
+          },
           strong: ({ children }) => {
             const rawStr = typeof children === 'string' ? children : String(children);
             const match = matchEntity(rawStr);

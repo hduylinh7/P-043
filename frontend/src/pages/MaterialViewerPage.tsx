@@ -52,6 +52,7 @@ export const MaterialViewerPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(true);
+  const [extractedContent, setExtractedContent] = useState<string | null>(null);
 
   // AI Assistant Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -78,6 +79,12 @@ export const MaterialViewerPage: React.FC = () => {
       const found = data.find((m) => m.id === materialId);
       if (found) {
         setCurrentMaterial(found);
+        try {
+          const res = await materialService.getMaterialContent(courseId, found.id);
+          setExtractedContent(res.content);
+        } catch (e) {
+          console.warn('Extracted text fetch failed:', e);
+        }
       } else {
         message.error('Không tìm thấy bài giảng.');
       }
@@ -246,9 +253,10 @@ export const MaterialViewerPage: React.FC = () => {
 
   const token = localStorage.getItem('access_token');
   const streamUrl = `/api/v1/courses/${courseId}/materials/${currentMaterial.id}/download?inline=true&token=${token}`;
-  const ext = currentMaterial.file_name.split('.').pop()?.toLowerCase();
+  const ext = currentMaterial.file_name.split('.').pop()?.toLowerCase() || '';
   const isPdf = ext === 'pdf';
-  const isImage = ['png', 'jpg', 'jpeg'].includes(ext || '');
+  const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
+  const isTextOrCode = ['txt', 'md', 'json', 'csv', 'py', 'js', 'ts', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'log', 'yaml', 'yml'].includes(ext);
 
   return (
     <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
@@ -286,7 +294,7 @@ export const MaterialViewerPage: React.FC = () => {
               icon={<DownloadOutlined />}
               loading={downloading}
               onClick={handleDownload}
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+              className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
             >
               Tải Xuống
             </Button>
@@ -297,7 +305,7 @@ export const MaterialViewerPage: React.FC = () => {
               onClick={() => setShowAiAssistant(!showAiAssistant)}
               className={`rounded-xl font-semibold ${
                 showAiAssistant
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-0 text-white'
+                  ? 'bg-minecraft-gold hover:bg-amber-500 text-slate-900 border-0'
                   : ''
               }`}
             >
@@ -324,16 +332,35 @@ export const MaterialViewerPage: React.FC = () => {
                   className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
                 />
               </div>
+            ) : (isTextOrCode || extractedContent) ? (
+              <div className="flex-1 p-6 overflow-auto font-sans leading-relaxed">
+                <div className={`p-6 rounded-2xl border shadow-sm max-w-4xl mx-auto space-y-4 ${
+                  isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+                }`}>
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <span className="font-extrabold text-xs uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                      <FileTextOutlined />
+                      <span>Nội dung bài giảng ({currentMaterial.file_name})</span>
+                    </span>
+                    <Button size="small" icon={<DownloadOutlined />} onClick={handleDownload}>
+                      Tải về máy
+                    </Button>
+                  </div>
+                  <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+                    <MarkdownRenderer content={extractedContent || 'Đang tải nội dung tệp...'} />
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
+                <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
                   <FileWordOutlined className="text-4xl" />
                 </div>
                 <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {currentMaterial.title}
                 </h3>
                 <p className="text-sm text-slate-400 max-w-md mb-6">
-                  Tập tin <span className="font-mono text-indigo-400">{currentMaterial.file_name}</span> hỗ trợ tải về máy để xem với ứng dụng chuyên dụng.
+                  Tập tin <span className="font-mono text-emerald-600 dark:text-emerald-400">{currentMaterial.file_name}</span> hỗ trợ tải về máy để xem hoặc đọc cùng AI Companion.
                 </p>
                 <Button
                   type="primary"
@@ -341,7 +368,7 @@ export const MaterialViewerPage: React.FC = () => {
                   icon={<DownloadOutlined />}
                   loading={downloading}
                   onClick={handleDownload}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold px-8"
+                  className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold px-8"
                 >
                   Tải Về Máy
                 </Button>
@@ -365,7 +392,7 @@ export const MaterialViewerPage: React.FC = () => {
                 isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'
               }`}>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+                  <div className="w-8 h-8 rounded-xl bg-minecraft-grass flex items-center justify-center text-white font-bold shadow-md">
                     <ThunderboltOutlined className="text-sm" />
                   </div>
                   <div>
@@ -391,7 +418,7 @@ export const MaterialViewerPage: React.FC = () => {
                       type="primary"
                       icon={<PlusOutlined />}
                       onClick={handleNewChatSession}
-                      className="rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500"
+                      className="rounded-lg text-xs bg-minecraft-grass hover:bg-emerald-600 text-white"
                     >
                       Mới
                     </Button>
@@ -413,7 +440,7 @@ export const MaterialViewerPage: React.FC = () => {
                     block
                     icon={<PlusOutlined />}
                     onClick={handleNewChatSession}
-                    className="mb-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl"
+                    className="mb-4 bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white rounded-xl"
                   >
                     Bắt đầu cuộc trò chuyện mới
                   </Button>
@@ -427,18 +454,18 @@ export const MaterialViewerPage: React.FC = () => {
                         onClick={() => switchSession(s.id)}
                         className={`w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
                           sessionId === s.id
-                            ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 font-semibold'
+                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 font-semibold'
                             : isDark
                             ? 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
                             : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <MessageOutlined className="text-indigo-400" />
+                          <MessageOutlined className="text-emerald-400" />
                           <span className="truncate">{s.title || 'Untitled Chat'}</span>
                         </div>
                         {sessionId === s.id && (
-                          <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                         )}
                       </button>
                     ))
@@ -473,8 +500,8 @@ export const MaterialViewerPage: React.FC = () => {
                     key={idx}
                     className={`flex items-start gap-2.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
                   >
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs text-white shrink-0 ${
-                      msg.sender === 'user' ? 'bg-indigo-600' : 'bg-purple-600'
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
+                      msg.sender === 'user' ? 'bg-minecraft-grass text-white' : 'bg-minecraft-gold text-slate-900 font-bold'
                     }`}>
                       {msg.sender === 'user' ? <UserOutlined /> : <RobotOutlined />}
                     </div>
@@ -482,7 +509,7 @@ export const MaterialViewerPage: React.FC = () => {
                       <div
                         className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
                           msg.sender === 'user'
-                            ? 'bg-indigo-600 text-white rounded-tr-none'
+                            ? 'bg-minecraft-grass text-white rounded-tr-none'
                             : isDark
                             ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
                             : 'bg-slate-100 text-slate-800 rounded-tl-none'
@@ -493,7 +520,7 @@ export const MaterialViewerPage: React.FC = () => {
 
                       {msg.sender === 'ai' && msg.sources && msg.sources.length > 0 && (
                         <div className="flex items-center gap-1 flex-wrap text-[10px] text-slate-400 pl-1">
-                          <span className="font-semibold text-indigo-400">📚 Tài liệu:</span>
+                          <span className="font-semibold text-emerald-400">📚 Tài liệu:</span>
                           {msg.sources.map((src, sIdx) => (
                             <span
                               key={sIdx}
@@ -510,7 +537,7 @@ export const MaterialViewerPage: React.FC = () => {
 
 
                 {aiThinking && (
-                  <div className="flex items-center gap-2 text-xs text-purple-400">
+                  <div className="flex items-center gap-2 text-xs text-amber-500">
                     <Spin size="small" />
                     <span>AI đang suy nghĩ...</span>
                   </div>
@@ -533,7 +560,7 @@ export const MaterialViewerPage: React.FC = () => {
                     icon={<SendOutlined />}
                     onClick={() => handleAskAi()}
                     size="large"
-                    className="rounded-xl bg-indigo-600 hover:bg-indigo-500"
+                    className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white"
                   />
                 </div>
               </div>

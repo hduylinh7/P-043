@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 import uuid
-from fastapi import BackgroundTasks, HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, HTTPException, UploadFile, status, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,7 @@ from src.repositories.material_repository import MaterialRepository
 from src.services.rag_service import RAGService
 from src.services.storage.base import StorageService
 from src.services.storage.factory import get_storage_service
+from src.services.storage.local_storage import LocalStorageService
 
 logger = logging.getLogger(__name__)
 
@@ -203,8 +204,8 @@ class MaterialService:
         current_user: UserResponse,
         inline: bool = False,
         storage_service: StorageService | None = None,
-    ) -> RedirectResponse:
-        """Generate presigned download URL and redirect (Instructor or Enrolled Student)."""
+    ) -> Response:
+        """Download or stream material file (Instructor or Enrolled Student)."""
         storage = storage_service or get_storage_service()
 
         material = await MaterialRepository.get_by_id(db, material_id)
@@ -240,17 +241,92 @@ class MaterialService:
             )
 
         try:
-            filename_arg = None if inline else material.file_name
-            presigned_url = await storage.generate_presigned_url(
-                material.object_key, filename=filename_arg
-            )
-            return RedirectResponse(url=presigned_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+            guessed_mime = mimetypes.guess_type(material.file_name)[0] or material.mime_type or "application/octet-stream"
+
+            # Check active storage (R2), fallback to local storage if file was uploaded before R2 setup
+            active_storage = storage
+            if not await storage.file_exists(material.object_key):
+                local_storage = LocalStorageService()
+                if await local_storage.file_exists(material.object_key):
+                    active_storage = local_storage
+
+            file_bytes = await active_storage.download_file(material.object_key)
+            disposition_type = "inline" if inline else "attachment"
+            headers = {
+                "Content-Disposition": f'{disposition_type}; filename="{material.file_name}"',
+                "Access-Control-Allow-Origin": "*",
+            }
+            return Response(content=file_bytes, media_type=guessed_mime, headers=headers)
         except Exception as e:
-            logger.error(f"Error generating presigned download URL for {material.id}: {e}")
+            logger.error(f"Error serving material file {material.id}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Không thể tạo liên kết tải tài liệu từ Object Storage.",
+                detail="Không thể tải nội dung tài liệu từ hệ thống lưu trữ.",
             )
+
+    @staticmethod
+    async def get_material_content(
+        db: AsyncSession,
+        course_id: str,
+        material_id: str,
+        current_user: UserResponse,
+        storage_service: StorageService | None = None,
+    ) -> dict:
+        """Extract and return plain text content of material (PDF, DOCX, PPTX, TXT, MD, Code, etc.)."""
+        storage = storage_service or get_storage_service()
+
+        material = await MaterialRepository.get_by_id(db, material_id)
+        if not material or material.course_id != course_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy tài liệu môn học.",
+            )
+
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy khóa học.",
+            )
+
+        is_instructor = ("instructor" in current_user.roles) or ("admin" in current_user.roles)
+        is_owner = (course.instructor_id == current_user.id) or (course.instructor_id is None and is_instructor)
+        is_enrolled = await CourseRepository.check_enrollment_exists(
+            db, student_id=current_user.id, course_id=course_id
+        )
+
+        if not is_instructor and not is_owner and not is_enrolled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn chưa đăng ký hoặc không có quyền xem tài liệu này.",
+            )
+
+        if not material.object_key:
+            return {"id": material.id, "title": material.title, "file_name": material.file_name, "content": ""}
+
+        try:
+            active_storage = storage
+            if not await storage.file_exists(material.object_key):
+                local_storage = LocalStorageService()
+                if await local_storage.file_exists(material.object_key):
+                    active_storage = local_storage
+
+            file_bytes = await active_storage.download_file(material.object_key)
+            text_content = RAGService._extract_text_from_bytes(
+                file_bytes=file_bytes,
+                file_name=material.file_name,
+                mime_type=material.mime_type or "",
+            )
+            return {
+                "id": material.id,
+                "title": material.title,
+                "file_name": material.file_name,
+                "mime_type": material.mime_type,
+                "content": text_content,
+            }
+        except Exception as e:
+            logger.error(f"Error extracting text content for material {material.id}: {e}")
+            return {"id": material.id, "title": material.title, "file_name": material.file_name, "content": f"Không thể trích xuất văn bản từ tệp này."}
 
     @staticmethod
     async def delete_material(
