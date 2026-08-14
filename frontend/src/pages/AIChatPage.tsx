@@ -285,22 +285,20 @@ export const AIChatPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden">
           {/* Left Session Drawer/Panel */}
           <div
-            className={`w-72 border-r flex flex-col shrink-0 transition-all ${
-              isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-100/60 border-slate-200'
+            className={`w-72 border-r-2 flex flex-col shrink-0 transition-all ${
+              isDark ? 'bg-slate-950/60 border-minecraft-obsidianBorder' : 'bg-slate-100/70 border-amber-900/10'
             }`}
           >
             {/* New Chat Button */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800/80 space-y-3">
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                block
-                size="large"
+            <div className="p-4 border-b-2 border-slate-200 dark:border-minecraft-obsidianBorder space-y-3">
+              <button
+                type="button"
                 onClick={handleCreateNewSession}
-                className="bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl shadow-md shadow-blue-500/20"
+                className="w-full btn-voxel-green py-3 text-sm rounded-xl font-bold flex items-center justify-center gap-2"
               >
-                Tạo Đoạn Chat Mới
-              </Button>
+                <PlusOutlined />
+                <span>Tạo Đoạn Chat Mới</span>
+              </button>
 
               <Input
                 prefix={<SearchOutlined className="text-slate-400" />}
@@ -309,12 +307,12 @@ export const AIChatPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 allowClear
                 size="small"
-                className="rounded-lg"
+                className="rounded-xl border-2 border-slate-200 dark:border-slate-800"
               />
             </div>
 
             {/* Sessions List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">
                 Lịch sử trò chuyện ({filteredSessions.length})
               </div>
@@ -333,18 +331,16 @@ export const AIChatPage: React.FC = () => {
                   return (
                     <motion.button
                       key={session.id}
-                      whileHover={{ x: 3 }}
+                      whileHover={{ x: 2 }}
                       onClick={() => handleSelectSession(session.id)}
-                      className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 text-xs font-medium ${
+                      className={
                         isActive
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                          : isDark
-                          ? 'hover:bg-slate-900 text-slate-300'
-                          : 'hover:bg-white text-slate-700'
-                      }`}
+                          ? 'tab-voxel-active text-xs w-full text-left justify-start'
+                          : 'tab-voxel-inactive text-xs w-full text-left justify-start'
+                      }
                     >
                       <MessageOutlined
-                        className={`text-sm shrink-0 ${isActive ? 'text-white' : 'text-blue-500'}`}
+                        className={`text-sm shrink-0 ${isActive ? 'text-emerald-700 dark:text-emerald-300' : 'text-emerald-500'}`}
                       />
                       <span className="truncate flex-1">{session.title || 'Trò chuyện RAG'}</span>
                     </motion.button>
@@ -379,39 +375,31 @@ export const AIChatPage: React.FC = () => {
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-voxel-sm border-2 ${
                           isUser
-                            ? 'bg-blue-600 text-white shadow-blue-500/20'
-                            : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-indigo-500/20'
+                            ? 'bg-minecraft-grass text-white border-minecraft-grassBorder font-extrabold'
+                            : 'bg-minecraft-gold text-slate-900 border-minecraft-goldBorder font-bold text-lg'
                         }`}
                       >
-                        {isUser ? <UserOutlined /> : <RobotOutlined className="text-lg" />}
+                        {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined />}
                       </div>
 
                       {/* Content Bubble */}
                       <div className={`space-y-3 max-w-[82%]`}>
                         <div
-                          className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                          className={
                             isUser
-                              ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-500/15'
-                              : isDark
-                              ? 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-none shadow-md'
-                              : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none shadow-sm'
-                          }`}
+                              ? 'p-5 rounded-2xl text-sm leading-relaxed border-2 border-minecraft-grassBorder bg-minecraft-grass text-white font-bold shadow-voxel-sm shadow-minecraft-grassBorder/40 rounded-tr-none'
+                              : 'card-voxel-3d p-5 rounded-2xl text-sm leading-relaxed rounded-tl-none font-sans'
+                          }
                         >
                           <p className="whitespace-pre-wrap m-0 font-sans">{msg.content}</p>
                         </div>
 
                         {/* RAG Citations Cards (AI Messages only) */}
                         {!isUser && msg.citations && msg.citations.length > 0 && (
-                          <div
-                            className={`p-3.5 rounded-xl border space-y-2 text-xs ${
-                              isDark
-                                ? 'bg-slate-950/60 border-blue-500/20 text-slate-300'
-                                : 'bg-blue-50/50 border-blue-100 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 font-bold text-blue-500">
+                          <div className="card-voxel-3d p-4 space-y-3 text-xs">
+                            <div className="flex items-center gap-1.5 font-extrabold text-emerald-600 dark:text-emerald-400">
                               <FileTextOutlined />
                               <span>Trích dẫn từ tài liệu RAG ({msg.citations.length})</span>
                             </div>
@@ -420,20 +408,20 @@ export const AIChatPage: React.FC = () => {
                               {msg.citations.map((cite, cIdx) => (
                                 <div
                                   key={cIdx}
-                                  className={`p-2.5 rounded-lg border transition-colors ${
+                                  className={`p-3 rounded-xl border-2 transition-all ${
                                     isDark
-                                      ? 'bg-slate-900 border-slate-800 hover:border-blue-500/40'
-                                      : 'bg-white border-slate-200 hover:border-blue-300'
+                                      ? 'bg-slate-900/80 border-minecraft-obsidianBorder hover:border-emerald-500/40'
+                                      : 'bg-slate-50 border-slate-200 hover:border-emerald-300'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between font-semibold">
-                                    <span className="text-blue-500 truncate max-w-[240px]">
+                                  <div className="flex items-center justify-between font-bold">
+                                    <span className="text-emerald-700 dark:text-emerald-300 truncate max-w-[240px]">
                                       📄 {cite.file_name || 'Tài liệu môn học'}
                                     </span>
                                     {cite.score !== undefined && (
-                                      <Tag color="blue" className="rounded-full text-[10px]">
+                                      <span className="badge-voxel-green text-[10px] py-0.5 px-2">
                                         Độ khớp: {Math.round(cite.score * 100)}%
-                                      </Tag>
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -445,17 +433,16 @@ export const AIChatPage: React.FC = () => {
                         {/* RAG Sources Tags */}
                         {!isUser && msg.sources && msg.sources.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <span className="text-[11px] font-semibold text-slate-400">
+                            <span className="text-[11px] font-bold text-slate-400">
                               Nguồn tham khảo:
                             </span>
                             {msg.sources.map((src, sIdx) => (
-                              <Tag
+                              <span
                                 key={sIdx}
-                                color="cyan"
-                                className="rounded-full text-[11px] font-medium border-0"
+                                className="badge-voxel-green text-[11px] py-0.5 px-2.5"
                               >
                                 {src}
-                              </Tag>
+                              </span>
                             ))}
                           </div>
                         )}
@@ -472,16 +459,10 @@ export const AIChatPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex items-center gap-3 max-w-4xl mx-auto"
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+                  <div className="w-11 h-11 rounded-2xl bg-minecraft-gold text-slate-900 flex items-center justify-center shadow-voxel-sm border-2 border-minecraft-goldBorder font-bold">
                     <RobotOutlined className="text-lg animate-spin" />
                   </div>
-                  <div
-                    className={`p-4 rounded-2xl rounded-tl-none border text-xs flex items-center gap-3 ${
-                      isDark
-                        ? 'bg-slate-900 border-slate-800 text-blue-400'
-                        : 'bg-white border-slate-200 text-blue-600'
-                    }`}
-                  >
+                  <div className="card-voxel-3d p-4 rounded-2xl rounded-tl-none text-xs flex items-center gap-3 text-emerald-700 dark:text-emerald-300 font-bold">
                     <Spin size="small" />
                     <span>Đang tìm kiếm dữ liệu trong ChromaDB & tổng hợp câu trả lời...</span>
                   </div>
@@ -493,8 +474,8 @@ export const AIChatPage: React.FC = () => {
 
             {/* Quick Suggestions & Input Bar */}
             <div
-              className={`p-4 border-t shrink-0 ${
-                isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-slate-200'
+              className={`p-4 border-t-2 shrink-0 ${
+                isDark ? 'bg-slate-950/80 border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10'
               }`}
             >
               <div className="max-w-4xl mx-auto space-y-3">
@@ -505,11 +486,7 @@ export const AIChatPage: React.FC = () => {
                       key={idx}
                       onClick={() => handleSendMessage(item.query)}
                       disabled={sending}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all shrink-0 ${
-                        isDark
-                          ? 'border-slate-800 bg-slate-900/80 text-slate-300 hover:border-blue-500 hover:text-blue-400'
-                          : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-blue-400 hover:bg-blue-50'
-                      }`}
+                      className="tab-voxel-inactive text-xs font-bold shrink-0 cursor-pointer"
                     >
                       {item.label}
                     </button>
@@ -517,7 +494,7 @@ export const AIChatPage: React.FC = () => {
                 </div>
 
                 {/* Input Controls */}
-                <div className="relative flex items-center">
+                <div className="card-voxel-3d p-2 flex items-end gap-2 relative">
                   <Input.TextArea
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
@@ -530,26 +507,22 @@ export const AIChatPage: React.FC = () => {
                     placeholder="Hỏi bất kỳ điều gì từ tài liệu bài giảng..."
                     autoSize={{ minRows: 2, maxRows: 5 }}
                     disabled={sending}
-                    className={`pr-14 rounded-2xl text-sm ${
-                      isDark
-                        ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500 focus:border-blue-500'
-                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500'
-                    }`}
+                    bordered={false}
+                    className="flex-1 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
                   />
 
-                  <Button
-                    type="primary"
-                    shape="circle"
-                    size="large"
-                    icon={<SendOutlined />}
+                  <button
+                    type="button"
                     onClick={() => handleSendMessage()}
-                    loading={sending}
                     disabled={!inputMessage.trim() || sending}
-                    className="absolute right-3 bottom-3 bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-500/30 border-none"
-                  />
+                    className="btn-voxel-green p-3 rounded-xl font-bold flex items-center justify-center shrink-0 disabled:opacity-40"
+                    title="Gửi câu hỏi"
+                  >
+                    <SendOutlined className="text-base" />
+                  </button>
                 </div>
 
-                <div className="text-[11px] text-center text-slate-400">
+                <div className="text-[11px] text-center text-slate-400 font-medium">
                   Hệ thống sử dụng RAG với bộ khớp Embedding từ các tài liệu bài giảng đã tải lên.
                 </div>
               </div>

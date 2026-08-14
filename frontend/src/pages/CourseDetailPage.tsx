@@ -48,6 +48,7 @@ import {
   PaperClipOutlined,
   SendOutlined,
   FolderOpenOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 
 import { motion } from 'framer-motion';
@@ -77,6 +78,7 @@ export const CourseDetailPage: React.FC = () => {
   const isInstructor = user?.roles?.includes('instructor') || user?.roles?.includes('admin');
   const isDark = themeMode === 'dark';
 
+  const [activeDetailTab, setActiveDetailTab] = useState<string>('assignments');
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -636,7 +638,7 @@ export const CourseDetailPage: React.FC = () => {
       key: 'full_name',
       render: (text: string, record: EnrolledStudent) => (
         <div className="flex items-center gap-3">
-          <Avatar className="bg-indigo-600 text-white font-bold shrink-0">
+          <Avatar className="bg-minecraft-grass text-white font-bold shrink-0">
             {text.charAt(0).toUpperCase()}
           </Avatar>
           <div>
@@ -687,7 +689,7 @@ export const CourseDetailPage: React.FC = () => {
               Quay lại
             </Button>
             <div className="flex items-center gap-2">
-              <Tag color="indigo" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
+              <Tag color="green" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
                 {course.code}
               </Tag>
               <h1 className="text-xl font-bold tracking-tight m-0">{course.name}</h1>
@@ -700,7 +702,7 @@ export const CourseDetailPage: React.FC = () => {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => setIsCreateAssignmentModalOpen(true)}
-                className="rounded-xl bg-purple-600 hover:bg-purple-500 font-semibold"
+                className="btn-voxel-gold text-xs px-4 py-2 text-slate-900"
               >
                 Tạo Bài Tập
               </Button>
@@ -729,7 +731,7 @@ export const CourseDetailPage: React.FC = () => {
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                   Môn Học Lita Learning
                 </span>
                 <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -743,17 +745,17 @@ export const CourseDetailPage: React.FC = () => {
               {/* Metadata Badges */}
               <div className="flex flex-col gap-2 shrink-0 border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-6 border-slate-200 dark:border-slate-800 text-xs">
                 <div className="flex items-center gap-2 text-slate-500">
-                  <UserOutlined className="text-indigo-500" />
+                  <UserOutlined className="text-emerald-500" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Giảng viên:</span>
                   <span>{course.instructor_name || 'Chưa cập nhật'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500">
-                  <TeamOutlined className="text-purple-500" />
+                  <TeamOutlined className="text-amber-500" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Sĩ số lớp:</span>
                   <span>{students.length} sinh viên</span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500">
-                  <CalendarOutlined className="text-blue-500" />
+                  <CalendarOutlined className="text-sky-500" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Học kỳ:</span>
                   <span>{course.term || 'Fall 2026'}</span>
                 </div>
@@ -761,328 +763,329 @@ export const CourseDetailPage: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Roster, Materials & Assignments Tabs */}
-          <Tabs
-            defaultActiveKey="assignments"
-            items={[
-              {
-                key: 'assignments',
-                label: `Bài Tập (${assignments.length})`,
-                children: (
-                  <div className={`rounded-2xl border p-6 shadow-sm space-y-4 ${
-                    isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <BookOutlined className="text-indigo-500 text-lg" />
-                        <h3 className="font-bold text-base m-0">Danh sách bài tập</h3>
-                      </div>
-                      {isCourseOwner && (
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={() => setIsCreateAssignmentModalOpen(true)}
-                          className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold"
-                        >
-                          Tạo Bài Tập Mới
-                        </Button>
-                      )}
-                    </div>
+          {/* Custom 3D Voxel Tabs Navigation */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 mb-6">
+            {[
+              { key: 'assignments', label: `Bài Tập (${assignments.length})`, icon: <BookOutlined /> },
+              { key: 'materials', label: `Tài Liệu Học Tập (${materials.length})`, icon: <FileTextOutlined /> },
+              { key: 'students', label: `Danh Sách Sinh Viên (${students.length})`, icon: <TeamOutlined /> },
+              { key: 'overview', label: `Tổng Quan`, icon: <InfoCircleOutlined /> },
+            ].map((tab) => {
+              const isActive = activeDetailTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveDetailTab(tab.key)}
+                  className={isActive ? 'tab-voxel-active text-xs shrink-0' : 'tab-voxel-inactive text-xs shrink-0'}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-                    {loadingAssignments ? (
-                      <div className="py-12 text-center">
-                        <Spin />
-                        <p className="text-xs text-slate-400 mt-2">Đang tải danh sách bài tập...</p>
-                      </div>
-                    ) : assignments.length === 0 ? (
-                      <Empty
-                        description={
-                          <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-                            Chưa có bài tập nào được giao cho khóa học này.
-                          </span>
-                        }
-                      />
-                    ) : (
-                      <div className="space-y-4">
-                        {assignments.map((item) => {
-                          const hasChecklists = (item.checklist_count || 0) > 0;
-                          const progressPct = item.progress_percentage || 0;
-                          const completedCount = item.completed_checklist_count || 0;
-                          const totalCount = item.checklist_count || 0;
+          {/* Tab 1: Assignments */}
+          {activeDetailTab === 'assignments' && (
+            <div className="card-voxel-3d space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BookOutlined className="text-emerald-500 text-lg" />
+                  <h3 className="font-bold text-base m-0">Danh sách bài tập</h3>
+                </div>
+                {isCourseOwner && (
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => setIsCreateAssignmentModalOpen(true)}
+                    className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 text-white border border-minecraft-grassBorder text-xs font-semibold"
+                  >
+                    Tạo Bài Tập Mới
+                  </Button>
+                )}
+              </div>
 
-                          return (
-                            <div
-                              key={item.id}
-                              className={`p-5 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
-                                isDark ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700' : 'bg-slate-50/80 border-slate-200 hover:border-indigo-200'
-                              }`}
-                            >
-                              <div className="space-y-2 min-w-0 flex-1">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <h4 className="font-bold text-base m-0 text-slate-900 dark:text-slate-100">
-                                    {item.title}
-                                  </h4>
-                                  {getPriorityBadge(item.priority)}
-                                  {item.status && (
-                                    <Tag color={item.status === 'ACTIVE' ? 'blue' : 'default'} className="rounded-full text-xs font-semibold border-0">
-                                      {item.status}
-                                    </Tag>
-                                  )}
-                                  {!isCourseOwner && getProgressBadge(item.progress_status)}
-                                </div>
+              {loadingAssignments ? (
+                <div className="py-12 text-center">
+                  <Spin />
+                  <p className="text-xs text-slate-400 mt-2">Đang tải danh sách bài tập...</p>
+                </div>
+              ) : assignments.length === 0 ? (
+                <Empty
+                  description={
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                      Chưa có bài tập nào được giao cho khóa học này.
+                    </span>
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  {assignments.map((item) => {
+                    const hasChecklists = (item.checklist_count || 0) > 0;
+                    const progressPct = item.progress_percentage || 0;
+                    const completedCount = item.completed_checklist_count || 0;
+                    const totalCount = item.checklist_count || 0;
 
-                                <p className={`text-sm line-clamp-2 m-0 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                  {item.description || 'Không có mô tả chi tiết.'}
-                                </p>
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-5 rounded-2xl border-2 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                          isDark
+                            ? 'bg-slate-950/60 border-minecraft-obsidianBorder hover:border-emerald-500/40'
+                            : 'bg-slate-50/80 border-slate-200 hover:border-emerald-300'
+                        }`}
+                      >
+                        <div className="space-y-2 min-w-0 flex-1">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h4 className="font-bold text-base m-0 text-slate-900 dark:text-slate-100">
+                              {item.title}
+                            </h4>
+                            {getPriorityBadge(item.priority)}
+                            {item.status && (
+                              <Tag color={item.status === 'ACTIVE' ? 'green' : 'default'} className="rounded-full text-xs font-semibold border-0">
+                                {item.status}
+                              </Tag>
+                            )}
+                            {!isCourseOwner && getProgressBadge(item.progress_status)}
+                          </div>
 
-                                <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap pt-1">
-                                  {item.due_date && (
-                                    <span className="flex items-center gap-1">
-                                      <ClockCircleOutlined className="text-amber-500" />
-                                      <span>Hạn nộp: {new Date(item.due_date).toLocaleString('vi-VN')}</span>
-                                    </span>
-                                  )}
-                                  {item.estimated_hours !== undefined && item.estimated_hours !== null && (
-                                    <span className="flex items-center gap-1">
-                                      <FieldTimeOutlined className="text-purple-500" />
-                                      <span>Thời gian ước tính: {item.estimated_hours} giờ</span>
-                                    </span>
-                                  )}
-                                  {hasChecklists && (
-                                    <span className="flex items-center gap-1 font-semibold text-indigo-500">
-                                      <CheckSquareOutlined />
-                                      <span>Checklist: {completedCount} / {totalCount} hoàn thành</span>
-                                    </span>
-                                  )}
-                                </div>
+                          <p className={`text-sm line-clamp-2 m-0 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                            {item.description || 'Không có mô tả chi tiết.'}
+                          </p>
 
-                                {/* Reference File Attachment Badge */}
-                                {item.attachment_file_name && (
-                                  <div className="pt-2">
-                                    <Button
-                                      type="dashed"
-                                      size="small"
-                                      icon={<PaperClipOutlined className="text-indigo-500" />}
-                                      loading={downloadingAttachmentId === item.id}
-                                      onClick={() => handleDownloadAssignmentAttachment(item.id, item.attachment_file_name!)}
-                                      className="rounded-lg text-xs font-semibold border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400"
-                                    >
-                                      Tệp đề bài: {item.attachment_file_name}
-                                    </Button>
-                                  </div>
-                                )}
+                          <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap pt-1">
+                            {item.due_date && (
+                              <span className="flex items-center gap-1">
+                                <ClockCircleOutlined className="text-amber-500" />
+                                <span>Hạn nộp: {new Date(item.due_date).toLocaleString('vi-VN')}</span>
+                              </span>
+                            )}
+                            {item.estimated_hours !== undefined && item.estimated_hours !== null && (
+                              <span className="flex items-center gap-1">
+                                <FieldTimeOutlined className="text-sky-500" />
+                                <span>Thời gian ước tính: {item.estimated_hours} giờ</span>
+                              </span>
+                            )}
+                            {hasChecklists && (
+                              <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                <CheckSquareOutlined />
+                                <span>Checklist: {completedCount} / {totalCount} hoàn thành</span>
+                              </span>
+                            )}
+                          </div>
 
-                                {/* Progress Bar */}
-                                {hasChecklists && (
-                                  <div className="pt-2 max-w-md">
-                                    <div className="flex items-center justify-between text-xs mb-1">
-                                      <span className="font-semibold text-slate-500">Tiến độ bài tập:</span>
-                                      <span className="font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
-                                    </div>
-                                    <Progress percent={progressPct} showInfo={false} strokeColor="#6366f1" size="small" />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Actions / Progress Controls */}
-                              <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-800 flex-wrap">
-                                {isCourseOwner && (
-                                  <>
-                                    <Button
-                                      type="default"
-                                      icon={<FolderOpenOutlined />}
-                                      onClick={() => handleOpenInstructorSubmissionsRoster(item)}
-                                      className="rounded-xl text-xs font-semibold border-purple-200 text-purple-600 dark:border-purple-800 dark:text-purple-400"
-                                    >
-                                      Bài Nộp SV
-                                    </Button>
-
-                                    <Button
-                                      type="default"
-                                      icon={<BarChartOutlined />}
-                                      onClick={() => handleOpenAnalytics(item.id)}
-                                      className="rounded-xl text-xs font-semibold border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400"
-                                    >
-                                      Thống Kê
-                                    </Button>
-                                  </>
-                                )}
-
-                                <Button
-                                  type="primary"
-                                  icon={<EyeOutlined />}
-                                  onClick={async () => {
-                                    await refreshViewingAssignment(item.id);
-                                    setIsDetailAssignmentModalOpen(true);
-                                  }}
-                                  className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold"
-                                >
-                                  {isCourseOwner ? 'Quản Lý Bài Tập' : 'Nộp Bài / Checklist'}
-                                </Button>
-
-                                {isCourseOwner && (
-                                  <>
-                                    <Button
-                                      type="text"
-                                      icon={<EditOutlined />}
-                                      onClick={() => handleOpenEditAssignment(item)}
-                                      className="rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                                      title="Chỉnh sửa bài tập"
-                                    />
-
-                                    <Popconfirm
-                                      title="Xóa bài tập này?"
-                                      description="Tất cả dữ liệu bài tập sẽ bị xóa vĩnh viễn."
-                                      onConfirm={() => handleDeleteAssignment(item.id)}
-                                      okText="Xóa"
-                                      cancelText="Hủy"
-                                      okButtonProps={{ danger: true }}
-                                    >
-                                      <Button
-                                        type="text"
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        className="rounded-lg"
-                                        title="Xóa bài tập"
-                                      />
-                                    </Popconfirm>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: 'materials',
-                label: `Tài Liệu Học Tập (${materials.length})`,
-                children: (
-                  <div className={`rounded-2xl border p-6 shadow-sm space-y-4 ${
-                    isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
-                  }`}>
-                    {loadingMaterials ? (
-                      <div className="py-12 text-center">
-                        <Spin />
-                        <p className="text-xs text-slate-400 mt-2">Đang tải tài liệu môn học...</p>
-                      </div>
-                    ) : materials.length === 0 ? (
-                      <Empty
-                        description={
-                          <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-                            Chưa có tài liệu nào được tải lên cho môn học này.
-                          </span>
-                        }
-                      />
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {materials.map((item) => (
-                          <div
-                            key={item.id}
-                            className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${
-                              isDark ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3.5 min-w-0">
-                              <div className="p-3 rounded-xl bg-slate-200/50 dark:bg-slate-800/80 shrink-0">
-                                {getFileIcon(item.file_name, item.type)}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-bold text-sm truncate">{item.title}</div>
-                                <div className="text-xs text-slate-400 truncate mt-0.5">
-                                  {item.file_name} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
+                          {/* Reference File Attachment Badge */}
+                          {item.attachment_file_name && (
+                            <div className="pt-2">
                               <Button
-                                type="primary"
-                                icon={<EyeOutlined />}
-                                onClick={() => navigate(`/courses/${courseId}/materials/${item.id}`)}
-                                className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-xs"
+                                type="dashed"
+                                size="small"
+                                icon={<PaperClipOutlined className="text-emerald-500" />}
+                                loading={downloadingAttachmentId === item.id}
+                                onClick={() => handleDownloadAssignmentAttachment(item.id, item.attachment_file_name!)}
+                                className="rounded-lg text-xs font-semibold border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400"
                               >
-                                Xem bài giảng
+                                Tệp đề bài: {item.attachment_file_name}
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Progress Bar */}
+                          {hasChecklists && (
+                            <div className="pt-2 max-w-md">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="font-semibold text-slate-500">Tiến độ bài tập:</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">{progressPct}%</span>
+                              </div>
+                              <Progress percent={progressPct} showInfo={false} strokeColor="#59B335" size="small" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions / Progress Controls */}
+                        <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-800 flex-wrap">
+                          {isCourseOwner && (
+                            <>
+                              <Button
+                                type="default"
+                                icon={<FolderOpenOutlined />}
+                                onClick={() => handleOpenInstructorSubmissionsRoster(item)}
+                                className="rounded-xl text-xs font-semibold border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-400"
+                              >
+                                Bài Nộp SV
                               </Button>
 
                               <Button
+                                type="default"
+                                icon={<BarChartOutlined />}
+                                onClick={() => handleOpenAnalytics(item.id)}
+                                className="rounded-xl text-xs font-semibold border-sky-200 text-sky-600 dark:border-sky-800 dark:text-sky-400"
+                              >
+                                Thống Kê
+                              </Button>
+                            </>
+                          )}
+
+                          <Button
+                            type="primary"
+                            icon={<EyeOutlined />}
+                            onClick={async () => {
+                              await refreshViewingAssignment(item.id);
+                              setIsDetailAssignmentModalOpen(true);
+                            }}
+                            className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white text-xs font-semibold"
+                          >
+                            {isCourseOwner ? 'Quản Lý Bài Tập' : 'Nộp Bài / Checklist'}
+                          </Button>
+
+                          {isCourseOwner && (
+                            <>
+                              <Button
                                 type="text"
-                                icon={<DownloadOutlined />}
-                                loading={downloadingId === item.id}
-                                onClick={() => handleDownload(item)}
-                                className="rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                                title="Tải xuống tập tin"
+                                icon={<EditOutlined />}
+                                onClick={() => handleOpenEditAssignment(item)}
+                                className="rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                title="Chỉnh sửa bài tập"
                               />
 
-                              {isCourseOwner && (
-                                <Popconfirm
-                                  title="Xóa tài liệu này?"
-                                  description="Hành động này không thể hoàn tác."
-                                  onConfirm={() => handleDeleteMaterial(item.id)}
-                                  okText="Xóa"
-                                  cancelText="Hủy"
-                                  okButtonProps={{ danger: true }}
-                                >
-                                  <Button
-                                    type="text"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                    className="rounded-lg"
-                                    title="Xóa tài liệu"
-                                  />
-                                </Popconfirm>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                              <Popconfirm
+                                title="Xóa bài tập này?"
+                                description="Tất cả dữ liệu bài tập sẽ bị xóa vĩnh viễn."
+                                onConfirm={() => handleDeleteAssignment(item.id)}
+                                okText="Xóa"
+                                cancelText="Hủy"
+                                okButtonProps={{ danger: true }}
+                              >
+                                <Button
+                                  type="text"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  className="rounded-lg"
+                                  title="Xóa bài tập"
+                                />
+                              </Popconfirm>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: 'students',
-                label: `Danh Sách Sinh Viên (${students.length})`,
-                children: (
-                  <div className={`rounded-2xl border p-6 shadow-sm overflow-hidden ${
-                    isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
-                  }`}>
-                    <Table
-                      dataSource={students}
-                      columns={studentColumns}
-                      rowKey="id"
-                      pagination={{ pageSize: 10 }}
-                      className="rounded-xl overflow-hidden"
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: 'overview',
-                label: 'Tổng Quan',
-                children: (
-                  <div className={`rounded-2xl border p-6 shadow-sm space-y-4 ${
-                    isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
-                  }`}>
-                    <h3 className="font-bold text-base m-0">Mô tả chi tiết</h3>
-                    <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {course.description || 'Chưa có thông tin mô tả.'}
-                    </p>
-                  </div>
-                ),
-              },
-            ]}
-          />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Materials */}
+          {activeDetailTab === 'materials' && (
+            <div className="card-voxel-3d space-y-4">
+              {loadingMaterials ? (
+                <div className="py-12 text-center">
+                  <Spin />
+                  <p className="text-xs text-slate-400 mt-2">Đang tải tài liệu môn học...</p>
+                </div>
+              ) : materials.length === 0 ? (
+                <Empty
+                  description={
+                    <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                      Chưa có tài liệu nào được tải lên cho môn học này.
+                    </span>
+                  }
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {materials.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-xl border-2 flex items-center justify-between gap-4 transition-all ${
+                        isDark ? 'bg-slate-950/60 border-minecraft-obsidianBorder hover:border-emerald-500/40' : 'bg-slate-50 border-slate-200 hover:border-emerald-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="p-3 rounded-xl bg-slate-200/50 dark:bg-slate-800/80 shrink-0">
+                          {getFileIcon(item.file_name, item.type)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm truncate">{item.title}</div>
+                          <div className="text-xs text-slate-400 truncate mt-0.5">
+                            {item.file_name} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="primary"
+                          icon={<EyeOutlined />}
+                          onClick={() => navigate(`/courses/${courseId}/materials/${item.id}`)}
+                          className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold text-xs"
+                        >
+                          Xem bài giảng
+                        </Button>
+
+                        <Button
+                          type="text"
+                          icon={<DownloadOutlined />}
+                          loading={downloadingId === item.id}
+                          onClick={() => handleDownload(item)}
+                          className="rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                          title="Tải xuống tập tin"
+                        />
+
+                        {isCourseOwner && (
+                          <Popconfirm
+                            title="Xóa tài liệu này?"
+                            description="Hành động này không thể hoàn tác."
+                            onConfirm={() => handleDeleteMaterial(item.id)}
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            okButtonProps={{ danger: true }}
+                          >
+                            <Button
+                              type="text"
+                              danger
+                              icon={<DeleteOutlined />}
+                              className="rounded-lg"
+                              title="Xóa tài liệu"
+                            />
+                          </Popconfirm>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 3: Students Roster */}
+          {activeDetailTab === 'students' && (
+            <div className="card-voxel-3d overflow-hidden">
+              <Table
+                dataSource={students}
+                columns={studentColumns}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                className="rounded-xl overflow-hidden"
+              />
+            </div>
+          )}
+
+          {/* Tab 4: Overview */}
+          {activeDetailTab === 'overview' && (
+            <div className="card-voxel-3d space-y-4">
+              <h3 className="font-bold text-base m-0">Mô tả chi tiết</h3>
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                {course.description || 'Chưa có thông tin mô tả.'}
+              </p>
+            </div>
+          )}
         </main>
       </div>
 
       {/* Upload Material Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <UploadOutlined />
             <span>Tải Lên Tài Liệu Môn Học</span>
           </div>
@@ -1160,7 +1163,7 @@ export const CourseDetailPage: React.FC = () => {
               type="primary"
               htmlType="submit"
               loading={uploading}
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+              className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
             >
               Tải Lên
             </Button>
@@ -1171,7 +1174,7 @@ export const CourseDetailPage: React.FC = () => {
       {/* Create Assignment Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <PlusOutlined />
             <span>Tạo Bài Tập Mới (Giảng Viên)</span>
           </div>
@@ -1283,7 +1286,7 @@ export const CourseDetailPage: React.FC = () => {
               type="primary"
               htmlType="submit"
               loading={submittingAssignment}
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+              className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
             >
               Tạo Bài Tập
             </Button>
@@ -1294,7 +1297,7 @@ export const CourseDetailPage: React.FC = () => {
       {/* Edit Assignment Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <EditOutlined />
             <span>Chỉnh Sửa Bài Tập</span>
           </div>
@@ -1411,7 +1414,7 @@ export const CourseDetailPage: React.FC = () => {
               type="primary"
               htmlType="submit"
               loading={submittingAssignment}
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+              className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
             >
               Lưu Thay Đổi
             </Button>
@@ -1422,7 +1425,7 @@ export const CourseDetailPage: React.FC = () => {
       {/* View Assignment Detail, Checklist & Student Submission Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <BookOutlined />
             <span>Chi Tiết Bài Tập, Checklist &amp; Nộp Bài</span>
           </div>
@@ -1488,7 +1491,7 @@ export const CourseDetailPage: React.FC = () => {
               {viewingAssignment.attachment_file_name && (
                 <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                    <PaperClipOutlined className="text-indigo-500" />
+                    <PaperClipOutlined className="text-emerald-500" />
                     <span>Tài liệu đính kèm từ giảng viên: <strong>{viewingAssignment.attachment_file_name}</strong></span>
                   </span>
                   <Button
@@ -1497,7 +1500,7 @@ export const CourseDetailPage: React.FC = () => {
                     icon={<DownloadOutlined />}
                     loading={downloadingAttachmentId === viewingAssignment.id}
                     onClick={() => handleDownloadAssignmentAttachment(viewingAssignment.id, viewingAssignment.attachment_file_name!)}
-                    className="rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500"
+                    className="rounded-lg text-xs bg-minecraft-grass hover:bg-emerald-600 text-white"
                   >
                     Tải Đề Bài
                   </Button>
@@ -1509,21 +1512,21 @@ export const CourseDetailPage: React.FC = () => {
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-2`}>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm">Tiến độ hoàn thành:</span>
-                <span className="font-mono font-bold text-lg text-indigo-600 dark:text-indigo-400">
+                <span className="font-mono font-bold text-lg text-emerald-600 dark:text-emerald-400">
                   {viewingAssignment.progress_percentage || 0}% ({viewingAssignment.completed_checklist_count || 0}/{viewingAssignment.checklist_count || 0} mục)
                 </span>
               </div>
               <Progress
                 percent={viewingAssignment.progress_percentage || 0}
-                strokeColor={{ '0%': '#818cf8', '100%': '#4f46e5' }}
+                strokeColor="#59B335"
               />
             </div>
 
             {/* Student Upload Submission Section */}
             {!isCourseOwner && (
-              <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900 border-indigo-950/60' : 'bg-indigo-50/40 border-indigo-100'} space-y-4`}>
+              <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900 border-emerald-950/60' : 'bg-emerald-50/40 border-emerald-100'} space-y-4`}>
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-base m-0 text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                  <h4 className="font-bold text-base m-0 text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                     <SendOutlined />
                     <span>Nộp Bài Tập (Student Submission)</span>
                   </h4>
@@ -1554,7 +1557,7 @@ export const CourseDetailPage: React.FC = () => {
                         {mySubmission.file_name && (
                           <div className="flex items-center justify-between pt-1">
                             <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                              <PaperClipOutlined className="text-indigo-500" />
+                              <PaperClipOutlined className="text-emerald-500" />
                               <span>{mySubmission.file_name}</span>
                             </span>
                             <Button
@@ -1563,7 +1566,7 @@ export const CourseDetailPage: React.FC = () => {
                               icon={<DownloadOutlined />}
                               loading={downloadingSubmissionId === mySubmission.id}
                               onClick={() => handleDownloadSubmissionFile(mySubmission.id, mySubmission.file_name!)}
-                              className="rounded-lg text-xs"
+                              className="rounded-lg text-xs border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400"
                             >
                               Tải Bài Đã Nộp
                             </Button>
@@ -1618,7 +1621,7 @@ export const CourseDetailPage: React.FC = () => {
                           icon={<SendOutlined />}
                           loading={submittingSolution}
                           onClick={handleStudentSubmitAssignment}
-                          className="rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold"
+                          className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
                         >
                           {mySubmission ? 'Cập Nhật Bài Nộp' : 'Nộp Bài Tập'}
                         </Button>
@@ -1633,15 +1636,15 @@ export const CourseDetailPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-base m-0 flex items-center gap-2">
-                  <CheckSquareOutlined className="text-indigo-500" />
+                  <CheckSquareOutlined className="text-emerald-500" />
                   <span>Danh sách Checklist ({viewingAssignment.checklists?.length || 0})</span>
                 </h4>
               </div>
 
               {/* Instructor Form to Add Checklist */}
               {isCourseOwner && (
-                <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-indigo-50/50 border-indigo-100'}`}>
-                  <span className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 block">
+                <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                  <span className="text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400 block">
                     Thêm mục checklist mới (Giảng viên)
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1665,7 +1668,7 @@ export const CourseDetailPage: React.FC = () => {
                       loading={submittingChecklist}
                       onClick={handleAddChecklist}
                       disabled={!newChecklistTitle.trim()}
-                      className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-xs"
+                      className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold text-xs"
                     >
                       Thêm Mục
                     </Button>
@@ -1792,7 +1795,7 @@ export const CourseDetailPage: React.FC = () => {
       {/* Instructor Submissions Roster Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <FolderOpenOutlined />
             <span>Danh Sách Bài Nộp Sinh Viên</span>
           </div>
@@ -1862,7 +1865,7 @@ export const CourseDetailPage: React.FC = () => {
                           icon={<DownloadOutlined />}
                           loading={downloadingSubmissionId === sub.id}
                           onClick={() => handleDownloadSubmissionFile(sub.id, sub.file_name!)}
-                          className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-500 font-semibold"
+                          className="rounded-xl text-xs bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
                         >
                           Tải Tập Tin ({sub.file_name})
                         </Button>
@@ -1887,7 +1890,7 @@ export const CourseDetailPage: React.FC = () => {
       {/* Instructor Analytics Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <BarChartOutlined />
             <span>Thống Kê Hoàn Thành Bài Tập (Giảng Viên)</span>
           </div>
@@ -1913,14 +1916,14 @@ export const CourseDetailPage: React.FC = () => {
         ) : analyticsData ? (
           <div className="mt-4 space-y-6">
             <div className="grid grid-cols-2 gap-4">
-              <div className={`p-4 rounded-2xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-indigo-50/50 border-indigo-100'}`}>
+              <div className={`p-4 rounded-2xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-emerald-50/50 border-emerald-100'}`}>
                 <span className="text-xs font-semibold uppercase text-slate-400 block mb-1">Tổng sinh viên ghi danh</span>
-                <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{analyticsData.total_enrolled_students}</span>
+                <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{analyticsData.total_enrolled_students}</span>
               </div>
 
-              <div className={`p-4 rounded-2xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-purple-50/50 border-purple-100'}`}>
+              <div className={`p-4 rounded-2xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-amber-50/50 border-amber-100'}`}>
                 <span className="text-xs font-semibold uppercase text-slate-400 block mb-1">Tỷ lệ hoàn thành trung bình</span>
-                <span className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">{analyticsData.average_completion_percentage}%</span>
+                <span className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">{analyticsData.average_completion_percentage}%</span>
               </div>
             </div>
 

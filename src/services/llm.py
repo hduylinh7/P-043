@@ -15,6 +15,25 @@ def get_llm(
     llm_provider = (provider or settings.llm_provider or "openai").lower()
     temp = temperature if temperature is not None else settings.llm_temperature
 
+    if llm_provider in ("openrouter", "open_router"):
+        api_key = (
+            settings.openrouter_api_key
+            or os.getenv("OPENROUTER_API_KEY")
+            or "dummy-key-for-test"
+        )
+        target_model = model_name or settings.model_name or "google/gemini-2.5-flash"
+        return ChatOpenAI(
+            model=target_model,
+            api_key=api_key,
+            base_url=settings.openrouter_base_url or "https://openrouter.ai/api/v1",
+            temperature=temp,
+            max_tokens=2000,
+            default_headers={
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "AI20K Learning Companion",
+            },
+        )
+
     if llm_provider in ("gemini", "google"):
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI

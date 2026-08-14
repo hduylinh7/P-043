@@ -96,17 +96,17 @@ export const LoginPage: React.FC = () => {
       {/* Error Alert */}
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${isDark
-          ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
-          : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+          ? 'bg-rose-950/60 border-rose-800/80 text-rose-200'
+          : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}>
-          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="m-0 leading-relaxed font-medium">{error}</p>
             {error.toLowerCase().includes('chưa được xác thực') && (
               <button
                 type="button"
                 onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-                className="mt-2 text-xs font-semibold text-blue-800 dark:text-blue-300 hover:underline block"
+                className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline block"
               >
                 Xác thực email ngay bây giờ →
               </button>
@@ -222,6 +222,8 @@ export const LoginPage: React.FC = () => {
           theme={isDark ? 'filled_black' : 'outline'}
           shape="pill"
           text="signin_with"
+          useOneTap={false}
+          use_fedcm_for_prompt={false}
         />
       </div>
 
