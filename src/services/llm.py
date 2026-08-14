@@ -12,8 +12,30 @@ def get_llm(
 ) -> BaseChatModel:
     """Get initialized LLM instance based on configuration or provider argument."""
     settings = get_settings()
-    llm_provider = (provider or settings.llm_provider or "openai").lower()
+    llm_provider = (provider or settings.llm_provider or "groq").lower()
     temp = temperature if temperature is not None else settings.llm_temperature
+
+    if llm_provider == "groq":
+        api_key = (
+            settings.groq_api_key
+            or os.getenv("GROQ_API_KEY")
+            or "dummy-key-for-test"
+        )
+        g_model = model_name or settings.model_name or "llama-3.3-70b-versatile"
+        try:
+            from langchain_groq import ChatGroq
+            return ChatGroq(
+                model=g_model,
+                groq_api_key=api_key,
+                temperature=temp,
+            )
+        except Exception:
+            return ChatOpenAI(
+                model=g_model,
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1",
+                temperature=temp,
+            )
 
     if llm_provider in ("openrouter", "open_router"):
         api_key = (
@@ -45,7 +67,7 @@ def get_llm(
                 or os.getenv("GOOGLE_API_KEY")
                 or "dummy-key-for-test"
             )
-            g_model = model_name or settings.model_name or "gemini-3.6-flash"
+            g_model = model_name or settings.model_name or "gemini-1.5-flash"
 
             return ChatGoogleGenerativeAI(
                 model=g_model,
@@ -53,14 +75,23 @@ def get_llm(
                 temperature=temp,
             )
         except Exception:
-            # Fallback to ChatOpenAI if ChatGoogleGenerativeAI initialization fails
             pass
 
-    # Default to ChatOpenAI
-    api_key = settings.openai_api_key or "sk-dummy-key-for-test"
+    # Default to ChatGroq or ChatOpenAI
+    api_key = settings.groq_api_key or os.getenv("GROQ_API_KEY") or settings.openai_api_key or "sk-dummy-key-for-test"
+    if settings.groq_api_key or os.getenv("GROQ_API_KEY"):
+        try:
+            from langchain_groq import ChatGroq
+            return ChatGroq(
+                model=model_name or settings.model_name or "llama-3.3-70b-versatile",
+                groq_api_key=api_key,
+                temperature=temp,
+            )
+        except Exception:
+            pass
+
     return ChatOpenAI(
-        model=model_name or settings.model_name,
+        model=model_name or settings.model_name or "gpt-4o-mini",
         api_key=api_key,
         temperature=temp,
     )
-

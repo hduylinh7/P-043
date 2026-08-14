@@ -22,14 +22,15 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
 
     # LLM & Embeddings
-    llm_provider: str = Field(default="gemini", validation_alias="LLM_PROVIDER")
+    llm_provider: str = Field(default="groq", validation_alias="LLM_PROVIDER")
     openai_api_key: str = ""
+    groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     google_api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
     openrouter_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL")
     embedding_model_name: str = Field(default="models/text-embedding-004", validation_alias="EMBEDDING_MODEL_NAME")
-    model_name: str = Field(default="gemini-3.6-flash", validation_alias="MODEL_NAME")
+    model_name: str = Field(default="llama-3.3-70b-versatile", validation_alias="MODEL_NAME")
 
 
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
