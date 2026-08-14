@@ -22,12 +22,48 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: "*"
+      # --- LLM API Keys ---
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      # --- Object Storage (Cloudflare R2 / S3 / MinIO) ---
+      - key: STORAGE_PROVIDER
+        value: r2
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_SECURE
+        value: "true"
+      # --- SMTP / Email (Nodemailer) ---
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMTP_TLS
+        value: "true"
+      # --- LangSmith (AI Logs / Tracing) ---
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_PROJECT
+        value: ai20k-agent
+      - key: LANGCHAIN_TRACING_V2
+        value: "true"
 
   # 2. Frontend Static Site (React + Vite)
   - type: web
@@ -41,6 +77,8 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
         sync: false
 
   # 3. Redis Cache
