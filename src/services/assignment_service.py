@@ -40,34 +40,39 @@ class AssignmentService:
         return "instructor" in current_user.roles or "admin" in current_user.roles
 
     @staticmethod
-    def _build_assignment_response(assignment, progress_data: dict | None = None) -> AssignmentResponse:
+    def _build_assignment_response(
+        assignment,
+        progress_data: dict | None = None,
+        hide_questions: bool = False,
+    ) -> AssignmentResponse:
         questions = getattr(assignment, "questions", []) or []
         question_list = []
         total_pts = 0.0
         for q in questions:
             total_pts += q.points
-            opts = getattr(q, "options", []) or []
-            question_list.append(
-                AssignmentQuestionResponse(
-                    id=q.id,
-                    assignment_id=q.assignment_id,
-                    question_type=q.question_type,
-                    question_text=q.question_text,
-                    points=q.points,
-                    display_order=q.display_order,
-                    expected_answer=q.expected_answer,
-                    options=[
-                        QuestionOptionResponse(
-                            id=opt.id,
-                            question_id=opt.question_id,
-                            option_text=opt.option_text,
-                            is_correct=opt.is_correct,
-                            display_order=opt.display_order,
-                        )
-                        for opt in opts
-                    ],
+            if not hide_questions:
+                opts = getattr(q, "options", []) or []
+                question_list.append(
+                    AssignmentQuestionResponse(
+                        id=q.id,
+                        assignment_id=q.assignment_id,
+                        question_type=q.question_type,
+                        question_text=q.question_text,
+                        points=q.points,
+                        display_order=q.display_order,
+                        expected_answer=q.expected_answer,
+                        options=[
+                            QuestionOptionResponse(
+                                id=opt.id,
+                                question_id=opt.question_id,
+                                option_text=opt.option_text,
+                                is_correct=opt.is_correct,
+                                display_order=opt.display_order,
+                            )
+                            for opt in opts
+                        ],
+                    )
                 )
-            )
 
         checklists = getattr(assignment, "checklists", []) or []
         checklist_responses = []
@@ -385,7 +390,15 @@ class AssignmentService:
             "progress_percentage": prog_pct,
         }
 
-        return AssignmentService._build_assignment_response(assignment, progress_data=progress_info)
+        hide_questions = False
+        if not is_owner:
+            existing_sub = await AssignmentRepository.get_student_submission(db, assignment_id, current_user.id)
+            if existing_sub and (existing_sub.submitted_at or existing_sub.status in ["submitted", "graded"]):
+                hide_questions = True
+
+        return AssignmentService._build_assignment_response(
+            assignment, progress_data=progress_info, hide_questions=hide_questions
+        )
 
     @staticmethod
     async def update_assignment(
@@ -508,6 +521,14 @@ class AssignmentService:
                 detail="Bạn chưa đăng ký khóa học này nên không thể nộp bài.",
             )
 
+        existing_sub = await AssignmentRepository.get_student_submission(db, assignment_id, current_user.id)
+        has_questions = bool(getattr(assignment, "questions", None) and len(assignment.questions) > 0)
+        if has_questions and existing_sub and (existing_sub.submitted_at or existing_sub.status in ["submitted", "graded"]):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bài tập trắc nghiệm / có bộ câu hỏi chỉ được phép nộp bài 1 lần. Bạn đã nộp bài trước đó.",
+            )
+
         file_name = None
         file_url = None
         object_key = None
@@ -607,6 +628,13 @@ class AssignmentService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Bài nộp đã được giảng viên chấm điểm, không thể hủy nộp bài.",
+            )
+
+        has_questions = bool(getattr(assignment, "questions", None) and len(assignment.questions) > 0)
+        if has_questions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bài tập trắc nghiệm / có bộ câu hỏi chỉ được phép nộp 1 lần và không thể hủy nộp bài để bảo mật đề thi.",
             )
 
         unlocked_sub = await AssignmentRepository.undo_turn_in_submission(db, assignment_id, current_user.id)

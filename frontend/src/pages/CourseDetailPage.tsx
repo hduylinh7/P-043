@@ -58,6 +58,7 @@ import {
   SearchOutlined,
   FilterOutlined,
   SaveOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 
 import { motion } from 'framer-motion';
@@ -274,11 +275,32 @@ export const CourseDetailPage: React.FC = () => {
         message.warning('Tập tin CSV không chứa dữ liệu câu hỏi.');
         return;
       }
-      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+
+      // Robust CSV line parser handling quotes
+      const parseCsvLine = (lineStr: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < lineStr.length; i++) {
+          const char = lineStr[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim().replace(/^"|"$/g, ''));
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        return result;
+      };
+
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
       const parsedQuestions: AssignmentQuestionPayload[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+        const cols = parseCsvLine(lines[i]);
         if (cols.length === 0 || !cols[0]) continue;
 
         const row: Record<string, string> = {};
@@ -286,7 +308,8 @@ export const CourseDetailPage: React.FC = () => {
           row[h] = cols[idx] || '';
         });
 
-        let qType: QuestionType = (row['question_type'] || row['type'] || 'SHORT_ANSWER').toUpperCase() as QuestionType;
+        let qTypeRaw = (row['question_type'] || row['type'] || 'SHORT_ANSWER').toUpperCase().replace(/[\s-]/g, '_');
+        let qType: QuestionType = qTypeRaw as QuestionType;
         if (!['MULTIPLE_CHOICE', 'ESSAY', 'SHORT_ANSWER'].includes(qType)) {
           qType = row['option_1'] ? 'MULTIPLE_CHOICE' : 'SHORT_ANSWER';
         }
@@ -296,13 +319,27 @@ export const CourseDetailPage: React.FC = () => {
 
         const opts: any[] = [];
         if (qType === 'MULTIPLE_CHOICE') {
-          const correctIdx = parseInt(row['correct_option'] || row['correct'] || '1') - 1;
+          const rawCorrect = (row['correct_option'] || row['correct'] || '').toString().trim();
+          let correctIdx = -1;
+
+          if (/^\d+$/.test(rawCorrect)) {
+            correctIdx = parseInt(rawCorrect, 10) - 1;
+          } else if (/^option[_\-\s]?(\d+)$/i.test(rawCorrect)) {
+            const match = rawCorrect.match(/^option[_\-\s]?(\d+)$/i);
+            if (match) correctIdx = parseInt(match[1], 10) - 1;
+          } else if (/^[a-f]$/i.test(rawCorrect)) {
+            correctIdx = rawCorrect.toUpperCase().charCodeAt(0) - 65;
+          }
+
           for (let o = 1; o <= 6; o++) {
             const optVal = row[`option_${o}`] || row[`option${o}`];
-            if (optVal) {
+            if (optVal && optVal.trim()) {
+              const trimmedOpt = optVal.trim();
+              const isCorr = (correctIdx >= 0 && o - 1 === correctIdx) ||
+                             (rawCorrect.length > 0 && rawCorrect.toLowerCase() === trimmedOpt.toLowerCase());
               opts.push({
-                option_text: optVal,
-                is_correct: o - 1 === correctIdx,
+                option_text: trimmedOpt,
+                is_correct: isCorr,
                 display_order: o - 1,
               });
             }
@@ -690,6 +727,10 @@ export const CourseDetailPage: React.FC = () => {
 
   const handleUndoTurnIn = async () => {
     if (!viewingAssignment) return;
+    if (viewingAssignment.questions && viewingAssignment.questions.length > 0) {
+      message.warning('Bài tập trắc nghiệm / có bộ câu hỏi chỉ được phép nộp 1 lần và không thể hủy nộp bài để bảo mật đề thi.');
+      return;
+    }
     setUndoingTurnIn(true);
     try {
       const result = await assignmentService.undoTurnIn(viewingAssignment.id);
@@ -2709,6 +2750,28 @@ export const CourseDetailPage: React.FC = () => {
                             if (p.questionScores) qScores = p.questionScores;
                             if (p.questionFeedbacks) qFbs = p.questionFeedbacks;
                           } catch (e) { }
+                        }
+
+                        if (!isCourseOwner && isLocked) {
+                          return (
+                            <div className="p-8 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/40 text-center space-y-4 my-4">
+                              <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-3xl shadow-sm">
+                                <LockOutlined />
+                              </div>
+                              <div className="space-y-1">
+                                <h4 className="font-extrabold text-lg text-slate-900 dark:text-white m-0">
+                                  Đề bài trắc nghiệm đã được khóa an toàn!
+                                </h4>
+                                <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto m-0 leading-relaxed">
+                                  Bạn đã hoàn thành và nộp bài trắc nghiệm này. Đề thi và các câu hỏi đã được khóa lại để bảo mật nội dung bài thi và chống rò rỉ đề.
+                                </p>
+                              </div>
+                              <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-sm">
+                                <CheckCircleOutlined className="text-emerald-500" />
+                                <span>Nộp lúc: {mySubmission?.submitted_at ? new Date(mySubmission.submitted_at).toLocaleString('vi-VN') : 'Đã nộp bài'}</span>
+                              </div>
+                            </div>
+                          );
                         }
 
                         return viewingAssignment.questions && viewingAssignment.questions.length > 0 ? (
