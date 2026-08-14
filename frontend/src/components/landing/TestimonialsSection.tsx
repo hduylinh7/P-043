@@ -11,7 +11,7 @@ export const TestimonialsSection: React.FC = () => {
     {
       name: 'Nguyen Hoang Linh',
       role: 'Computer Science Major @ VinUniversity',
-      avatarBg: 'bg-indigo-600',
+      avatarBg: 'bg-emerald-600',
       initials: 'HL',
       content: 'Lita Learning completely restructured how I prepare for exams. The AI tutor breaks down complex algorithms in seconds!',
       rating: 5,
@@ -19,7 +19,7 @@ export const TestimonialsSection: React.FC = () => {
     {
       name: 'Sarah Jenkins',
       role: 'Business Administration Senior',
-      avatarBg: 'bg-purple-600',
+      avatarBg: 'bg-amber-500',
       initials: 'SJ',
       content: 'The smart study planner keeps me on track with 5 courses simultaneously. My GPA went from 3.2 to 3.8 in just one semester.',
       rating: 5,
@@ -40,7 +40,7 @@ export const TestimonialsSection: React.FC = () => {
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3">
             STUDENT SUCCESS
           </h2>
           <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
@@ -75,7 +75,7 @@ export const TestimonialsSection: React.FC = () => {
                 bodyStyle={{ padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}
               >
                 <div>
-                  <Rate disabled defaultValue={t.rating} className="text-blue-400 text-sm mb-4" />
+                  <Rate disabled defaultValue={t.rating} className="text-amber-400 text-sm mb-4" />
                   <p className={`text-sm leading-relaxed italic mb-6 ${
                     themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'
                   }`}>

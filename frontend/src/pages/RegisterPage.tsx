@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AuthLayout } from '../components/auth/AuthLayout';
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { themeMode } = useTheme();
   const navigate = useNavigate();
 
@@ -31,6 +32,34 @@ export const RegisterPage: React.FC = () => {
 
   const isDark = themeMode === 'dark';
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError(null);
+    if (!credentialResponse.credential) {
+      setError('Không nhận được thông tin xác thực từ Google.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await loginWithGoogle({ id_token: credentialResponse.credential });
+      setTimeout(() => {
+        if (!res.user.roles || res.user.roles.length === 0) {
+          navigate('/onboarding/role-select', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }, 500);
+    } catch (err: any) {
+      console.error('Google Register error:', err);
+      const msg =
+        err.response?.data?.detail ||
+        'Đăng ký bằng Google thất bại. Vui lòng thử lại sau.';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Password strength logic
   const getPasswordStrength = (pwd: string) => {
     if (!pwd) return { score: 0, label: '', color: 'bg-slate-300 dark:bg-slate-700' };
@@ -41,8 +70,8 @@ export const RegisterPage: React.FC = () => {
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
 
-    if (score <= 1) return { score, label: 'Yếu', color: 'bg-indigo-500' };
-    if (score <= 3) return { score, label: 'Trung bình', color: 'bg-blue-500' };
+    if (score <= 1) return { score, label: 'Yếu', color: 'bg-rose-500' };
+    if (score <= 3) return { score, label: 'Trung bình', color: 'bg-amber-500' };
     return { score, label: 'Mạnh', color: 'bg-emerald-500' };
   };
 
@@ -94,7 +123,7 @@ export const RegisterPage: React.FC = () => {
         subtitle="Vui lòng kiểm tra hộp thư email của bạn"
       >
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
+          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500">
             <Send className="w-8 h-8" />
           </div>
 
@@ -102,7 +131,7 @@ export const RegisterPage: React.FC = () => {
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
             Hệ thống đã gửi mã OTP xác thực 6 chữ số tới địa chỉ{' '}
-            <strong className="text-blue-500">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
+            <strong className="text-emerald-600 dark:text-emerald-400">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
           </p>
 
           <div className={`p-4 rounded-xl border text-xs mb-6 flex items-center gap-2.5 ${
@@ -272,6 +301,32 @@ export const RegisterPage: React.FC = () => {
           )}
         </button>
       </form>
+
+      {/* Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className={`w-full border-t ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}></div>
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className={`px-3 font-semibold ${isDark ? 'bg-minecraft-obsidianCard text-slate-500' : 'bg-white text-slate-400'
+            }`}>
+            Hoặc đăng ký bằng
+          </span>
+        </div>
+      </div>
+
+      {/* Google Login Button */}
+      <div className="flex justify-center w-full">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError('Đăng ký bằng Google không thành công')}
+          theme={isDark ? 'filled_black' : 'outline'}
+          shape="pill"
+          text="signup_with"
+          useOneTap={false}
+          use_fedcm_for_prompt={false}
+        />
+      </div>
 
       <div className={`mt-8 text-center border-t pt-6 text-sm ${
         isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-500'

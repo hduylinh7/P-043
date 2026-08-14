@@ -465,7 +465,7 @@ export const WeeklyPlanPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <CalendarOutlined className="text-emerald-500 text-2xl" />
                 <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Weekly Plan (Kế hoạch tuần)
+                  Kế hoạch tuần
                 </h1>
               </div>
               <p className="text-xs text-slate-400 mt-1">
@@ -474,43 +474,33 @@ export const WeeklyPlanPage: React.FC = () => {
             </div>
 
             {/* Week Navigation Header */}
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-                }`}>
+            <div className="flex items-center gap-2 overflow-x-auto shrink-0 pb-1 max-w-full">
+              <div className="card-voxel-3d flex items-center gap-1 py-1 px-2.5 shrink-0">
                 <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevWeek} title="Tuần trước" />
-                <span className="font-semibold text-sm px-2">
+                <span className="font-extrabold text-xs sm:text-sm px-1.5 whitespace-nowrap">
                   {weekStart.format('DD MMM')} - {weekEnd.format('DD MMM, YYYY')}
                 </span>
                 <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextWeek} title="Tuần sau" />
-                <Button type="text" size="small" onClick={handleToday} className="ml-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                <Button type="text" size="small" onClick={handleToday} className="ml-1 text-emerald-600 dark:text-emerald-400 font-extrabold">
                   Hôm nay
                 </Button>
               </div>
 
               {/* View Mode Toggle Button */}
-              <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-amber-900/5 border-amber-900/10'
-                }`}>
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => setViewMode('calendar')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar'
-                    ? 'bg-minecraft-grass text-white shadow-sm'
-                    : isDark
-                      ? 'text-slate-400 hover:text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  className={viewMode === 'calendar' ? 'tab-voxel-active text-xs py-1.5 px-3 shrink-0' : 'tab-voxel-inactive text-xs py-1.5 px-3 shrink-0'}
                 >
-                  <CalendarOutlined /> Calendar View
+                  <CalendarOutlined />
+                  <span>Calendar View</span>
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list'
-                    ? 'bg-minecraft-grass text-white shadow-sm'
-                    : isDark
-                      ? 'text-slate-400 hover:text-white'
-                      : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  className={viewMode === 'list' ? 'tab-voxel-active text-xs py-1.5 px-3 shrink-0' : 'tab-voxel-inactive text-xs py-1.5 px-3 shrink-0'}
                 >
-                  <UnorderedListOutlined /> List View
+                  <UnorderedListOutlined />
+                  <span>List View</span>
                 </button>
               </div>
 
@@ -518,10 +508,10 @@ export const WeeklyPlanPage: React.FC = () => {
               {isStudent && (
                 <button
                   onClick={() => setIsAIModalOpen(true)}
-                  className="btn-voxel-gold text-xs px-4 py-2"
+                  className="btn-voxel-gold text-xs px-3.5 py-2 shrink-0 flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <RobotOutlined />
-                  <span>AI Plan My Week</span>
+                  <span>AI Lập Kế Hoạch Tuần</span>
                 </button>
               )}
 
@@ -529,7 +519,7 @@ export const WeeklyPlanPage: React.FC = () => {
               {activePlan && (
                 <button
                   onClick={() => openTaskModal()}
-                  className="btn-voxel-green text-xs px-4 py-2"
+                  className="btn-voxel-green text-xs px-3.5 py-2 shrink-0 flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <PlusOutlined />
                   <span>Thêm nhiệm vụ</span>
@@ -584,34 +574,32 @@ export const WeeklyPlanPage: React.FC = () => {
               {viewMode === 'calendar' && (
                 <div className="space-y-3">
                   {/* Priority Legend Bar */}
-                  <div className={`flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-sm ${isDark ? 'bg-slate-900/80 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
-                    }`}>
-                    <div className="flex items-center gap-2 text-slate-400 font-bold">
-                      <FlagOutlined className="text-blue-500" />
+                  <div className="card-voxel-3d p-3 px-5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-slate-400 font-extrabold uppercase tracking-wider">
+                      <FlagOutlined className="text-emerald-500" />
                       <span>Phân loại cấp độ ưu tiên:</span>
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50"></span>
-                        <span className="text-rose-600 dark:text-rose-400 font-bold">Khẩn cấp (Urgent)</span>
+                    <div className="flex items-center gap-3 flex-wrap font-bold">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/15 border-2 border-rose-500/30 text-rose-700 dark:text-rose-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm"></span>
+                        <span>Khẩn cấp (Urgent)</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></span>
-                        <span className="text-amber-600 dark:text-amber-400 font-bold">Cao (High)</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border-2 border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></span>
+                        <span>Cao (High)</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></span>
-                        <span className="text-blue-600 dark:text-blue-400 font-bold">Trung bình (Medium)</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-500/15 border-2 border-blue-500/30 text-blue-700 dark:text-blue-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span>
+                        <span>Trung bình (Medium)</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Thấp (Low)</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 shadow-voxel-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>
+                        <span>Thấp (Low)</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`rounded-2xl border overflow-hidden shadow-xl ${isDark ? 'bg-[#0f0d1b] border-slate-800' : 'bg-white border-slate-200'
-                    }`}>
+                  <div className="card-voxel-3d p-0 overflow-hidden">
                     {/* Grid Header: Days of Week */}
                     <div className={`grid grid-cols-8 border-b text-center font-semibold text-xs tracking-wider uppercase sticky top-0 z-20 ${isDark ? 'bg-slate-900/90 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                       }`}>
@@ -770,41 +758,43 @@ export const WeeklyPlanPage: React.FC = () => {
                     return (
                       <div
                         key={dayIdx}
-                        className={`rounded-2xl border p-5 transition-all ${isDark
-                          ? 'bg-[#0f0d1b] border-slate-800'
-                          : 'bg-white border-slate-200 shadow-sm'
-                          } ${isToday ? 'ring-2 ring-blue-500/40' : ''}`}
+                        className={`card-voxel-3d space-y-4 ${
+                          isToday ? 'border-minecraft-grass shadow-voxel' : ''
+                        }`}
                       >
                         {/* Day Section Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-800/40 mb-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-base font-bold ${isToday ? 'text-blue-500' : isDark ? 'text-white' : 'text-slate-900'}`}>
-                              {DAY_NAMES_FULL[dayIdx]}
+                        <div className="flex items-center justify-between pb-3 border-b-2 border-slate-200 dark:border-minecraft-obsidianBorder">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-base font-extrabold flex items-center gap-2 ${isToday ? 'text-emerald-600 dark:text-emerald-400' : isDark ? 'text-white' : 'text-slate-900'}`}>
+                              📅 {DAY_NAMES_FULL[dayIdx]}
                             </span>
-                            <span className="text-xs text-slate-400 font-mono">
-                              ({day.format('DD/MM/YYYY')})
+                            <span className="badge-voxel-green text-xs font-mono font-extrabold">
+                              {day.format('DD/MM/YYYY')}
                             </span>
                             {isToday && (
-                              <Tag color="blue" className="rounded-full px-2 text-[10px]">Hôm nay</Tag>
+                              <span className="badge-voxel-green text-xs font-extrabold bg-minecraft-grass text-white border-minecraft-grassBorder">
+                                Hôm nay
+                              </span>
                             )}
                           </div>
 
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<PlusOutlined />}
+                          <button
+                            type="button"
                             onClick={() => openTaskModal(undefined, day)}
-                            className="text-blue-500 hover:text-blue-400 text-xs font-semibold"
+                            className="btn-voxel-green text-xs px-3.5 py-1.5 font-bold flex items-center gap-1.5"
                           >
-                            Thêm nhiệm vụ
-                          </Button>
+                            <PlusOutlined />
+                            <span>Thêm nhiệm vụ</span>
+                          </button>
                         </div>
 
                         {/* Task List under this Day */}
                         {dayTasks.length === 0 ? (
-                          <p className="text-xs text-slate-500 italic py-2">Chưa có nhiệm vụ nào cho ngày này.</p>
+                          <div className="py-6 text-center text-xs text-slate-400 font-medium italic">
+                            Chưa có nhiệm vụ nào được lên lịch cho ngày này.
+                          </div>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {dayTasks.map((task) => {
                               const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
                               const pKey = (task.priority || 'medium').toLowerCase();
@@ -815,54 +805,49 @@ export const WeeklyPlanPage: React.FC = () => {
                                 <div
                                   key={task.id}
                                   onClick={() => setDetailTask(task)}
-                                  className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-md overflow-hidden ${isCompleted
-                                      ? isDark
-                                        ? 'bg-slate-900/60 border-slate-800 opacity-60'
-                                        : 'bg-slate-100/90 border-slate-200 opacity-65'
-                                      : isDark
-                                        ? `${theme.cardBgDark} ${theme.borderDark} text-slate-100 ${theme.glowHover}`
-                                        : `${theme.cardBgLight} ${theme.borderLight} text-slate-900 ${theme.glowHover}`
-                                    }`}
+                                  className={`card-voxel-3d p-4 cursor-pointer transition-all hover:-translate-y-1 relative overflow-hidden ${
+                                    isCompleted ? 'opacity-65 line-through' : ''
+                                  }`}
                                 >
-                                  <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${isCompleted ? 'bg-slate-400/50' : theme.accentBorder}`} />
-                                  <div className="pl-2">
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div className="flex items-center gap-2">
+                                  <div className={`absolute top-0 bottom-0 left-0 w-2 ${isCompleted ? 'bg-slate-400' : theme.accentBorder}`} />
+                                  <div className="pl-2 space-y-2">
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <div className="flex items-center gap-2 min-w-0">
                                         <Button
                                           type="text"
                                           size="small"
-                                          icon={<CheckCircleOutlined className={isCompleted ? 'text-emerald-500' : 'text-slate-400'} />}
+                                          icon={<CheckCircleOutlined className={isCompleted ? 'text-emerald-500 text-base' : 'text-slate-400 text-base'} />}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             handleToggleTaskStatus(task);
                                           }}
                                         />
-                                        <h3 className={`font-bold text-sm truncate ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                                        <h3 className={`font-extrabold text-sm truncate m-0 ${isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                                           {task.title}
                                         </h3>
                                       </div>
 
-                                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText}`}>
+                                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-xl border-2 shrink-0 ${theme.badgeBg} ${theme.badgeText}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${theme.dotColor}`} />
                                         {theme.label}
                                       </span>
                                     </div>
 
                                     {task.description && (
-                                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 pl-8">
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 m-0 pl-7 font-medium">
                                         {task.description}
                                       </p>
                                     )}
 
-                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-black/5 dark:border-white/5 pl-8">
-                                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-[11px] font-medium">
+                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200 dark:border-slate-800 pl-7">
+                                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-[11px] font-bold">
                                         <ClockCircleOutlined />
                                         <span>
-                                          {task.start_time || 'Chưa định thời gian'} {task.end_time ? `- ${task.end_time}` : ''}
+                                          {task.start_time || 'Chưa định giờ'} {task.end_time ? `- ${task.end_time}` : ''}
                                         </span>
                                       </div>
 
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400">
                                         {sourceConf.icon} {sourceConf.label.split(' ')[0]}
                                       </span>
                                     </div>
@@ -909,58 +894,83 @@ export const WeeklyPlanPage: React.FC = () => {
 
       {/* CREATE / EDIT TASK MODAL */}
       <Modal
-        title={editingTask ? 'Chỉnh sửa Nhiệm vụ' : 'Thêm Nhiệm vụ vào Kế hoạch'}
+        title={
+          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-extrabold text-base">
+            <PlusOutlined className="text-emerald-500" />
+            <span>{editingTask ? 'Chỉnh Sửa Nhiệm Vụ' : 'Thêm Nhiệm Vụ Vào Kế Hoạch'}</span>
+          </div>
+        }
         open={isTaskModalOpen}
         onCancel={() => setIsTaskModalOpen(false)}
-        onOk={() => taskForm.submit()}
-        okText={editingTask ? 'Lưu thay đổi' : 'Thêm Nhiệm vụ'}
-        cancelText="Hủy"
-        width={560}
+        footer={null}
+        destroyOnClose
+        centered
+        width={580}
+        className="rounded-2xl overflow-hidden"
       >
-        <Form form={taskForm} layout="vertical" onFinish={handleSaveTask} className="mt-4">
+        <Form form={taskForm} layout="vertical" onFinish={handleSaveTask} className="mt-2 space-y-2">
           <Form.Item
             name="title"
-            label="Tên Nhiệm vụ"
+            label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Tên Nhiệm vụ</span>}
             rules={[{ required: true, message: 'Vui lòng nhập tên nhiệm vụ' }]}
           >
-            <Input placeholder="Ví dụ: Luyện đề TOEIC, Viết API RAG..." />
+            <Input placeholder="Ví dụ: Luyện đề TOEIC, Viết API RAG..." className="rounded-xl border-2 p-2.5 font-medium text-sm" />
           </Form.Item>
 
-          <Form.Item name="description" label="Mô tả chi tiết">
-            <TextArea rows={2} placeholder="Nội dung cần thực hiện..." />
+          <Form.Item
+            name="description"
+            label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Mô tả chi tiết</span>}
+          >
+            <TextArea rows={2} placeholder="Nội dung cần thực hiện..." className="rounded-xl border-2 p-2.5 font-medium text-sm" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="scheduled_date"
-              label="Ngày thực hiện"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Ngày thực hiện</span>}
               rules={[{ required: true, message: 'Chọn ngày' }]}
             >
-              <DatePicker format="DD/MM/YYYY" className="w-full" />
+              <DatePicker format="DD/MM/YYYY" className="w-full rounded-xl border-2 p-2" />
             </Form.Item>
 
-            <Form.Item name="source_type" label="Nguồn nhiệm vụ (Task Source)">
-              <Select options={Object.entries(SOURCE_CONFIG).map(([key, val]) => ({ label: val.label, value: key }))} />
+            <Form.Item
+              name="source_type"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Nguồn nhiệm vụ (Source)</span>}
+            >
+              <Select options={Object.entries(SOURCE_CONFIG).map(([key, val]) => ({ label: val.label, value: key }))} size="large" className="rounded-xl" />
             </Form.Item>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Form.Item name="start_time" label="Giờ bắt đầu">
-              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} />
+            <Form.Item
+              name="start_time"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Giờ bắt đầu</span>}
+            >
+              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} size="large" />
             </Form.Item>
 
-            <Form.Item name="end_time" label="Giờ kết thúc">
-              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} />
+            <Form.Item
+              name="end_time"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Giờ kết thúc</span>}
+            >
+              <Select options={TIME_SLOTS.map((t) => ({ label: t, value: t }))} size="large" />
             </Form.Item>
 
-            <Form.Item name="estimated_duration" label="Thời lượng (Phút)">
-              <InputNumber min={15} step={15} className="w-full" placeholder="60" />
+            <Form.Item
+              name="estimated_duration"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Thời lượng (Phút)</span>}
+            >
+              <InputNumber min={15} step={15} className="w-full" size="large" placeholder="60" />
             </Form.Item>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="priority" label="Độ ưu tiên">
+            <Form.Item
+              name="priority"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Độ ưu tiên</span>}
+            >
               <Select
+                size="large"
                 options={[
                   { label: 'Thấp (Low)', value: 'low' },
                   { label: 'Trung bình (Medium)', value: 'medium' },
@@ -970,8 +980,12 @@ export const WeeklyPlanPage: React.FC = () => {
               />
             </Form.Item>
 
-            <Form.Item name="status" label="Trạng thái">
+            <Form.Item
+              name="status"
+              label={<span className="font-bold text-xs uppercase tracking-wider text-slate-500">Trạng thái</span>}
+            >
               <Select
+                size="large"
                 options={[
                   { label: 'Cần làm (Todo)', value: 'todo' },
                   { label: 'Đang làm (In Progress)', value: 'in_progress' },
@@ -980,6 +994,25 @@ export const WeeklyPlanPage: React.FC = () => {
                 ]}
               />
             </Form.Item>
+          </div>
+
+          {/* 3D Voxel Footer Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsTaskModalOpen(false)}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={() => taskForm.submit()}
+              className="btn-voxel-green text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2"
+            >
+              <PlusOutlined />
+              <span>{editingTask ? 'Lưu Thay Đổi' : 'Thêm Nhiệm Vụ'}</span>
+            </button>
           </div>
         </Form>
       </Modal>
@@ -1066,30 +1099,39 @@ export const WeeklyPlanPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* AI PLAN MY WEEK REQUEST MODAL */}
+      {/* AI PLAN REQUEST MODAL */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-purple-500 font-bold text-lg">
-            <RobotOutlined className="text-xl" />
-            <span>AI Plan My Week (Tự động lập kế hoạch)</span>
+          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-extrabold text-base">
+            <RobotOutlined className="text-xl text-emerald-500" />
+            <span>AI Lập Kế Hoạch Tuần (Tự động)</span>
           </div>
         }
         open={isAIModalOpen}
         onCancel={() => !isGeneratingAI && setIsAIModalOpen(false)}
         footer={null}
         destroyOnClose
+        centered
+        width={500}
+        className="rounded-2xl overflow-hidden"
       >
         <div className="space-y-4 py-2">
-          <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs">
-            <span className="font-semibold text-purple-400">Khoảng thời gian lên lịch: </span>
-            <span className="font-bold text-slate-200">
-              {weekStart.format('DD/MM/YYYY')} - {weekEnd.format('DD/MM/YYYY')}
-            </span>
+          <div className={`p-4 rounded-2xl border-2 space-y-1 ${
+            isDark
+              ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100'
+              : 'bg-emerald-50/80 border-minecraft-grassBorder text-slate-900 shadow-sm'
+          }`}>
+            <div className="flex items-center justify-between text-sm flex-wrap gap-2">
+              <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Khoảng thời gian lên lịch:</span>
+              <span className="badge-voxel-green text-xs font-extrabold px-3 py-1">
+                📅 {weekStart.format('DD/MM/YYYY')} – {weekEnd.format('DD/MM/YYYY')}
+              </span>
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1 text-slate-300">
-              Bạn muốn tập trung vào điều gì tuần này? (Tùy chọn)
+            <label className={`block text-xs font-extrabold mb-1.5 uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Tuần này bạn muốn ưu tiên tập trung vào điều gì? (Tùy chọn)
             </label>
             <TextArea
               rows={4}
@@ -1097,30 +1139,36 @@ export const WeeklyPlanPage: React.FC = () => {
               onChange={(e) => setAiPlanRequest(e.target.value)}
               placeholder="Ví dụ: Tuần này mình có bài tập môn Python sắp tới hạn, hãy ưu tiên giúp mình xếp lịch làm bài tập và chuẩn bị trước 2 ngày..."
               disabled={isGeneratingAI}
+              className="rounded-2xl border-2 font-medium p-3 text-sm focus:border-minecraft-grassBorder shadow-sm"
             />
           </div>
 
           {isGeneratingAI && (
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
+            <div className="p-4 rounded-2xl bg-emerald-500/15 border-2 border-minecraft-grassBorder flex items-center gap-3">
               <Spin size="small" />
-              <span className="text-xs font-medium text-blue-400">
-                🤖 AI đang phân tích bài tập, mục tiêu và xếp lịch tự động cho bạn...
+              <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+                🤖 AI đang phân tích bài tập, mục tiêu và tự động xếp lịch tuần cho bạn...
               </span>
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button onClick={() => setIsAIModalOpen(false)} disabled={isGeneratingAI}>
-              Hủy
-            </Button>
-            <Button
-              type="primary"
-              loading={isGeneratingAI}
-              onClick={handleGenerateAIPlan}
-              className="bg-purple-600 hover:bg-purple-500 rounded-xl font-semibold border-none"
+          <div className="flex justify-end gap-3 pt-3 border-t">
+            <button
+              onClick={() => setIsAIModalOpen(false)}
+              disabled={isGeneratingAI}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             >
-              Tạo Kế Hoạch AI
-            </Button>
+              Hủy
+            </button>
+            <button
+              type="button"
+              disabled={isGeneratingAI}
+              onClick={handleGenerateAIPlan}
+              className="btn-voxel-gold text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2"
+            >
+              <RobotOutlined />
+              <span>Tạo Kế Hoạch AI</span>
+            </button>
           </div>
         </div>
       </Modal>

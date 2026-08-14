@@ -28,6 +28,7 @@ interface AuthContextType {
   verifyResetCode: (payload: VerifyResetCodePayload) => Promise<string>;
   resetPassword: (payload: ResetPasswordPayload) => Promise<string>;
   assignRole: (payload: AssignRolePayload) => Promise<User>;
+  updateProfile: (data: { full_name?: string; avatar_url?: string; account_tier?: string; inventory_item?: string }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,12 +37,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const applyOverrides = (u: User): User => {
+    try {
+      const overrides = JSON.parse(localStorage.getItem('user_profile_overrides') || '{}');
+      return {
+        account_tier: u.roles?.includes('instructor') ? 'PRO Instructor' : 'PRO Student',
+        inventory_item: '🗡️ Diamond Sword',
+        ...u,
+        ...overrides,
+      };
+    } catch {
+      return u;
+    }
+  };
+
   const initAuth = async () => {
     const token = localStorage.getItem('access_token');
     if (token) {
       try {
         const currentUser = await authService.getMe();
-        setUser(currentUser);
+        setUser(applyOverrides(currentUser));
       } catch (err) {
         console.error('Failed to restore auth session:', err);
         localStorage.clear();
@@ -55,20 +70,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
+  const updateProfile = (data: { full_name?: string; avatar_url?: string; account_tier?: string; inventory_item?: string }) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...data };
+      try {
+        const savedOverrides = JSON.parse(localStorage.getItem('user_profile_overrides') || '{}');
+        localStorage.setItem('user_profile_overrides', JSON.stringify({ ...savedOverrides, ...data }));
+      } catch (e) {
+        console.error('Failed to save profile overrides:', e);
+      }
+      return updated;
+    });
+  };
+
   const login = async (payload: LoginPayload): Promise<AuthTokens> => {
     const data = await authService.login(payload);
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
-    setUser(data.user);
-    return data;
+    const updatedUser = applyOverrides(data.user);
+    setUser(updatedUser);
+    return { ...data, user: updatedUser };
   };
 
   const loginWithGoogle = async (payload: GoogleAuthPayload): Promise<AuthTokens> => {
     const data = await authService.loginWithGoogle(payload);
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
-    setUser(data.user);
-    return data;
+    const updatedUser = applyOverrides(data.user);
+    setUser(updatedUser);
+    return { ...data, user: updatedUser };
   };
 
 
@@ -115,8 +146,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const assignRole = async (payload: AssignRolePayload): Promise<User> => {
     const updatedUser = await authService.assignRole(payload);
-    setUser(updatedUser);
-    return updatedUser;
+    const userWithOverrides = applyOverrides(updatedUser);
+    setUser(userWithOverrides);
+    return userWithOverrides;
   };
 
   return (
@@ -135,6 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyResetCode,
         resetPassword,
         assignRole,
+        updateProfile,
       }}
     >
       {children}

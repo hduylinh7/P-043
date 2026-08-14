@@ -200,13 +200,13 @@ export const CoursesPage: React.FC = () => {
           isDark ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder' : 'bg-[#FDFBF7]/90 border-amber-900/10'
         }`}>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight m-0">Quản Lý Khóa Học</h1>
-              <Tag color={isInstructor ? 'gold' : 'green'} className="rounded-full px-3 py-0.5 font-bold text-xs border-0">
+              <span className="badge-voxel-green text-xs">
                 {isInstructor ? 'Giảng Viên' : 'Sinh Viên'}
-              </Tag>
+              </span>
             </div>
-            <p className={`text-xs mt-1 m-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-xs mt-1.5 m-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               {isInstructor
                 ? 'Quản lý danh sách khóa học do bạn giảng dạy và theo dõi sinh viên ghi danh.'
                 : 'Khám phá khóa học mới hoặc xem lại các khóa học bạn đã đăng ký.'}
@@ -227,22 +227,31 @@ export const CoursesPage: React.FC = () => {
         {/* Filter & Tabs Toolbar */}
         <main className="p-6 max-w-7xl w-full mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <Tabs
-              activeKey={activeTab}
-              onChange={(key) => setActiveTab(key)}
-              items={
-                isInstructor
-                  ? [
-                      { key: 'managed', label: 'Khóa Học Giảng Dạy' },
-                      { key: 'discover', label: 'Tất Cả Khóa Học' },
-                    ]
-                  : [
-                      { key: 'my_courses', label: 'Khóa Học Của Tôi' },
-                      { key: 'discover', label: 'Khám Phá Khóa Học' },
-                    ]
-              }
-              className="w-full sm:w-auto font-bold"
-            />
+            {/* Custom 3D Voxel Tabs */}
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              {(isInstructor
+                ? [
+                    { key: 'managed', label: 'Khóa Học Giảng Dạy', icon: <BookOutlined /> },
+                    { key: 'discover', label: 'Tất Cả Khóa Học', icon: <SearchOutlined /> },
+                  ]
+                : [
+                    { key: 'my_courses', label: 'Khóa Học Của Tôi', icon: <BookOutlined /> },
+                    { key: 'discover', label: 'Khám Phá Khóa Học', icon: <SearchOutlined /> },
+                  ]
+              ).map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={isActive ? 'tab-voxel-active text-xs' : 'tab-voxel-inactive text-xs'}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
             <div className="w-full sm:w-72">
               <Input
@@ -251,7 +260,7 @@ export const CoursesPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 allowClear
-                className="rounded-xl"
+                className="rounded-xl border-2 border-slate-300 dark:border-minecraft-obsidianBorder focus:border-emerald-500"
               />
             </div>
           </div>
@@ -263,7 +272,7 @@ export const CoursesPage: React.FC = () => {
               <p className="text-sm mt-3 text-slate-400">Đang tải danh sách khóa học...</p>
             </div>
           ) : filteredCourses.length === 0 ? (
-            <div className="py-16 bg-white dark:bg-minecraft-obsidianCard rounded-3xl border-2 border-amber-900/10 dark:border-minecraft-obsidianBorder text-center">
+            <div className="py-16 bg-white dark:bg-minecraft-obsidianCard rounded-3xl border-2 border-minecraft-grassBorder/40 dark:border-minecraft-obsidianBorder text-center shadow-voxel-sm shadow-minecraft-grassBorder/20">
               <Empty
                 description={
                   <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
@@ -288,31 +297,27 @@ export const CoursesPage: React.FC = () => {
                   key={course.id}
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.2 }}
-                  className={`rounded-2xl border-2 p-6 flex flex-col justify-between relative shadow-sm hover:shadow-md transition-all ${
-                    isDark
-                      ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder hover:border-emerald-500/50'
-                      : 'bg-white border-amber-900/10 hover:border-emerald-400'
-                  }`}
+                  className="card-voxel-3d flex flex-col justify-between relative group"
                 >
                   <div>
-                    <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center justify-between gap-2 mb-3.5">
                       <div className="flex items-center gap-2">
-                        <Tag color="emerald" className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border-0">
+                        <span className="badge-voxel-green text-[11px] font-mono tracking-wider">
                           {course.code}
-                        </Tag>
+                        </span>
                         {renderStatusTag(course.status)}
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <TeamOutlined />
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                        <TeamOutlined className="text-emerald-500" />
                         <span>{course.student_count} sinh viên</span>
                       </div>
                     </div>
 
-                    <h3 className={`text-lg font-bold tracking-tight mb-2 line-clamp-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <h3 className={`text-lg font-bold tracking-tight mb-2 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {course.name}
                     </h3>
 
-                    <p className={`text-xs leading-relaxed line-clamp-2 mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className={`text-xs leading-relaxed line-clamp-2 mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       {course.description || 'Chưa có mô tả cho khóa học này.'}
                     </p>
 
@@ -327,9 +332,9 @@ export const CoursesPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <UserOutlined />
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between mt-auto">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <UserOutlined className="text-slate-400" />
                       <span className="truncate max-w-[120px]">{course.instructor_name || 'Giảng viên'}</span>
                     </div>
 
@@ -346,30 +351,26 @@ export const CoursesPage: React.FC = () => {
 
                       {activeTab === 'discover' && !isInstructor ? (
                         course.is_enrolled ? (
-                          <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-lg px-3 py-1 font-medium">
-                            Đã tham gia
-                          </Tag>
+                          <span className="badge-voxel-green text-xs">
+                            <CheckCircleOutlined /> Đã tham gia
+                          </span>
                         ) : (
-                          <Button
-                            type="primary"
-                            size="small"
-                            loading={joiningId === course.id}
+                          <button
+                            disabled={joiningId === course.id}
                             onClick={() => handleJoinCourse(course.id)}
-                            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold"
+                            className="btn-voxel-green text-xs px-3.5 py-1.5 rounded-xl"
                           >
                             Tham gia
-                          </Button>
+                          </button>
                         )
                       ) : (
-                        <Button
-                          type="default"
-                          size="small"
-                          icon={<ArrowRightOutlined />}
+                        <button
                           onClick={() => navigate(`/courses/${course.id}`)}
-                          className="rounded-lg text-xs font-semibold"
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border-2 border-minecraft-grassBorder bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs shadow-voxel-sm shadow-minecraft-grassBorder/40 hover:bg-minecraft-grass hover:text-white transition-all active:translate-y-0.5"
                         >
-                          Chi tiết
-                        </Button>
+                          <span>Chi tiết</span>
+                          <ArrowRightOutlined className="text-xs" />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -383,7 +384,7 @@ export const CoursesPage: React.FC = () => {
       {/* Modal Create Course */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-indigo-600 font-bold">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
             <BookOutlined />
             <span>Tạo Khóa Học Mới</span>
           </div>
@@ -465,8 +466,8 @@ export const CoursesPage: React.FC = () => {
             <Button
               type="primary"
               htmlType="submit"
-              loading={submitting}
-              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+              loading={creating}
+              className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
             >
               Tạo Khóa Học
             </Button>
