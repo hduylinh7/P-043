@@ -42,16 +42,16 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: p043-backend
-          property: url
+        sync: false
 
   # 3. Redis Cache
   - type: redis
     name: p043-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
 
 databases:
   # 4. PostgreSQL Database
