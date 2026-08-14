@@ -124,10 +124,18 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
         response_text = str(ai_msg.content)
     except Exception as e:
         logger.error(f"Error calling LLM provider: {e}")
-        response_text = (
-            f"I encountered an issue generating a response. "
-            f"Please try again later. (Error: {e})"
-        )
+        err_str = str(e)
+        if "invalid_api_key" in err_str.lower() or "401" in err_str or "Invalid API Key" in err_str:
+            response_text = (
+                "GROQ_API_KEY chưa hợp lệ hoặc chưa được điền trong file .env!\n"
+                "👉 Bạn hãy truy cập https://console.groq.com/keys để tạo API Key miễn phí, sau đó dán vào file .env:\n"
+                "GROQ_API_KEY=gsk_..."
+            )
+        else:
+            response_text = (
+                f"I encountered an issue generating a response. "
+                f"Please try again later. (Error: {e})"
+            )
 
     return {
         "response": response_text,

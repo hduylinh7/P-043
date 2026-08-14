@@ -93,8 +93,18 @@ class PersonalLearningCompanionAgent:
             }
         except Exception as e:
             logger.error(f"Error in PersonalLearningCompanionAgent: {e}", exc_info=True)
+            err_str = str(e)
+            if "invalid_api_key" in err_str.lower() or "401" in err_str or "Invalid API Key" in err_str:
+                user_friendly_msg = (
+                    "GROQ_API_KEY chưa hợp lệ hoặc chưa được điền trong file .env!\n"
+                    "👉 Bạn hãy truy cập https://console.groq.com/keys để tạo API Key miễn phí, sau đó dán vào file .env:\n"
+                    "GROQ_API_KEY=gsk_..."
+                )
+            else:
+                user_friendly_msg = err_str
+
             return {
-                "response": f"Xin lỗi, tôi gặp sự cố khi đọc dữ liệu học tập của bạn: {e}",
+                "response": f"Xin lỗi, tôi gặp sự cố khi xử lý câu hỏi: {user_friendly_msg}",
                 "analysis": "Error during context processing",
                 "citations": [],
                 "sources": [],
