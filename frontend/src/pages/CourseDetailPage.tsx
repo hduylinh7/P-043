@@ -438,7 +438,7 @@ export const CourseDetailPage: React.FC = () => {
     setLoadingSubmissionsRoster(true);
     try {
       const subs = await assignmentService.getAssignmentSubmissions(assignment.id);
-      setAssignmentSubmissions(subs);
+      setAssignmentSubmissions(subs.submissions || []);
     } catch (err: any) {
       console.error('Get submissions roster error:', err);
       message.error(err.response?.data?.detail || 'Không thể tải danh sách bài nộp.');

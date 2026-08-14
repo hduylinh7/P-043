@@ -466,7 +466,7 @@ export const CoursesPage: React.FC = () => {
             <Button
               type="primary"
               htmlType="submit"
-              loading={creating}
+              loading={submitting}
               className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white font-semibold"
             >
               Tạo Khóa Học
