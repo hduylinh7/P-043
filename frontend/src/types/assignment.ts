@@ -139,6 +139,7 @@ export interface AssignmentUpdatePayload {
   estimated_hours?: number;
   status?: string;
   priority?: PriorityLevel;
+  questions?: AssignmentQuestionPayload[];
 }
 
 export interface AssignmentProgressPayload {

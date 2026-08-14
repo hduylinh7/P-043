@@ -28,6 +28,13 @@ class PlanTaskCreateRequest(BaseModel):
     source_type: str = Field(default="MANUAL")
     source_id: str | None = Field(default=None)
     assignment_id: str | None = Field(default=None)
+    started_at: datetime | str | None = Field(default=None)
+    completed_at: datetime | str | None = Field(default=None)
+    actual_duration: int | None = Field(default=None)
+    completed_activities: list[str] = Field(default_factory=list)
+    reflection_data: dict | None = Field(default=None)
+    ai_insight: str | None = Field(default=None)
+    suggested_next_focus: str | None = Field(default=None)
 
 
 class PlanTaskUpdateRequest(BaseModel):
@@ -52,10 +59,25 @@ class PlanTaskUpdateRequest(BaseModel):
     source_type: str | None = None
     source_id: str | None = None
     assignment_id: str | None = None
+    started_at: datetime | str | None = None
+    completed_at: datetime | str | None = None
+    actual_duration: int | None = None
+    completed_activities: list[str] | None = None
+    reflection_data: dict | None = None
+    ai_insight: str | None = None
+    suggested_next_focus: str | None = None
 
 
 class PlanTaskStatusUpdateRequest(BaseModel):
     status: str = Field(..., description="New task status: todo, in_progress, completed, skipped")
+
+
+class PlanTaskReflectionRequest(BaseModel):
+    what_learned: str | None = Field(default=None, description="What did you learn today?")
+    understood_well: str | None = Field(default=None, description="What did you understand well?")
+    struggling_with: str | None = Field(default=None, description="What are you still struggling with?")
+    understanding_level: str | None = Field(default="mostly", description="not_understood, partially, mostly, fully")
+    achieved_goal: str | None = Field(default="yes", description="yes, partially, no")
 
 
 class PlanTaskResponse(BaseModel):
@@ -83,6 +105,13 @@ class PlanTaskResponse(BaseModel):
     estimated_minutes: int | None = None
     source_type: str = "MANUAL"
     source_id: str | None = None
+    started_at: datetime | str | None = None
+    completed_at: datetime | str | None = None
+    actual_duration: int | None = None
+    completed_activities: list[str] = Field(default_factory=list)
+    reflection_data: dict | None = None
+    ai_insight: str | None = None
+    suggested_next_focus: str | None = None
     created_at: datetime | str
     updated_at: datetime | str
 

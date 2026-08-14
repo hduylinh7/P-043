@@ -148,6 +148,19 @@ async def download_course_material(
     )
 
 
+@router.get("/{course_id}/materials/{material_id}/content")
+async def get_course_material_content(
+    course_id: str,
+    material_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Extract and return text content of material."""
+    return await MaterialService.get_material_content(
+        db, course_id, material_id, current_user
+    )
+
+
 
 @router.delete("/{course_id}/materials/{material_id}")
 async def delete_course_material(

@@ -434,6 +434,21 @@ class AssignmentService:
             priority=payload.priority,
         )
 
+        if payload.questions is not None:
+            await AssignmentRepository.delete_questions_by_assignment(db, assignment_id)
+            for idx, q_req in enumerate(payload.questions):
+                opts = [opt.model_dump() for opt in q_req.options] if q_req.options else None
+                await AssignmentRepository.create_question(
+                    db=db,
+                    assignment_id=assignment_id,
+                    question_type=q_req.question_type,
+                    question_text=q_req.question_text,
+                    points=q_req.points,
+                    display_order=q_req.display_order if q_req.display_order is not None else idx,
+                    expected_answer=q_req.expected_answer,
+                    options=opts,
+                )
+
         full_updated = await AssignmentRepository.get_by_id(db, assignment_id)
         return AssignmentService._build_assignment_response(full_updated or updated_assignment)
 

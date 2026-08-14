@@ -118,6 +118,7 @@ class AssignmentUpdateRequest(BaseModel):
     estimated_hours: float | None = Field(default=None, ge=0)
     status: str | None = None
     priority: PriorityType | None = None
+    questions: list[AssignmentQuestionCreateRequest] | None = None
 
 
 class AssignmentProgressUpdateRequest(BaseModel):

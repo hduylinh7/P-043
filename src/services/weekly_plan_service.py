@@ -12,6 +12,7 @@ from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
 from src.models.weekly_plan import (
     PlanTaskCreateRequest,
+    PlanTaskReflectionRequest,
     PlanTaskResponse,
     PlanTaskStatusUpdateRequest,
     PlanTaskUpdateRequest,
@@ -47,9 +48,18 @@ def pack_task_description(
     course_name: str | None = None,
     goal_id: str | None = None,
     goal_title: str | None = None,
+    started_at: str | None = None,
+    completed_at: str | None = None,
+    actual_duration: int | None = None,
+    completed_activities: list[str] | None = None,
+    reflection_data: dict | None = None,
+    ai_insight: str | None = None,
+    suggested_next_focus: str | None = None,
 ) -> str | None:
     has_meta = any([
-        topic, what_to_study, what_to_do, reason, material_id, material_title, course_id, course_name, goal_id, goal_title
+        topic, what_to_study, what_to_do, reason, material_id, material_title,
+        course_id, course_name, goal_id, goal_title, started_at, completed_at,
+        actual_duration, completed_activities, reflection_data, ai_insight, suggested_next_focus
     ])
     if not has_meta:
         return description
@@ -66,6 +76,13 @@ def pack_task_description(
         "course_name": course_name,
         "goal_id": goal_id,
         "goal_title": goal_title,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "actual_duration": actual_duration,
+        "completed_activities": completed_activities or [],
+        "reflection_data": reflection_data,
+        "ai_insight": ai_insight,
+        "suggested_next_focus": suggested_next_focus,
     }
     return json.dumps(meta, ensure_ascii=False)
 
@@ -109,6 +126,13 @@ def serialize_task(task: Task) -> PlanTaskResponse:
         estimated_minutes=task.estimated_minutes,
         source_type=task.source_type or "MANUAL",
         source_id=task.source_id,
+        started_at=meta.get("started_at"),
+        completed_at=meta.get("completed_at"),
+        actual_duration=meta.get("actual_duration"),
+        completed_activities=meta.get("completed_activities") or [],
+        reflection_data=meta.get("reflection_data"),
+        ai_insight=meta.get("ai_insight"),
+        suggested_next_focus=meta.get("suggested_next_focus"),
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -396,6 +420,26 @@ class WeeklyPlanService:
         return serialize_task(task)
 
     @staticmethod
+    async def get_task_by_id(
+        db: AsyncSession,
+        task_id: str,
+        current_user: UserResponse,
+    ) -> PlanTaskResponse:
+        WeeklyPlanService._ensure_student(current_user)
+
+        stmt = select(Task).options(selectinload(Task.weekly_goal)).where(Task.id == task_id)
+        res = await db.execute(stmt)
+        task = res.scalar_one_or_none()
+
+        if not task or not task.weekly_goal or task.weekly_goal.student_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or access denied.",
+            )
+
+        return serialize_task(task)
+
+    @staticmethod
     async def update_task(
         db: AsyncSession,
         task_id: str,
@@ -416,26 +460,47 @@ class WeeklyPlanService:
 
         if payload.title is not None:
             task.title = payload.title
-        if (
-            payload.description is not None
-            or payload.topic is not None
-            or payload.what_to_study is not None
-            or payload.what_to_do is not None
-            or payload.reason is not None
-            or payload.material_id is not None
-            or payload.material_title is not None
-            or payload.course_id is not None
-            or payload.course_name is not None
-            or payload.goal_id is not None
-            or payload.goal_title is not None
-        ):
-            # Unpack existing meta if any
-            existing_meta = {}
-            if task.description and task.description.startswith("{") and task.description.endswith("}"):
-                try:
-                    existing_meta = json.loads(task.description)
-                except Exception:
-                    existing_meta = {}
+
+        # Unpack existing meta if any
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        meta_updated = False
+        meta_fields = [
+            "description", "topic", "what_to_study", "what_to_do", "reason",
+            "material_id", "material_title", "course_id", "course_name", "goal_id",
+            "goal_title", "started_at", "completed_at", "actual_duration", "completed_activities"
+        ]
+
+        for field in meta_fields:
+            if getattr(payload, field, None) is not None:
+                meta_updated = True
+                break
+
+        if meta_updated:
+            # Auto calculate timing if completing
+            new_status = payload.status if payload.status is not None else (str(task.status.value) if hasattr(task.status, "value") else str(task.status))
+            eff_started_at = payload.started_at if payload.started_at is not None else existing_meta.get("started_at")
+            eff_completed_at = payload.completed_at if payload.completed_at is not None else existing_meta.get("completed_at")
+            eff_actual_dur = payload.actual_duration if payload.actual_duration is not None else existing_meta.get("actual_duration")
+
+            if (new_status in ("in_progress", "IN_PROGRESS")) and not eff_started_at:
+                eff_started_at = datetime.now(timezone.utc).isoformat()
+
+            if (new_status in ("completed", "COMPLETED")) and not eff_completed_at:
+                eff_completed_at = datetime.now(timezone.utc).isoformat()
+                if eff_started_at and not eff_actual_dur:
+                    try:
+                        s_dt = parse_datetime(eff_started_at)
+                        c_dt = parse_datetime(eff_completed_at)
+                        if s_dt and c_dt:
+                            eff_actual_dur = max(1, int((c_dt - s_dt).total_seconds() / 60))
+                    except Exception:
+                        pass
 
             task.description = pack_task_description(
                 description=payload.description if payload.description is not None else existing_meta.get("description"),
@@ -449,7 +514,12 @@ class WeeklyPlanService:
                 course_name=payload.course_name if payload.course_name is not None else existing_meta.get("course_name"),
                 goal_id=payload.goal_id if payload.goal_id is not None else existing_meta.get("goal_id"),
                 goal_title=payload.goal_title if payload.goal_title is not None else existing_meta.get("goal_title"),
+                started_at=eff_started_at,
+                completed_at=eff_completed_at,
+                actual_duration=eff_actual_dur,
+                completed_activities=payload.completed_activities if payload.completed_activities is not None else existing_meta.get("completed_activities"),
             )
+
         if payload.priority is not None:
             task.priority = normalize_priority(payload.priority)
         if payload.status is not None:
@@ -544,7 +614,157 @@ class WeeklyPlanService:
                 detail="Task not found or access denied.",
             )
 
-        task.status = payload.status
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        new_status = payload.status
+        started_at = existing_meta.get("started_at")
+        completed_at = existing_meta.get("completed_at")
+        actual_duration = existing_meta.get("actual_duration")
+
+        if (new_status in ("in_progress", "IN_PROGRESS")) and not started_at:
+            started_at = datetime.now(timezone.utc).isoformat()
+
+        if (new_status in ("completed", "COMPLETED")) and not completed_at:
+            completed_at = datetime.now(timezone.utc).isoformat()
+            if started_at and not actual_duration:
+                try:
+                    s_dt = parse_datetime(started_at)
+                    c_dt = parse_datetime(completed_at)
+                    if s_dt and c_dt:
+                        actual_duration = max(1, int((c_dt - s_dt).total_seconds() / 60))
+                except Exception:
+                    pass
+
+        task.status = new_status
+        task.description = pack_task_description(
+            description=existing_meta.get("description"),
+            topic=existing_meta.get("topic"),
+            what_to_study=existing_meta.get("what_to_study"),
+            what_to_do=existing_meta.get("what_to_do"),
+            reason=existing_meta.get("reason"),
+            material_id=existing_meta.get("material_id"),
+            material_title=existing_meta.get("material_title"),
+            course_id=existing_meta.get("course_id"),
+            course_name=existing_meta.get("course_name"),
+            goal_id=existing_meta.get("goal_id"),
+            goal_title=existing_meta.get("goal_title"),
+            started_at=started_at,
+            completed_at=completed_at,
+            actual_duration=actual_duration,
+            completed_activities=existing_meta.get("completed_activities"),
+        )
+
+        await db.commit()
+        await db.refresh(task)
+        return serialize_task(task)
+
+    @staticmethod
+    async def save_task_reflection(
+        db: AsyncSession,
+        task_id: str,
+        payload: PlanTaskReflectionRequest,
+        current_user: UserResponse,
+    ) -> PlanTaskResponse:
+        WeeklyPlanService._ensure_student(current_user)
+
+        stmt = select(Task).options(selectinload(Task.weekly_goal)).where(Task.id == task_id)
+        res = await db.execute(stmt)
+        task = res.scalar_one_or_none()
+
+        if not task or not task.weekly_goal or task.weekly_goal.student_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or access denied.",
+            )
+
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        reflection_dict = {
+            "what_learned": payload.what_learned,
+            "understood_well": payload.understood_well,
+            "struggling_with": payload.struggling_with,
+            "understanding_level": payload.understanding_level,
+            "achieved_goal": payload.achieved_goal,
+        }
+
+        topic = existing_meta.get("topic") or task.title
+        course_name = existing_meta.get("course_name") or "Khóa học"
+
+        ai_insight = f"Bạn đã hoàn thành tốt buổi học về '{topic}'. Cần chú ý thêm phần: {payload.struggling_with or 'các khái niệm khó'}."
+        suggested_next_focus = f"Ôn tập và thực hành thêm kiến thức thuộc bài giảng {topic} ({course_name})."
+
+        try:
+            from src.services.llm import get_llm
+            from langchain_core.messages import HumanMessage
+            llm = get_llm(temperature=0.3)
+            prompt = (
+                f"Dựa trên phản hồi Reflection của sinh viên sau buổi học:\n"
+                f"- Khóa học: {course_name}\n"
+                f"- Chủ đề: {topic}\n"
+                f"- Đã học được: {payload.what_learned or 'Chưa nhập'}\n"
+                f"- Hiểu tốt: {payload.understood_well or 'Chưa nhập'}\n"
+                f"- Vẫn vướng mắc: {payload.struggling_with or 'Chưa nhập'}\n"
+                f"- Mức độ hiểu: {payload.understanding_level}\n"
+                f"- Đạt mục tiêu: {payload.achieved_goal}\n\n"
+                f"Hãy đưa ra 1 nhận xét ngắn gọn (ai_insight - max 2 câu) và 1 gợi ý trọng tâm tiếp theo (suggested_next_focus - max 1 câu) bằng tiếng Việt dưới dạng JSON:\n"
+                f'{{"ai_insight": "...", "suggested_next_focus": "..."}}'
+            )
+            response = await llm.ainvoke([HumanMessage(content=prompt)])
+            text = str(response.content)
+            if "{" in text and "}" in text:
+                json_str = text[text.find("{"):text.rfind("}")+1]
+                parsed = json.loads(json_str)
+                if parsed.get("ai_insight"):
+                    ai_insight = parsed.get("ai_insight")
+                if parsed.get("suggested_next_focus"):
+                    suggested_next_focus = parsed.get("suggested_next_focus")
+        except Exception as e:
+            pass
+
+        started_at = existing_meta.get("started_at") or datetime.now(timezone.utc).isoformat()
+        completed_at = datetime.now(timezone.utc).isoformat()
+        actual_duration = existing_meta.get("actual_duration")
+        if started_at and not actual_duration:
+            try:
+                s_dt = parse_datetime(started_at)
+                c_dt = parse_datetime(completed_at)
+                if s_dt and c_dt:
+                    actual_duration = max(1, int((c_dt - s_dt).total_seconds() / 60))
+            except Exception:
+                actual_duration = 30
+
+        task.status = "completed"
+        task.description = pack_task_description(
+            description=existing_meta.get("description"),
+            topic=existing_meta.get("topic"),
+            what_to_study=existing_meta.get("what_to_study"),
+            what_to_do=existing_meta.get("what_to_do"),
+            reason=existing_meta.get("reason"),
+            material_id=existing_meta.get("material_id"),
+            material_title=existing_meta.get("material_title"),
+            course_id=existing_meta.get("course_id"),
+            course_name=existing_meta.get("course_name"),
+            goal_id=existing_meta.get("goal_id"),
+            goal_title=existing_meta.get("goal_title"),
+            started_at=started_at,
+            completed_at=completed_at,
+            actual_duration=actual_duration,
+            completed_activities=existing_meta.get("completed_activities"),
+            reflection_data=reflection_dict,
+            ai_insight=ai_insight,
+            suggested_next_focus=suggested_next_focus,
+        )
+
         await db.commit()
         await db.refresh(task)
         return serialize_task(task)

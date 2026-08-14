@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
     material_id: str | None = Field(default=None, description="Optional material ID context")
     mode: str | None = Field(default=None, description="Optional agent mode: 'companion' or 'material'")
     user_id: str | None = Field(default=None, description="Optional user identifier (overridden by JWT)")
+    study_session_context: dict | None = Field(default=None, description="Active study session execution context")
 
 
 class ChatResponse(BaseModel):

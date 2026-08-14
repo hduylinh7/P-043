@@ -5,6 +5,7 @@ import {
   PlanTask,
   PlannerAgentRequestPayload,
   PlannerAgentResponseResult,
+  TaskReflectionData,
   TaskStatus,
   UpdateTaskPayload,
   UpdateWeeklyPlanPayload,
@@ -46,6 +47,11 @@ export const weeklyPlanService = {
     return response.data;
   },
 
+  async getTaskById(taskId: string): Promise<PlanTask> {
+    const response = await api.get<PlanTask>(`/tasks/${taskId}`);
+    return response.data;
+  },
+
   async updateTask(taskId: string, payload: UpdateTaskPayload): Promise<PlanTask> {
     const response = await api.put<PlanTask>(`/tasks/${taskId}`, payload);
     return response.data;
@@ -57,6 +63,33 @@ export const weeklyPlanService = {
 
   async updateTaskStatus(taskId: string, status: TaskStatus): Promise<PlanTask> {
     const response = await api.patch<PlanTask>(`/tasks/${taskId}/status`, { status });
+    return response.data;
+  },
+
+  async startStudySession(taskId: string): Promise<PlanTask> {
+    const response = await api.patch<PlanTask>(`/tasks/${taskId}/status`, { status: 'in_progress' });
+    return response.data;
+  },
+
+  async completeStudySession(taskId: string, payload?: Partial<UpdateTaskPayload>): Promise<PlanTask> {
+    const updatePayload: UpdateTaskPayload = {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      ...payload,
+    };
+    const response = await api.put<PlanTask>(`/tasks/${taskId}`, updatePayload);
+    return response.data;
+  },
+
+  async updateTaskChecklist(taskId: string, completedActivities: string[]): Promise<PlanTask> {
+    const response = await api.put<PlanTask>(`/tasks/${taskId}`, {
+      completed_activities: completedActivities,
+    });
+    return response.data;
+  },
+
+  async saveTaskReflection(taskId: string, reflectionData: TaskReflectionData): Promise<PlanTask> {
+    const response = await api.post<PlanTask>(`/tasks/${taskId}/reflection`, reflectionData);
     return response.data;
   },
 

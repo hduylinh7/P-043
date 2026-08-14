@@ -16,6 +16,7 @@ import { MaterialViewerPage } from './pages/MaterialViewerPage';
 import { AIChatPage } from './pages/AIChatPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { WeeklyPlanPage } from './pages/WeeklyPlanPage';
+import { StudySessionWorkspacePage } from './pages/StudySessionWorkspacePage';
 import { ProfilePage } from './pages/ProfilePage';
 
 const ProtectedDashboardRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -120,6 +121,14 @@ export const App: React.FC = () => {
                 </ProtectedDashboardRoute>
               }
             />
+            <Route
+              path="/study-session/:taskId"
+              element={
+                <ProtectedDashboardRoute>
+                  <StudySessionWorkspacePage />
+                </ProtectedDashboardRoute>
+              }
+            />
 
             <Route
               path="/goals"
@@ -139,15 +148,12 @@ export const App: React.FC = () => {
               }
             />
 
-
-
             {/* 5. Trang Xác thực tài khoản */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
-
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -159,4 +165,3 @@ export const App: React.FC = () => {
 };
 
 export default App;
-

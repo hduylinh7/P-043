@@ -52,6 +52,7 @@ export const MaterialViewerPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(true);
+  const [extractedContent, setExtractedContent] = useState<string | null>(null);
 
   // AI Assistant Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -78,6 +79,12 @@ export const MaterialViewerPage: React.FC = () => {
       const found = data.find((m) => m.id === materialId);
       if (found) {
         setCurrentMaterial(found);
+        try {
+          const res = await materialService.getMaterialContent(courseId, found.id);
+          setExtractedContent(res.content);
+        } catch (e) {
+          console.warn('Extracted text fetch failed:', e);
+        }
       } else {
         message.error('Không tìm thấy bài giảng.');
       }
@@ -246,9 +253,10 @@ export const MaterialViewerPage: React.FC = () => {
 
   const token = localStorage.getItem('access_token');
   const streamUrl = `/api/v1/courses/${courseId}/materials/${currentMaterial.id}/download?inline=true&token=${token}`;
-  const ext = currentMaterial.file_name.split('.').pop()?.toLowerCase();
+  const ext = currentMaterial.file_name.split('.').pop()?.toLowerCase() || '';
   const isPdf = ext === 'pdf';
-  const isImage = ['png', 'jpg', 'jpeg'].includes(ext || '');
+  const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
+  const isTextOrCode = ['txt', 'md', 'json', 'csv', 'py', 'js', 'ts', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'log', 'yaml', 'yml'].includes(ext);
 
   return (
     <div className={`flex h-screen overflow-hidden ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
@@ -324,6 +332,25 @@ export const MaterialViewerPage: React.FC = () => {
                   className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
                 />
               </div>
+            ) : (isTextOrCode || extractedContent) ? (
+              <div className="flex-1 p-6 overflow-auto font-sans leading-relaxed">
+                <div className={`p-6 rounded-2xl border shadow-sm max-w-4xl mx-auto space-y-4 ${
+                  isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+                }`}>
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <span className="font-extrabold text-xs uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                      <FileTextOutlined />
+                      <span>Nội dung bài giảng ({currentMaterial.file_name})</span>
+                    </span>
+                    <Button size="small" icon={<DownloadOutlined />} onClick={handleDownload}>
+                      Tải về máy
+                    </Button>
+                  </div>
+                  <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+                    <MarkdownRenderer content={extractedContent || 'Đang tải nội dung tệp...'} />
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                 <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
@@ -333,7 +360,7 @@ export const MaterialViewerPage: React.FC = () => {
                   {currentMaterial.title}
                 </h3>
                 <p className="text-sm text-slate-400 max-w-md mb-6">
-                  Tập tin <span className="font-mono text-emerald-600 dark:text-emerald-400">{currentMaterial.file_name}</span> hỗ trợ tải về máy để xem với ứng dụng chuyên dụng.
+                  Tập tin <span className="font-mono text-emerald-600 dark:text-emerald-400">{currentMaterial.file_name}</span> hỗ trợ tải về máy để xem hoặc đọc cùng AI Companion.
                 </p>
                 <Button
                   type="primary"

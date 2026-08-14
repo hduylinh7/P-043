@@ -58,6 +58,22 @@ def parse_week_start(val: datetime | date | str | None) -> date:
     return today - timedelta(days=today.weekday())
 
 
+def parse_date_val(val: datetime | date | str | None) -> date | None:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    if isinstance(val, str):
+        val_clean = val.split("T")[0].rstrip("Z")
+        try:
+            return date.fromisoformat(val_clean)
+        except ValueError:
+            return None
+    return None
+
+
 class PlannerContextBuilder:
     @staticmethod
     def _ensure_student(current_user: UserResponse) -> None:
@@ -73,6 +89,9 @@ class PlannerContextBuilder:
         db: AsyncSession,
         current_user: UserResponse,
         week_start: datetime | date | str | None = None,
+        start_date_val: datetime | date | str | None = None,
+        end_date_val: datetime | date | str | None = None,
+        target_assignment_id: str | None = None,
     ) -> PlannerContext:
         """
         Collect and normalize student data into a PlannerContext object.
@@ -81,11 +100,50 @@ class PlannerContextBuilder:
         student_id = current_user.id
 
         # 1. Planning Period
-        start_date = parse_week_start(week_start)
-        end_date = start_date + timedelta(days=6)
+        start_d = parse_date_val(start_date_val)
+        if start_d is None:
+            start_d = parse_week_start(week_start)
+
+        end_d = parse_date_val(end_date_val)
+
+        if target_assignment_id and end_d is None:
+            assign_stmt = select(Assignment).where(Assignment.id == target_assignment_id)
+            assign_res = await db.execute(assign_stmt)
+            target_assign = assign_res.scalar_one_or_none()
+            if target_assign and target_assign.due_at:
+                due_d = parse_date_val(target_assign.due_at)
+                if due_d and due_d >= start_d:
+                    end_d = due_d
+
+        if end_d is None:
+            # Query active enrolled course assignments to auto-detect farthest assignment deadline
+            enroll_stmt = select(Enrollment.course_id).where(
+                (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+            )
+            enroll_res = await db.execute(enroll_stmt)
+            c_ids = enroll_res.scalars().all()
+            if c_ids:
+                max_assign_stmt = (
+                    select(Assignment.due_at)
+                    .where(
+                        Assignment.course_id.in_(c_ids),
+                        Assignment.status == "ACTIVE",
+                    )
+                    .order_by(Assignment.due_at.desc())
+                )
+                max_assign_res = await db.execute(max_assign_stmt)
+                max_due = max_assign_res.scalars().first()
+                if max_due:
+                    max_due_d = parse_date_val(max_due)
+                    if max_due_d and max_due_d >= start_d:
+                        end_d = min(max_due_d, start_d + timedelta(days=30))
+
+        if end_d is None:
+            end_d = start_d + timedelta(days=6)
+
         planning_period = PlanningPeriodDTO(
-            week_start=start_date.strftime("%Y-%m-%d"),
-            week_end=end_date.strftime("%Y-%m-%d"),
+            week_start=start_d.strftime("%Y-%m-%d"),
+            week_end=end_d.strftime("%Y-%m-%d"),
         )
 
         # 2. Active Goals

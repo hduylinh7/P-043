@@ -6,6 +6,14 @@ export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'skipped' | 'TOD
 
 export type TaskSourceType = 'ASSIGNMENT' | 'PERSONAL_TASK' | 'GOAL' | 'MANUAL';
 
+export interface TaskReflectionData {
+  what_learned?: string;
+  understood_well?: string;
+  struggling_with?: string;
+  understanding_level?: 'not_understood' | 'partially' | 'mostly' | 'fully' | string;
+  achieved_goal?: 'yes' | 'partially' | 'no' | string;
+}
+
 export interface PlanTask {
   id: string;
   weekly_goal_id: string;
@@ -31,6 +39,13 @@ export interface PlanTask {
   estimated_minutes?: number | null;
   source_type: TaskSourceType;
   source_id?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  actual_duration?: number | null;
+  completed_activities?: string[] | null;
+  reflection_data?: TaskReflectionData | null;
+  ai_insight?: string | null;
+  suggested_next_focus?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +104,13 @@ export interface CreateTaskPayload {
   source_type?: TaskSourceType;
   source_id?: string;
   assignment_id?: string;
+  started_at?: string;
+  completed_at?: string;
+  actual_duration?: number;
+  completed_activities?: string[];
+  reflection_data?: TaskReflectionData;
+  ai_insight?: string;
+  suggested_next_focus?: string;
 }
 
 export interface UpdateTaskPayload {
@@ -113,6 +135,13 @@ export interface UpdateTaskPayload {
   source_type?: TaskSourceType;
   source_id?: string;
   assignment_id?: string;
+  started_at?: string;
+  completed_at?: string;
+  actual_duration?: number;
+  completed_activities?: string[];
+  reflection_data?: TaskReflectionData;
+  ai_insight?: string;
+  suggested_next_focus?: string;
 }
 
 export interface PlannerAgentRequestPayload {
@@ -120,6 +149,7 @@ export interface PlannerAgentRequestPayload {
   start_date?: string;
   end_date?: string;
   days?: number;
+  assignment_id?: string;
   request?: string;
 }
 
@@ -144,4 +174,3 @@ export interface PlannerAgentResponseResult {
   skipped_items: { title?: string; reason?: string }[];
   warnings: string[];
 }
-

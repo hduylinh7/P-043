@@ -41,7 +41,15 @@ export interface ApiClientInstance extends AxiosInstance {
   checkStatus: () => Promise<SystemStatus>;
   getSessions: (userId?: string, agentName?: string, courseId?: string) => Promise<ChatSession[]>;
   getMessages: (sessionId: string) => Promise<ChatMessage[]>;
-  sendMessage: (message: string, sessionId?: string, userId?: string, courseId?: string, materialId?: string, mode?: string) => Promise<ChatResponse>;
+  sendMessage: (
+    message: string,
+    sessionId?: string,
+    userId?: string,
+    courseId?: string,
+    materialId?: string,
+    mode?: string,
+    studySessionContext?: Record<string, unknown>
+  ) => Promise<ChatResponse>;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -165,7 +173,15 @@ api.getMessages = async (sessionId: string) => {
   return res.data;
 };
 
-api.sendMessage = async (message: string, sessionId?: string, userId = 'default_user', courseId?: string, materialId?: string, mode?: string) => {
+api.sendMessage = async (
+  message: string,
+  sessionId?: string,
+  userId = 'default_user',
+  courseId?: string,
+  materialId?: string,
+  mode?: string,
+  studySessionContext?: Record<string, unknown>
+) => {
   const res = await api.post<ChatResponse>('/chat', {
     message,
     session_id: sessionId,
@@ -173,7 +189,7 @@ api.sendMessage = async (message: string, sessionId?: string, userId = 'default_
     course_id: courseId,
     material_id: materialId,
     mode,
+    study_session_context: studySessionContext,
   });
   return res.data;
 };
-

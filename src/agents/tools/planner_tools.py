@@ -19,7 +19,11 @@ from src.models.weekly_plan import (
     WeeklyPlanCreateRequest,
     WeeklyPlanResponse,
 )
-from src.services.planner_context_builder import PlannerContextBuilder, parse_week_start
+from src.services.planner_context_builder import (
+    PlannerContextBuilder,
+    parse_date_val,
+    parse_week_start,
+)
 from src.services.weekly_plan_service import WeeklyPlanService, parse_datetime
 
 VALID_SOURCE_TYPES = {"ASSIGNMENT", "PERSONAL_TASK", "GOAL", "MANUAL"}
@@ -40,10 +44,18 @@ class PlannerTools:
         db: AsyncSession,
         current_user: UserResponse,
         week_start: str | date | datetime | None = None,
+        start_date: str | date | datetime | None = None,
+        end_date: str | date | datetime | None = None,
+        target_assignment_id: str | None = None,
     ) -> PlannerContext:
         """Fetch normalized Planner Context for the authenticated student."""
         return await PlannerContextBuilder.build_context(
-            db=db, current_user=current_user, week_start=week_start
+            db=db,
+            current_user=current_user,
+            week_start=week_start,
+            start_date_val=start_date,
+            end_date_val=end_date,
+            target_assignment_id=target_assignment_id,
         )
 
     @classmethod
@@ -83,6 +95,7 @@ class PlannerTools:
         week_start: str,
         title: str,
         description: str | None = None,
+        week_end: str | None = None,
     ) -> WeeklyPlanResponse:
         """Create a new Weekly Plan for the authenticated student or return existing if present."""
         cls._ensure_student(current_user)
@@ -93,7 +106,7 @@ class PlannerTools:
         if existing:
             return existing
 
-        end_date = start_date + timedelta(days=6)
+        end_date = parse_date_val(week_end) if week_end else (start_date + timedelta(days=6))
         payload = WeeklyPlanCreateRequest(
             title=title,
             description=description,

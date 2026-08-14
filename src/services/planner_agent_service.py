@@ -36,16 +36,17 @@ class PlannerAgentService:
         """
         cls._ensure_student(current_user)
 
-        start_date = parse_week_start(payload.week_start)
-        end_date = start_date + timedelta(days=6)
+        start_date = parse_week_start(payload.start_date or payload.week_start)
         week_start_str = start_date.strftime("%Y-%m-%d")
-        week_end_str = end_date.strftime("%Y-%m-%d")
 
         initial_state: PlannerAgentState = {
             "db": db,
             "current_user": current_user,
             "week_start": week_start_str,
-            "user_request": payload.request or "Tự động lập kế hoạch học tập tối ưu cho tuần này.",
+            "start_date": payload.start_date or week_start_str,
+            "end_date": payload.end_date,
+            "assignment_id": payload.assignment_id,
+            "user_request": payload.request or "Tự động lập kế hoạch học tập tối ưu.",
         }
 
         final_state = await planner_agent_graph.ainvoke(initial_state)
@@ -84,10 +85,13 @@ class PlannerAgentService:
             for t in final_state.get("updated_tasks", [])
         ]
 
+        actual_week_start = final_state.get("week_start", week_start_str)
+        actual_week_end = final_state.get("week_end", week_start_str)
+
         return PlannerAgentResponse(
             weekly_plan_id=final_state.get("weekly_plan_id"),
-            week_start=week_start_str,
-            week_end=week_end_str,
+            week_start=actual_week_start,
+            week_end=actual_week_end,
             summary=final_state.get("summary", "Đã lập thành công kế hoạch học tập."),
             created_tasks=created_tasks,
             updated_tasks=updated_tasks,

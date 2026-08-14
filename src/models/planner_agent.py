@@ -18,6 +18,14 @@ class PlannerAgentRequest(BaseModel):
         default=None,
         description="Optional duration in days for the study plan.",
     )
+    assignment_id: str | None = Field(
+        default=None,
+        description="Optional target assignment ID to generate a focused study roadmap.",
+    )
+    assignment_ids: list[str] | None = Field(
+        default=None,
+        description="Optional list of target assignment IDs to include in planning.",
+    )
     request: str | None = Field(
         default="Tự động lập kế hoạch học tập tối ưu.",
         description="Student prompt, goals, or instructions for the Planner Agent.",

@@ -597,13 +597,8 @@ export const CourseDetailPage: React.FC = () => {
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
         status: finalStatus,
         priority: values.priority,
+        questions: questions,
       });
-
-      // Sync questions for existing assignment
-      // Replace/re-add questions if modified
-      for (const q of questions) {
-        await assignmentService.addQuestion(editingAssignment.id, q);
-      }
 
       // Upload reference file if attached
       if (assignmentAttachmentList.length > 0) {
@@ -1025,28 +1020,36 @@ export const CourseDetailPage: React.FC = () => {
     return <FileUnknownOutlined className="text-blue-500 text-xl" />;
   };
 
-  const getProgressBadge = (status?: ProgressStatus | null) => {
-    switch (status) {
-      case 'COMPLETED':
-        return (
-          <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs border-0 font-semibold">
-            Đã Hoàn Thành
-          </Tag>
-        );
-      case 'IN_PROGRESS':
-        return (
-          <Tag color="warning" icon={<SyncOutlined spin />} className="rounded-full px-3 py-0.5 text-xs border-0 font-semibold">
-            Đang Thực Hiện
-          </Tag>
-        );
-      case 'NOT_STARTED':
-      default:
-        return (
-          <Tag color="default" className="rounded-full px-3 py-0.5 text-xs border-0 font-semibold text-slate-500">
-            Chưa Bắt Đầu
-          </Tag>
-        );
+  const getProgressBadge = (status?: ProgressStatus | null, dueDate?: string | null) => {
+    if (status === 'COMPLETED') {
+      return (
+        <Tag color="success" icon={<CheckCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs border-0 font-extrabold shadow-sm bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+          ✓ ĐÃ LÀM XONG
+        </Tag>
+      );
     }
+
+    if (dueDate && new Date(dueDate).getTime() < Date.now()) {
+      return (
+        <Tag color="error" icon={<ClockCircleOutlined />} className="rounded-full px-3 py-0.5 text-xs border-0 font-extrabold shadow-sm bg-rose-500/15 text-rose-600 dark:text-rose-400 animate-pulse">
+          ⚠️ QUÁ THỜI HẠN
+        </Tag>
+      );
+    }
+
+    if (status === 'IN_PROGRESS') {
+      return (
+        <Tag color="warning" icon={<SyncOutlined spin />} className="rounded-full px-3 py-0.5 text-xs border-0 font-extrabold shadow-sm bg-blue-500/15 text-blue-600 dark:text-blue-400">
+          ⚡ ĐANG THỰC HIỆN
+        </Tag>
+      );
+    }
+
+    return (
+      <Tag color="default" className="rounded-full px-3 py-0.5 text-xs border-0 font-extrabold shadow-sm bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        ⏳ CHƯA LÀM
+      </Tag>
+    );
   };
 
   if (loading) {
@@ -1713,7 +1716,7 @@ export const CourseDetailPage: React.FC = () => {
                                       ĐÃ PHÁT HÀNH
                                     </Tag>
                                   )}
-                                  {!isCourseOwner && getProgressBadge(item.progress_status)}
+                                  {!isCourseOwner && getProgressBadge(item.progress_status, item.due_date)}
                                 </div>
 
                                 <p className={`text-sm line-clamp-2 m-0 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>

@@ -35,6 +35,8 @@ import {
   FolderOpenOutlined,
   LinkOutlined,
   QuestionCircleOutlined,
+  PlayCircleOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -47,6 +49,8 @@ import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
+import { courseService } from '../services/courseService';
+import { assignmentService } from '../services/assignmentService';
 import {
   PlanTask,
   PlannerAgentResponseResult,
@@ -230,6 +234,42 @@ export const WeeklyPlanPage: React.FC = () => {
   const [aiResultModalOpen, setAiResultModalOpen] = useState<boolean>(false);
   const [aiResultData, setAiResultData] = useState<PlannerAgentResponseResult | null>(null);
 
+  // Available Assignments for Roadmap Planning
+  const [availableAssignments, setAvailableAssignments] = useState<any[]>([]);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (isAIModalOpen && isStudent) {
+      const loadAssignments = async () => {
+        try {
+          const courses = await courseService.getStudentCourses();
+          const allAssignments: any[] = [];
+          for (const c of courses) {
+            try {
+              const list = await assignmentService.getCourseAssignments(c.id);
+              list.forEach((a: any) => {
+                allAssignments.push({
+                  ...a,
+                  course_name: c.name,
+                });
+              });
+            } catch (err) {
+              console.error(err);
+            }
+          }
+          setAvailableAssignments(allAssignments);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      loadAssignments();
+    }
+  }, [isAIModalOpen, isStudent]);
+
+  const selectedAssignment = useMemo(() => {
+    return availableAssignments.find((a) => a.id === selectedAssignmentId);
+  }, [availableAssignments, selectedAssignmentId]);
+
   // Active week date range
   const weekStart = useMemo(() => currentMonday.startOf('day'), [currentMonday]);
   const weekEnd = useMemo(() => currentMonday.add(6, 'day').endOf('day'), [currentMonday]);
@@ -298,10 +338,16 @@ export const WeeklyPlanPage: React.FC = () => {
   const handleGenerateAIPlan = async () => {
     setIsGeneratingAI(true);
     try {
-      const payload = {
+      const payload: any = {
         week_start: weekStart.format('YYYY-MM-DD'),
+        start_date: dayjs().format('YYYY-MM-DD'),
+        assignment_id: selectedAssignmentId || undefined,
         request: aiPlanRequest.trim() || undefined,
       };
+      const targetDueDate = selectedAssignment?.due_date || selectedAssignment?.due_at;
+      if (targetDueDate) {
+        payload.end_date = dayjs(targetDueDate).format('YYYY-MM-DD');
+      }
       const res = await weeklyPlanService.generateAIPlan(payload);
       message.success('Tạo Study Plan AI thành công!');
       setAiResultData(res);
@@ -438,6 +484,19 @@ export const WeeklyPlanPage: React.FC = () => {
       fetchWeeklyPlans();
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể cập nhật trạng thái');
+    }
+  };
+
+  // Start / Continue Study Session
+  const handleStartStudySession = async (task: PlanTask) => {
+    try {
+      if (task.status === 'todo' || task.status === 'TODO') {
+        await weeklyPlanService.startStudySession(task.id);
+      }
+      setDetailTask(null);
+      navigate(`/study-session/${task.id}`);
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Không thể bắt đầu buổi học');
     }
   };
 
@@ -1063,15 +1122,25 @@ export const WeeklyPlanPage: React.FC = () => {
               Chỉnh sửa
             </Button>,
             <Button
-              key="toggle"
+              key="start-workspace"
               type="primary"
+              size="large"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleStartStudySession(detailTask)}
+              className="bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder font-extrabold px-6 rounded-xl shadow-md text-white"
+            >
+              {detailTask.status === 'in_progress' || detailTask.status === 'IN_PROGRESS'
+                ? '⚡ Tiếp tục Học tập (Workspace)'
+                : detailTask.status === 'completed' || detailTask.status === 'COMPLETED'
+                ? '🔍 Xem Workspace Buổi học'
+                : '▶ Start Study Session (Bắt đầu học)'}
+            </Button>,
+            <Button
+              key="toggle"
+              type="default"
               icon={<CheckCircleOutlined />}
               onClick={() => handleToggleTaskStatus(detailTask)}
-              className={
-                detailTask.status === 'completed' || detailTask.status === 'COMPLETED'
-                  ? 'bg-amber-600 hover:bg-amber-500'
-                  : 'bg-emerald-600 hover:bg-emerald-500'
-              }
+              className="rounded-xl font-bold"
             >
               {detailTask.status === 'completed' || detailTask.status === 'COMPLETED'
                 ? 'Đánh dấu Chưa học'
@@ -1267,15 +1336,40 @@ export const WeeklyPlanPage: React.FC = () => {
         className="rounded-2xl overflow-hidden"
       >
         <div className="space-y-4 py-2">
+          {/* Assignment Selector for Focused Study Roadmap */}
+          <div>
+            <label className={`block text-xs font-extrabold mb-1.5 uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              🎯 Chọn Bài tập để lập Lộ trình học tập (Tùy chọn):
+            </label>
+            <Select
+              allowClear
+              placeholder="Chọn bài tập cần lên lộ trình (Ví dụ: Assignment 2...)"
+              size="large"
+              value={selectedAssignmentId}
+              onChange={(val) => setSelectedAssignmentId(val)}
+              className="w-full"
+              options={availableAssignments.map((a) => {
+                const aDue = a.due_date || a.due_at;
+                return {
+                  label: `📚 [${a.course_name || 'Môn học'}] ${a.title} ${aDue ? `(Deadline: ${dayjs(aDue).format('DD/MM/YYYY')})` : ''}`,
+                  value: a.id,
+                };
+              })}
+            />
+          </div>
+
           <div className={`p-4 rounded-2xl border-2 space-y-1 ${
             isDark
               ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100'
               : 'bg-emerald-50/80 border-minecraft-grassBorder text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between text-sm flex-wrap gap-2">
-              <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Khoảng thời gian lập kế hoạch:</span>
+              <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Khoảng thời gian lập lộ trình:</span>
               <span className="badge-voxel-green text-xs font-extrabold px-3 py-1">
-                📅 {weekStart.format('DD/MM/YYYY')} – {weekEnd.format('DD/MM/YYYY')}
+                📅 {selectedAssignment && (selectedAssignment.due_date || selectedAssignment.due_at)
+                  ? `Hôm nay (${dayjs().format('DD/MM')}) ➔ Deadline (${dayjs(selectedAssignment.due_date || selectedAssignment.due_at).format('DD/MM/YYYY')})`
+                  : `Tự động linh hoạt theo Hạn nộp Bài tập (Từ hôm nay ${dayjs().format('DD/MM')})`
+                }
               </span>
             </div>
           </div>

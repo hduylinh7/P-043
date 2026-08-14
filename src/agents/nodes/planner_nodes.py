@@ -176,12 +176,23 @@ async def load_context_node(state: PlannerAgentState) -> dict[str, Any]:
     db = state["db"]
     current_user = state["current_user"]
     week_start = state.get("week_start")
+    start_date = state.get("start_date")
+    end_date = state.get("end_date")
+    target_assignment_id = state.get("assignment_id")
 
     try:
-        context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+        context = await PlannerTools.get_planner_context(
+            db,
+            current_user,
+            week_start=week_start,
+            start_date=start_date,
+            end_date=end_date,
+            target_assignment_id=target_assignment_id,
+        )
         return {
             "context": context,
             "week_start": context.planning_period.week_start,
+            "week_end": context.planning_period.week_end,
         }
     except Exception as e:
         logger.error(f"Error loading planner context: {e}")
@@ -199,11 +210,16 @@ async def analyze_and_decide_node(state: PlannerAgentState) -> dict[str, Any]:
     # Context formatting for prompt
     context_dict = context.model_dump() if hasattr(context, "model_dump") else context
     week_start = context_dict.get("planning_period", {}).get("week_start", state.get("week_start"))
-    week_end = context_dict.get("planning_period", {}).get("week_end")
+    week_end = context_dict.get("planning_period", {}).get("week_end", state.get("week_end"))
 
     start_dt = datetime.strptime(week_start, "%Y-%m-%d").date()
+    end_dt = datetime.strptime(week_end, "%Y-%m-%d").date() if week_end else start_dt + timedelta(days=6)
+    total_days = max(1, (end_dt - start_dt).days + 1)
     days_names = ["Monday (Thứ Hai)", "Tuesday (Thứ Ba)", "Wednesday (Thứ Tư)", "Thursday (Thứ Năm)", "Friday (Thứ Sáu)", "Saturday (Thứ Bảy)", "Sunday (Chủ Nhật)"]
-    mapping_str = "\n".join([f"- {days_names[i]}: {(start_dt + timedelta(days=i)).strftime('%Y-%m-%d')}" for i in range(min(7, (datetime.strptime(week_end, "%Y-%m-%d").date() - start_dt).days + 1))])
+    mapping_str = "\n".join([
+        f"- {(start_dt + timedelta(days=i)).strftime('%Y-%m-%d')} ({days_names[(start_dt + timedelta(days=i)).weekday()]})"
+        for i in range(total_days)
+    ])
 
     system_prompt = PLANNER_SYSTEM_PROMPT.format(
         week_start=week_start,
@@ -387,6 +403,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
     db = state["db"]
     current_user = state["current_user"]
     week_start = state["week_start"]
+    week_end = state.get("week_end")
     decision = state.get("plan_decision", {})
 
     created_tasks = []
@@ -400,7 +417,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
         if not plan:
             plan_title = decision.get("plan_title", f"Kế hoạch học tập {week_start}")
             plan = await PlannerTools.create_weekly_plan(
-                db, current_user, week_start=week_start, title=plan_title
+                db, current_user, week_start=week_start, week_end=week_end, title=plan_title
             )
 
         weekly_plan_id = plan.id
