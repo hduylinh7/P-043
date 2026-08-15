@@ -66,22 +66,18 @@ export const RoleSelectionPage: React.FC = () => {
 
   return (
     <AuthLayout
-      title="Chọn Vai Trò Của Bạn"
+      title="Chọn vai trò của bạn"
       subtitle="Để trải nghiệm lộ trình phù hợp nhất, vui lòng chọn vai trò bạn đảm nhận."
-      badgeText="Onboarding State"
+      badgeText="ONBOARDING ROLE"
     >
       <div className="space-y-4">
         {errorMsg && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
+            className="alert-voxel-red mb-2"
           >
-            <Alert
-              type="error"
-              message={errorMsg}
-              showIcon
-              className="rounded-xl"
-            />
+            <span className="font-bold">{errorMsg}</span>
           </motion.div>
         )}
 
@@ -97,13 +93,13 @@ export const RoleSelectionPage: React.FC = () => {
           }}
           className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-4 ${
             selectedRole === 'student'
-              ? 'border-minecraft-grass bg-emerald-50/50 dark:bg-emerald-950/40'
+              ? 'border-minecraft-grass bg-emerald-50/70 dark:bg-emerald-950/60 shadow-voxel shadow-minecraft-grassBorder'
               : themeMode === 'dark'
-              ? 'border-minecraft-obsidianBorder bg-minecraft-obsidianCard hover:border-emerald-500/50'
-              : 'border-amber-900/15 bg-white hover:border-emerald-400 shadow-sm'
+              ? 'border-minecraft-obsidianBorder bg-minecraft-obsidianCard hover:border-emerald-500/50 shadow-voxel-sm shadow-black/30'
+              : 'border-amber-900/15 bg-white hover:border-emerald-400 shadow-voxel-sm shadow-amber-900/10'
           }`}
         >
-          <div className="w-12 h-12 rounded-xl bg-minecraft-grass text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 border-2 border-minecraft-grassBorder">
+          <div className="w-12 h-12 rounded-2xl bg-minecraft-grass text-white flex items-center justify-center shrink-0 shadow-voxel-sm shadow-minecraft-grassBorder border-2 border-minecraft-grassBorder">
             <UserOutlined className="text-xl" />
           </div>
           <div className="flex-1 min-w-0">
@@ -134,14 +130,14 @@ export const RoleSelectionPage: React.FC = () => {
           }}
           className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col gap-3 ${
             selectedRole === 'instructor'
-              ? 'border-minecraft-gold bg-amber-50/50 dark:bg-amber-950/40'
+              ? 'border-minecraft-gold bg-amber-50/70 dark:bg-amber-950/60 shadow-voxel shadow-minecraft-goldBorder'
               : themeMode === 'dark'
-              ? 'border-minecraft-obsidianBorder bg-minecraft-obsidianCard hover:border-amber-500/50'
-              : 'border-amber-900/15 bg-white hover:border-amber-400 shadow-sm'
+              ? 'border-minecraft-obsidianBorder bg-minecraft-obsidianCard hover:border-amber-500/50 shadow-voxel-sm shadow-black/30'
+              : 'border-amber-900/15 bg-white hover:border-amber-400 shadow-voxel-sm shadow-amber-900/10'
           }`}
         >
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-minecraft-gold text-slate-900 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 border-2 border-minecraft-goldBorder">
+            <div className="w-12 h-12 rounded-2xl bg-minecraft-gold text-slate-900 flex items-center justify-center shrink-0 shadow-voxel-sm shadow-minecraft-goldBorder border-2 border-minecraft-goldBorder">
               <ReadOutlined className="text-xl" />
             </div>
             <div className="flex-1 min-w-0">
@@ -167,26 +163,29 @@ export const RoleSelectionPage: React.FC = () => {
               className="mt-3 pt-3 border-t border-amber-900/10 dark:border-minecraft-obsidianBorder space-y-3"
             >
               <div>
-                <label className={`block text-xs font-semibold mb-1 ${themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                <label className={`block text-xs font-bold mb-1.5 ${themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                   Mã xác thực học viện (Institution Passcode):
                 </label>
-                <Input
-                  prefix={<KeyOutlined className="text-amber-500" />}
-                  placeholder="Ví dụ: VINUNI-2026-AI"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  size="large"
-                  className="rounded-xl"
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  * Nhập mã do trường cấp (Dùng mã MVP: <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">VINUNI-2026-AI</span>)
+                <div className="relative">
+                  <KeyOutlined className="text-amber-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: VINUNI-2026-AI"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    required
+                    className="input-voxel uppercase font-mono font-bold"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5 font-medium">
+                  * Nhập mã do trường cấp (Dùng mã MVP: <span className="font-mono font-bold text-amber-600 dark:text-amber-400">VINUNI-2026-AI</span>)
                 </p>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-voxel-gold py-3 text-sm rounded-xl font-bold"
+                className="w-full btn-voxel-gold py-3 text-sm rounded-2xl font-bold tracking-wide active:translate-y-1"
               >
                 <CheckCircleOutlined />
                 <span>Xác Thực & Tiếp Tục</span>

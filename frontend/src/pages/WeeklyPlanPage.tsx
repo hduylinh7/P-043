@@ -37,6 +37,7 @@ import {
   QuestionCircleOutlined,
   PlayCircleOutlined,
   RocketOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -1445,42 +1446,68 @@ export const WeeklyPlanPage: React.FC = () => {
       {/* AI RESULT SUMMARY MODAL */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-emerald-500 font-bold text-lg">
-            <CheckCircleOutlined className="text-xl" />
+          <div className="flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300 font-extrabold text-lg">
+            <CheckCircleOutlined className="text-xl text-emerald-500" />
             <span>Kế hoạch AI đã sẵn sàng!</span>
           </div>
         }
         open={aiResultModalOpen}
-        onOk={() => setAiResultModalOpen(false)}
         onCancel={() => setAiResultModalOpen(false)}
-        okText="Đóng"
-        cancelButtonProps={{ style: { display: 'none' } }}
+        footer={
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => setAiResultModalOpen(false)}
+              className="btn-voxel-green text-sm px-6 py-2.5 rounded-2xl font-bold active:translate-y-0.5"
+            >
+              <span>Đóng</span>
+            </button>
+          </div>
+        }
+        destroyOnClose
+        centered
+        width={560}
+        className="rounded-3xl overflow-hidden"
       >
         {aiResultData && (
-          <div className="space-y-4 py-2 text-xs">
-            <p className="text-sm font-semibold text-slate-300">{aiResultData.summary}</p>
+          <div className="space-y-4 py-3">
+            {/* Short Summary */}
+            <p className="text-sm font-semibold leading-relaxed text-slate-700 dark:text-slate-200">
+              {aiResultData.summary}
+            </p>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                <span className="block text-lg font-bold text-emerald-400">
+            {/* Summary Stat Boxes */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border-2 border-minecraft-grassBorder text-center shadow-voxel-sm shadow-minecraft-grassBorder/30">
+                <span className="block text-2xl font-black text-emerald-700 dark:text-emerald-300 font-mono">
                   {aiResultData.created_tasks?.length || 0}
                 </span>
-                <span className="text-slate-400">Nhiệm vụ được tạo</span>
+                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 mt-1 block">
+                  Nhiệm vụ được tạo
+                </span>
               </div>
-              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
-                <span className="block text-lg font-bold text-blue-400">
+              <div className="p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/50 border-2 border-minecraft-skyBorder text-center shadow-voxel-sm shadow-minecraft-skyBorder/30">
+                <span className="block text-2xl font-black text-sky-700 dark:text-sky-300 font-mono">
                   {aiResultData.skipped_items?.length || 0}
                 </span>
-                <span className="text-slate-400">Mục đã hoãn/bỏ qua</span>
+                <span className="text-xs font-bold text-sky-900 dark:text-sky-200 mt-1 block">
+                  Mục đã hoãn/bỏ qua
+                </span>
               </div>
             </div>
 
-            {aiResultData.warnings?.length > 0 && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
-                <span className="font-bold text-amber-400">Lưu ý & Đánh đổi:</span>
-                <ul className="list-disc list-inside text-slate-300">
+            {/* Warnings Box - High Contrast & Rounded 3D Voxel Alert Box */}
+            {aiResultData.warnings && aiResultData.warnings.length > 0 && (
+              <div className="p-4.5 rounded-2xl bg-amber-50/95 dark:bg-amber-950/80 border-2 border-amber-500/60 space-y-2.5 text-slate-900 dark:text-slate-100 shadow-voxel-sm shadow-amber-900/15">
+                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-extrabold text-xs uppercase tracking-wider">
+                  <WarningOutlined className="text-amber-600 dark:text-amber-400 text-sm" />
+                  <span>Lưu ý & Đánh đổi:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-2 text-xs text-amber-950 dark:text-amber-100 leading-relaxed font-semibold">
                   {aiResultData.warnings.map((w, idx) => (
-                    <li key={idx}>{w}</li>
+                    <li key={idx} className="marker:text-amber-600 dark:marker:text-amber-400 pl-1">
+                      {w}
+                    </li>
                   ))}
                 </ul>
               </div>
