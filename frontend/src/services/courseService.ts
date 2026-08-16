@@ -5,6 +5,7 @@ import {
   CourseDetail,
   CourseUpdatePayload,
   EnrolledStudent,
+  TimetableEntry,
 } from '../types/course';
 
 export const courseService = {
@@ -33,8 +34,18 @@ export const courseService = {
     return response.data;
   },
 
+  async leaveCourse(courseId: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/courses/${courseId}/leave`);
+    return response.data;
+  },
+
   async getStudentCourses(): Promise<Course[]> {
     const response = await api.get<Course[]>('/courses/student/my-courses');
+    return response.data;
+  },
+
+  async getStudentTimetable(): Promise<TimetableEntry[]> {
+    const response = await api.get<TimetableEntry[]>('/courses/student/timetable');
     return response.data;
   },
 
@@ -48,4 +59,3 @@ export const courseService = {
     return response.data;
   },
 };
-

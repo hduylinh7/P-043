@@ -11,6 +11,8 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoleSelectionPage } from './pages/RoleSelectionPage';
 import { CoursesPage } from './pages/CoursesPage';
+import { TimetablePage } from './pages/TimetablePage';
+import { LearningCalendarPage } from './pages/LearningCalendarPage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { MaterialViewerPage } from './pages/MaterialViewerPage';
 import { AIChatPage } from './pages/AIChatPage';
@@ -80,7 +82,7 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* 4. Quản lý khóa học */}
+            {/* 4. Quản lý khóa học & Thời khóa biểu */}
             <Route
               path="/courses"
               element={
@@ -89,6 +91,16 @@ export const App: React.FC = () => {
                 </ProtectedDashboardRoute>
               }
             />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedDashboardRoute>
+                  <LearningCalendarPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route path="/timetable" element={<Navigate to="/calendar" replace />} />
+            <Route path="/weekly-plan" element={<Navigate to="/calendar" replace />} />
             <Route
               path="/courses/:courseId"
               element={

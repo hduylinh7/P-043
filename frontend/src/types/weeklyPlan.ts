@@ -6,6 +6,25 @@ export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'skipped' | 'TOD
 
 export type TaskSourceType = 'ASSIGNMENT' | 'PERSONAL_TASK' | 'GOAL' | 'MANUAL';
 
+export type CalendarEventType = 'FIXED_CLASS' | 'AI_STUDY' | 'STUDENT_STUDY';
+
+export interface UnifiedCalendarEvent {
+  id: string;
+  type: CalendarEventType;
+  title: string;
+  description?: string | null;
+  course_id?: string | null;
+  course_code?: string | null;
+  course_name?: string | null;
+  day_of_week: string;
+  scheduled_date: string;
+  start_time: string;
+  end_time: string;
+  priority: string;
+  status: string;
+  task_data?: PlanTask | null;
+}
+
 export interface TaskReflectionData {
   what_learned?: string;
   understood_well?: string;
@@ -151,6 +170,7 @@ export interface PlannerAgentRequestPayload {
   days?: number;
   assignment_id?: string;
   request?: string;
+  user_message?: string;
 }
 
 export interface PlannerAgentTaskResult {
