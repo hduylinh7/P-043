@@ -38,9 +38,23 @@ class Task(Base, TimestampMixin):
     )
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    start_time: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    end_time: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    source_type: Mapped[str] = mapped_column(String(50), default="MANUAL", nullable=False)
+    source_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+    @property
+    def estimated_duration(self) -> int | None:
+        return self.estimated_minutes
+
+    @estimated_duration.setter
+    def estimated_duration(self, value: int | None) -> None:
+        self.estimated_minutes = value
 
     weekly_goal: Mapped["WeeklyGoal"] = relationship("WeeklyGoal", back_populates="tasks")
     assignment: Mapped[Optional["Assignment"]] = relationship("Assignment", back_populates="tasks")
     notifications: Mapped[list["Notification"]] = relationship(
         "Notification", back_populates="task", cascade="all, delete-orphan"
     )
+

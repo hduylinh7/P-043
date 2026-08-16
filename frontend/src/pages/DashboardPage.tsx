@@ -12,7 +12,7 @@ export const DashboardPage: React.FC = () => {
   return (
     <div
       className={`flex h-screen overflow-hidden font-sans transition-colors duration-300 ${
-        isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+        isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-900'
       }`}
     >
       {/* 1. Sidebar Bên tay trái */}
@@ -21,11 +21,11 @@ export const DashboardPage: React.FC = () => {
       {/* 2. Nội dung chính của Dashboard bên tay phải */}
       <main className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8">
         {/* Header trên cùng */}
-        <div className={`flex items-center justify-between pb-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+        <div className={`flex items-center justify-between pb-6 border-b ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}>
           <div>
             <h1 className={`text-2xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               <span>Bảng điều khiển (Dashboard)</span>
-              <Sparkles className="w-5 h-5 text-blue-500" />
+              <Sparkles className="w-5 h-5 text-amber-500" />
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               Quản lý phiên làm việc, trạng thái hệ thống & trợ lý AI Agent.
@@ -34,12 +34,12 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Khung Thông tin cá nhân & Trạng thái */}
-        <div className={`border rounded-3xl p-8 shadow-2xl backdrop-blur-xl space-y-8 ${
-          isDark ? 'bg-[#0f0d14] border-slate-800/80' : 'bg-white border-slate-200 shadow-slate-200/50'
+        <div className={`border-2 rounded-3xl p-8 shadow-xl backdrop-blur-xl space-y-8 ${
+          isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
         }`}>
-          <div className={`flex items-center gap-4 pb-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 rounded-2xl flex items-center justify-center">
-              <UserCheck className="w-8 h-8 text-blue-500" />
+          <div className={`flex items-center gap-4 pb-6 border-b ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}>
+            <div className="w-16 h-16 bg-minecraft-grass/20 border-2 border-minecraft-grassBorder rounded-2xl flex items-center justify-center">
+              <UserCheck className="w-8 h-8 text-emerald-500" />
             </div>
             <div>
               <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -50,8 +50,8 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2 text-blue-500 text-sm font-semibold mb-2">
+            <div className={`p-5 rounded-2xl border-2 ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-[#FDFBF7] border-amber-900/10'}`}>
+              <div className="flex items-center gap-2 text-emerald-500 text-sm font-semibold mb-2">
                 <ShieldCheck className="w-5 h-5" />
                 <span>Trạng thái Tài khoản</span>
               </div>
@@ -59,36 +59,36 @@ export const DashboardPage: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1">Xác thực người dùng active</p>
             </div>
 
-            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2 text-blue-500 text-sm font-semibold mb-2">
+            <div className={`p-5 rounded-2xl border-2 ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-[#FDFBF7] border-amber-900/10'}`}>
+              <div className="flex items-center gap-2 text-amber-500 text-sm font-semibold mb-2">
                 <Key className="w-5 h-5" />
                 <span>Cơ chế Xác thực</span>
               </div>
-              <p className="text-xl font-bold text-indigo-600 dark:text-indigo-300">JWT + Bcrypt</p>
+              <p className="text-xl font-bold text-amber-600 dark:text-amber-400">JWT + Bcrypt</p>
               <p className="text-xs text-slate-400 mt-1">Access Token (15m) + Refresh (7d)</p>
             </div>
 
-            <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2 text-indigo-500 text-sm font-semibold mb-2">
+            <div className={`p-5 rounded-2xl border-2 ${isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-[#FDFBF7] border-amber-900/10'}`}>
+              <div className="flex items-center gap-2 text-sky-500 text-sm font-semibold mb-2">
                 <Database className="w-5 h-5" />
                 <span>Redis Caching</span>
               </div>
-              <p className="text-xl font-bold text-blue-500">Redis TTL Store</p>
+              <p className="text-xl font-bold text-sky-500">Redis TTL Store</p>
               <p className="text-xs text-slate-400 mt-1">Reset token (1h) & Profile cache</p>
             </div>
           </div>
 
-          <div className={`p-6 rounded-2xl border space-y-4 ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+          <div className={`p-6 rounded-2xl border-2 space-y-4 ${isDark ? 'bg-[#0F1710] border-minecraft-obsidianBorder' : 'bg-[#FDFBF7] border-amber-900/10'}`}>
             <h3 className={`text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <Cpu className="w-5 h-5 text-indigo-500" />
+              <Cpu className="w-5 h-5 text-emerald-500" />
               <span>Thông tin Phiên đăng nhập</span>
             </h3>
             <div className="space-y-2 text-sm font-mono">
-              <div className={`flex justify-between border-b pb-2 ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
+              <div className={`flex justify-between border-b pb-2 ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}>
                 <span className="text-slate-400">User ID:</span>
-                <span className="text-indigo-500 font-semibold">{user?.id || 'GUEST-MODE'}</span>
+                <span className="text-emerald-500 font-semibold">{user?.id || 'GUEST-MODE'}</span>
               </div>
-              <div className={`flex justify-between border-b pb-2 ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
+              <div className={`flex justify-between border-b pb-2 ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}>
                 <span className="text-slate-400">Email:</span>
                 <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>{user?.email || 'guest@example.com'}</span>
               </div>

@@ -155,10 +155,10 @@ export const VerifyEmailPage: React.FC = () => {
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
           isDark
-            ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
-            : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+            ? 'bg-rose-950/60 border-rose-800/80 text-rose-200'
+            : 'bg-rose-50 border-rose-200 text-rose-800'
         }`}>
-          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -205,8 +205,8 @@ export const VerifyEmailPage: React.FC = () => {
                   required
                   className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                     isDark
-                      ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                      ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500'
+                      : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 shadow-sm'
                   }`}
                 />
               </div>
@@ -232,8 +232,8 @@ export const VerifyEmailPage: React.FC = () => {
                   onKeyDown={(e) => handleKeyDown(idx, e)}
                   className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-bold rounded-xl transition-all outline-none border ${
                     isDark
-                      ? 'bg-slate-950 border-slate-800 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                      ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                      : 'bg-white border-amber-900/15 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
                   }`}
                 />
               ))}
@@ -243,11 +243,11 @@ export const VerifyEmailPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || digits.join('').length !== 6}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
                 <span>Đang xác thực...</span>
               </>
             ) : (
@@ -256,14 +256,14 @@ export const VerifyEmailPage: React.FC = () => {
           </button>
 
           <div className={`flex items-center justify-between text-xs pt-4 border-t ${
-            isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
+            isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-500'
           }`}>
             <span>Chưa nhận được mã?</span>
             <button
               type="button"
               onClick={handleResend}
               disabled={cooldown > 0 || isResending}
-              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:text-slate-400 flex items-center gap-1.5 transition-colors"
+              className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline disabled:text-slate-400 flex items-center gap-1.5 transition-colors"
             >
               {isResending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

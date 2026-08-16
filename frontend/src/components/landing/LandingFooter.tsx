@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOutlined, GithubOutlined, HeartFilled } from '@ant-design/icons';
+import { GithubOutlined, HeartFilled } from '@ant-design/icons';
 import { useTheme } from '../../context/ThemeContext';
+import { LitaLogo } from '../common/LitaLogo';
 
 export const LandingFooter: React.FC = () => {
   const { themeMode } = useTheme();
@@ -9,24 +10,19 @@ export const LandingFooter: React.FC = () => {
   return (
     <footer id="about" className={`border-t transition-colors duration-300 ${
       themeMode === 'dark'
-        ? 'bg-slate-950 border-slate-800 text-slate-400'
-        : 'bg-white border-slate-200 text-slate-600'
+        ? 'bg-[#0F1710] border-minecraft-obsidianBorder text-slate-400'
+        : 'bg-[#FDFBF7] border-amber-900/10 text-slate-600'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
           
           {/* Col 1 & 2: Logo & Brand Summary */}
           <div className="md:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2.5 font-bold text-xl tracking-tight">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                <BookOutlined className="text-lg" />
-              </div>
-              <span className={themeMode === 'dark' ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
-                Lita <span className="text-indigo-600">Learning</span>
-              </span>
+            <Link to="/" className="inline-block">
+              <LitaLogo size="md" />
             </Link>
             <p className="text-sm leading-relaxed max-w-sm">
-              Your all-in-one AI study assistant. Empowering students to plan smarter, learn faster, and reach academic goals with state-of-the-art AI.
+              Trợ lý học tập AI cá nhân hóa toàn diện. Giúp học sinh, sinh viên lập kế hoạch thông minh, tiếp thu kiến thức nhanh hơn và chinh phục đỉnh cao học tập.
             </p>
           </div>
 
@@ -39,13 +35,13 @@ export const LandingFooter: React.FC = () => {
             </h5>
             <ul className="space-y-2.5 text-sm list-none p-0">
               <li>
-                <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
+                <a href="#features" className="hover:text-emerald-600 transition-colors">Features</a>
               </li>
               <li>
-                <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How It Works</a>
+                <a href="#how-it-works" className="hover:text-emerald-600 transition-colors">How It Works</a>
               </li>
               <li>
-                <a href="#testimonials" className="hover:text-indigo-600 transition-colors">Testimonials</a>
+                <a href="#testimonials" className="hover:text-emerald-600 transition-colors">Testimonials</a>
               </li>
             </ul>
           </div>
@@ -59,13 +55,13 @@ export const LandingFooter: React.FC = () => {
             </h5>
             <ul className="space-y-2.5 text-sm list-none p-0">
               <li>
-                <a href="#about" className="hover:text-indigo-600 transition-colors">About Us</a>
+                <a href="#about" className="hover:text-emerald-600 transition-colors">About Us</a>
               </li>
               <li>
-                <a href="#privacy" className="hover:text-indigo-600 transition-colors">Privacy Policy</a>
+                <a href="#privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</a>
               </li>
               <li>
-                <a href="#terms" className="hover:text-indigo-600 transition-colors">Terms of Service</a>
+                <a href="#terms" className="hover:text-emerald-600 transition-colors">Terms of Service</a>
               </li>
             </ul>
           </div>
@@ -83,14 +79,14 @@ export const LandingFooter: React.FC = () => {
                   href="https://github.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 hover:text-indigo-600 transition-colors"
+                  className="flex items-center gap-2 hover:text-emerald-600 transition-colors"
                 >
                   <GithubOutlined className="text-lg" />
                   <span>GitHub Repository</span>
                 </a>
               </li>
               <li>
-                <a href="mailto:support@ailearningcompanion.com" className="hover:text-indigo-600 transition-colors">
+                <a href="mailto:support@ailearningcompanion.com" className="hover:text-emerald-600 transition-colors">
                   Contact Support
                 </a>
               </li>
@@ -105,7 +101,7 @@ export const LandingFooter: React.FC = () => {
             © {new Date().getFullYear()} Lita Learning. All rights reserved.
           </p>
           <p className="m-0 flex items-center gap-1">
-            Built with <HeartFilled className="text-indigo-500" /> for university students.
+            Built with <HeartFilled className="text-emerald-500" /> for university students.
           </p>
         </div>
 

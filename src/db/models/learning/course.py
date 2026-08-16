@@ -1,6 +1,7 @@
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base, TimestampMixin, generate_uuid
@@ -24,9 +25,28 @@ class Course(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     term: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    start_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    end_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     instructor_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+
+    @property
+    def computed_status(self) -> str:
+        now = datetime.now(timezone.utc)
+        if self.start_date:
+            start = self.start_date if self.start_date.tzinfo else self.start_date.replace(tzinfo=timezone.utc)
+            if now < start:
+                return "UPCOMING"
+        if self.end_date:
+            end = self.end_date if self.end_date.tzinfo else self.end_date.replace(tzinfo=timezone.utc)
+            if now > end:
+                return "COMPLETED"
+        return "ACTIVE"
 
     instructor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[instructor_id])
     enrollments: Mapped[list["Enrollment"]] = relationship(
@@ -41,5 +61,6 @@ class Course(Base, TimestampMixin):
     materials: Mapped[list["CourseMaterial"]] = relationship(
         "CourseMaterial", back_populates="course", cascade="all, delete-orphan"
     )
+
 
 

@@ -20,8 +20,8 @@ export const HeroSection: React.FC = () => {
   return (
     <section className="relative overflow-hidden py-16 lg:py-24">
       {/* Background glow accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -34,56 +34,48 @@ export const HeroSection: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             {/* Badge */}
-            <Tag color="blue" className="px-3 py-1 text-sm font-semibold rounded-full mb-6 border-blue-200 dark:border-blue-900/60 flex items-center gap-1.5 shadow-sm">
-              <StarOutlined className="text-blue-500" />
-              <span>Next-Gen AI Powered Learning Platform</span>
-            </Tag>
+            <div className="px-4 py-1.5 text-xs font-bold rounded-full mb-6 border-2 border-minecraft-grassBorder bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center gap-2 shadow-sm font-pixel tracking-wide">
+              <StarOutlined className="text-amber-500 text-sm" />
+              <span>NỀN TẢNG HỌC TẬP THÔNG MINH CÙNG AI</span>
+            </div>
 
             {/* Large Heading */}
             <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] mb-6 ${
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
-              Your Personal{' '}
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 bg-clip-text text-transparent">
+              Chinh Phục Tri Thức Cùng{' '}
+              <span className="bg-gradient-to-r from-amber-500 via-emerald-500 to-sky-500 bg-clip-text text-transparent">
                 Lita Learning
-              </span>{' '}
-              Platform
+              </span>
             </h1>
 
             {/* Subtitle */}
-            <p className={`text-lg sm:text-xl font-normal leading-relaxed max-w-2xl mb-8 ${
-              themeMode === 'dark' ? 'text-slate-300' : 'text-slate-600'
+            <p className={`text-lg sm:text-xl font-medium leading-relaxed max-w-2xl mb-8 ${
+              themeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'
             }`}>
-              Plan smarter, study better, and achieve your academic goals with AI-powered assistance. Personalized schedules, instant AI tutoring, and intelligent goal tracking all in one place.
+              Lập kế hoạch thông minh, học tập hiệu quả và chinh phục mục tiêu cá nhân cùng trợ lý AI linh hoạt. Trải nghiệm phương pháp học tập Gamified đầy hứng khởi.
             </p>
 
             {/* Buttons */}
             <div className="flex flex-wrap items-center gap-4">
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<RocketOutlined />}
+                <button
                   onClick={() => navigate('/register')}
-                  className="h-13 px-8 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border-none shadow-lg shadow-blue-500/25 rounded-xl flex items-center gap-2"
+                  className="btn-voxel-green text-base px-8 py-3.5"
                 >
-                  Get Started
-                </Button>
+                  <RocketOutlined />
+                  <span>Bắt Đầu Ngay</span>
+                </button>
               </motion.div>
 
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Button
-                  size="large"
-                  icon={<LoginOutlined />}
+                <button
                   onClick={() => navigate('/login')}
-                  className={`h-13 px-8 text-base font-semibold rounded-xl border flex items-center gap-2 ${
-                    themeMode === 'dark'
-                      ? 'border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-600 hover:text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:border-indigo-600 hover:text-indigo-600 shadow-sm'
-                  }`}
+                  className="btn-voxel-gold text-base px-8 py-3.5"
                 >
-                  Sign In
-                </Button>
+                  <LoginOutlined />
+                  <span>Đăng Nhập</span>
+                </button>
               </motion.div>
             </div>
 
@@ -114,14 +106,14 @@ export const HeroSection: React.FC = () => {
             {/* Main Interactive Card */}
             <div className={`rounded-3xl border p-6 shadow-2xl relative backdrop-blur-xl ${
               themeMode === 'dark'
-                ? 'bg-slate-900/90 border-slate-800 shadow-indigo-950/30'
+                ? 'bg-slate-900/90 border-slate-800 shadow-emerald-950/30'
                 : 'bg-white/90 border-slate-200/80 shadow-slate-200'
             }`}>
               
               {/* Header inside mockup */}
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 rounded-full bg-minecraft-grass flex items-center justify-center text-white font-bold shadow-md">
                     <RobotOutlined className="text-xl" />
                   </div>
                   <div>
@@ -132,15 +124,15 @@ export const HeroSection: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <Tag color="blue" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                <Tag color="green" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   GPT-4o Agent
                 </Tag>
               </div>
 
               {/* Chat simulation snippet */}
               <div className="space-y-4 text-xs font-sans mb-6">
-                <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3.5 rounded-2xl rounded-tl-none border border-indigo-100 dark:border-indigo-900/50">
-                  <p className="text-indigo-950 dark:text-indigo-200 m-0 leading-relaxed font-medium">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-2xl rounded-tl-none border border-emerald-100 dark:border-emerald-900/50">
+                  <p className="text-emerald-950 dark:text-emerald-200 m-0 leading-relaxed font-medium">
                     👋 Hello Linh! Based on your upcoming Machine Learning assignment, I generated a 3-step revision plan for today.
                   </p>
                 </div>
@@ -155,10 +147,10 @@ export const HeroSection: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
                 <div className="flex justify-between items-center text-xs mb-2">
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Weekly Learning Goal</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400">85% Completed</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">85% Completed</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full w-[85%]" />
+                  <div className="bg-minecraft-grass h-full rounded-full w-[85%]" />
                 </div>
               </div>
             </div>
@@ -184,8 +176,8 @@ export const HeroSection: React.FC = () => {
               animate={{ y: [0, 8, 0] }}
               transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
             >
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-                <ClockCircleOutlined className="text-lg text-indigo-500" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <ClockCircleOutlined className="text-lg text-emerald-500" />
               </div>
               <div>
                 <p className="text-xs text-slate-500 m-0 font-medium">Assignment Alert</p>

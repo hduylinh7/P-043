@@ -48,4 +48,14 @@ export const materialService = {
   async deleteMaterial(courseId: string, materialId: string): Promise<void> {
     await api.delete(`/courses/${courseId}/materials/${materialId}`);
   },
+
+  async getMaterialContent(
+    courseId: string,
+    materialId: string
+  ): Promise<{ id: string; title: string; file_name: string; mime_type?: string; content: string }> {
+    const response = await api.get<{ id: string; title: string; file_name: string; mime_type?: string; content: string }>(
+      `/courses/${courseId}/materials/${materialId}/content`
+    );
+    return response.data;
+  },
 };

@@ -3,11 +3,16 @@ import {
   Assignment,
   AssignmentAnalytics,
   AssignmentCreatePayload,
+  AssignmentQuestion,
+  AssignmentQuestionPayload,
+  AssignmentQuestionReorderItem,
+  AssignmentSubmissionsOverview,
   AssignmentUpdatePayload,
   Checklist,
   ChecklistCreatePayload,
   ChecklistReorderItem,
   ChecklistUpdatePayload,
+  GradeSubmissionPayload,
   ProgressStatus,
   Submission,
 } from '../types/assignment';
@@ -67,6 +72,35 @@ export const assignmentService = {
     return response.data;
   },
 
+  // Question Management Methods
+
+  async addQuestion(assignmentId: string, payload: AssignmentQuestionPayload): Promise<AssignmentQuestion> {
+    const response = await api.post<AssignmentQuestion>(`/assignments/${assignmentId}/questions`, payload);
+    return response.data;
+  },
+
+  async updateQuestion(questionId: string, payload: Partial<AssignmentQuestionPayload>): Promise<AssignmentQuestion> {
+    const response = await api.put<AssignmentQuestion>(`/questions/${questionId}`, payload);
+    return response.data;
+  },
+
+  async deleteQuestion(questionId: string): Promise<void> {
+    await api.delete(`/questions/${questionId}`);
+  },
+
+  async reorderQuestions(items: AssignmentQuestionReorderItem[]): Promise<void> {
+    await api.patch('/questions/reorder', { items });
+  },
+
+  async importQuestions(assignmentId: string, file: File): Promise<AssignmentQuestion[]> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<AssignmentQuestion[]>(`/assignments/${assignmentId}/import-questions`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   // Student Submissions API Methods
 
   async submitAssignment(assignmentId: string, file?: File | null, submissionText?: string): Promise<Submission> {
@@ -88,8 +122,18 @@ export const assignmentService = {
     return response.data;
   },
 
-  async getAssignmentSubmissions(assignmentId: string): Promise<Submission[]> {
-    const response = await api.get<Submission[]>(`/assignments/${assignmentId}/submissions`);
+  async undoTurnIn(assignmentId: string): Promise<Submission> {
+    const response = await api.post<Submission>(`/assignments/${assignmentId}/undo-turn-in`);
+    return response.data;
+  },
+
+  async getAssignmentSubmissions(assignmentId: string): Promise<AssignmentSubmissionsOverview> {
+    const response = await api.get<AssignmentSubmissionsOverview>(`/assignments/${assignmentId}/submissions`);
+    return response.data;
+  },
+
+  async gradeSubmission(submissionId: string, payload: GradeSubmissionPayload): Promise<Submission> {
+    const response = await api.put<Submission>(`/submissions/${submissionId}/grade`, payload);
     return response.data;
   },
 
@@ -147,3 +191,4 @@ export const assignmentService = {
     return response.data;
   },
 };
+

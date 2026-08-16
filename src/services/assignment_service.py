@@ -11,12 +11,19 @@ from src.models.assignment import (
     AssignmentAnalyticsResponse,
     AssignmentCreateRequest,
     AssignmentProgressUpdateRequest,
+    AssignmentQuestionCreateRequest,
+    AssignmentQuestionReorderRequest,
+    AssignmentQuestionResponse,
+    AssignmentQuestionUpdateRequest,
     AssignmentResponse,
+    AssignmentSubmissionsOverviewResponse,
     AssignmentUpdateRequest,
     ChecklistCreateRequest,
     ChecklistReorderRequest,
     ChecklistResponse,
     ChecklistUpdateRequest,
+    GradeSubmissionRequest,
+    QuestionOptionResponse,
     SubmissionResponse,
 )
 from src.models.auth import UserResponse
@@ -31,6 +38,102 @@ class AssignmentService:
     @staticmethod
     def _is_instructor_or_admin(current_user: UserResponse) -> bool:
         return "instructor" in current_user.roles or "admin" in current_user.roles
+
+    @staticmethod
+    def _build_assignment_response(
+        assignment,
+        progress_data: dict | None = None,
+        hide_questions: bool = False,
+    ) -> AssignmentResponse:
+        questions = getattr(assignment, "questions", []) or []
+        question_list = []
+        total_pts = 0.0
+        for q in questions:
+            total_pts += q.points
+            if not hide_questions:
+                opts = getattr(q, "options", []) or []
+                question_list.append(
+                    AssignmentQuestionResponse(
+                        id=q.id,
+                        assignment_id=q.assignment_id,
+                        question_type=q.question_type,
+                        question_text=q.question_text,
+                        points=q.points,
+                        display_order=q.display_order,
+                        expected_answer=q.expected_answer,
+                        options=[
+                            QuestionOptionResponse(
+                                id=opt.id,
+                                question_id=opt.question_id,
+                                option_text=opt.option_text,
+                                is_correct=opt.is_correct,
+                                display_order=opt.display_order,
+                            )
+                            for opt in opts
+                        ],
+                    )
+                )
+
+        checklists = getattr(assignment, "checklists", []) or []
+        checklist_responses = []
+        if isinstance(checklists, list) and checklists and isinstance(checklists[0], dict):
+            checklist_responses = [
+                ChecklistResponse(
+                    id=c["id"],
+                    assignment_id=c["assignment_id"],
+                    title=c["title"],
+                    description=c.get("description"),
+                    display_order=c.get("display_order", 0),
+                    created_at=c["created_at"],
+                    completed=c.get("completed", False),
+                    completed_at=c.get("completed_at"),
+                )
+                for c in checklists
+            ]
+        else:
+            checklist_responses = [
+                ChecklistResponse(
+                    id=c.id,
+                    assignment_id=c.assignment_id,
+                    title=c.title,
+                    description=c.description,
+                    display_order=c.display_order,
+                    created_at=c.created_at,
+                    completed=getattr(c, "completed", False),
+                    completed_at=getattr(c, "completed_at", None),
+                )
+                for c in checklists
+            ]
+
+        progress_status = progress_data.get("progress_status") if progress_data else None
+        checklist_count = progress_data.get("checklist_count", len(checklist_responses)) if progress_data else len(checklist_responses)
+        completed_checklist_count = progress_data.get("completed_checklist_count", 0) if progress_data else 0
+        progress_percentage = progress_data.get("progress_percentage", 0) if progress_data else 0
+
+        return AssignmentResponse(
+            id=assignment.id,
+            course_id=assignment.course_id,
+            title=assignment.title,
+            description=assignment.description,
+            available_from=assignment.available_from,
+            due_date=assignment.due_at,
+            estimated_hours=assignment.estimated_hours,
+            status=assignment.status,
+            priority=assignment.priority,
+            attachment_file_name=assignment.attachment_file_name,
+            attachment_file_url=assignment.attachment_file_url,
+            created_by=assignment.created_by,
+            created_at=assignment.created_at,
+            updated_at=assignment.updated_at,
+            progress_status=progress_status,
+            checklist_count=checklist_count,
+            completed_checklist_count=completed_checklist_count,
+            progress_percentage=progress_percentage,
+            question_count=len(question_list),
+            total_points=total_pts,
+            checklists=checklist_responses,
+            questions=question_list,
+        )
 
     @staticmethod
     async def create_assignment(
@@ -58,6 +161,7 @@ class AssignmentService:
             course_id=course_id,
             title=payload.title,
             description=payload.description,
+            available_from=payload.available_from,
             due_date=payload.due_date,
             estimated_hours=payload.estimated_hours,
             status=payload.status,
@@ -65,21 +169,24 @@ class AssignmentService:
             created_by=current_user.id,
         )
 
-        return AssignmentResponse(
-            id=assignment.id,
-            course_id=assignment.course_id,
-            title=assignment.title,
-            description=assignment.description,
-            due_date=assignment.due_at,
-            estimated_hours=assignment.estimated_hours,
-            status=assignment.status,
-            priority=assignment.priority,
-            attachment_file_name=assignment.attachment_file_name,
-            attachment_file_url=assignment.attachment_file_url,
-            created_by=assignment.created_by,
-            created_at=assignment.created_at,
-            updated_at=assignment.updated_at,
-        )
+        # Create questions if provided in payload
+        if payload.questions:
+            for idx, q_req in enumerate(payload.questions):
+                opts = [opt.model_dump() for opt in q_req.options] if q_req.options else None
+                await AssignmentRepository.create_question(
+                    db=db,
+                    assignment_id=assignment.id,
+                    question_type=q_req.question_type,
+                    question_text=q_req.question_text,
+                    points=q_req.points,
+                    display_order=q_req.display_order or idx,
+                    expected_answer=q_req.expected_answer,
+                    options=opts,
+                )
+
+        full_assignment = await AssignmentRepository.get_by_id(db, assignment.id)
+        return AssignmentService._build_assignment_response(full_assignment or assignment)
+
 
     @staticmethod
     async def upload_assignment_attachment(
@@ -218,41 +325,8 @@ class AssignmentService:
             )
 
         if is_owner and not is_enrolled:
-            assignments = await AssignmentRepository.get_assignments_by_course(db, course_id)
-            results = []
-            for a in assignments:
-                checklists = await AssignmentRepository.get_checklists_by_assignment(db, a.id)
-                results.append(
-                    AssignmentResponse(
-                        id=a.id,
-                        course_id=a.course_id,
-                        title=a.title,
-                        description=a.description,
-                        due_date=a.due_at,
-                        estimated_hours=a.estimated_hours,
-                        status=a.status,
-                        priority=a.priority,
-                        attachment_file_name=a.attachment_file_name,
-                        attachment_file_url=a.attachment_file_url,
-                        created_by=a.created_by,
-                        created_at=a.created_at,
-                        updated_at=a.updated_at,
-                        checklist_count=len(checklists),
-                        checklists=[
-                            ChecklistResponse(
-                                id=c.id,
-                                assignment_id=c.assignment_id,
-                                title=c.title,
-                                description=c.description,
-                                display_order=c.display_order,
-                                created_at=c.created_at,
-                                completed=False,
-                            )
-                            for c in checklists
-                        ],
-                    )
-                )
-            return results
+            assignments = await AssignmentRepository.get_assignments_by_course(db, course_id, include_drafts=True)
+            return [AssignmentService._build_assignment_response(a) for a in assignments]
         else:
             items = await AssignmentRepository.get_assignments_by_course_with_student_progress(
                 db, course_id=course_id, student_id=current_user.id
@@ -260,41 +334,7 @@ class AssignmentService:
             results = []
             for item in items:
                 a = item["assignment"]
-                checklists_data = item["checklists"]
-                results.append(
-                    AssignmentResponse(
-                        id=a.id,
-                        course_id=a.course_id,
-                        title=a.title,
-                        description=a.description,
-                        due_date=a.due_at,
-                        estimated_hours=a.estimated_hours,
-                        status=a.status,
-                        priority=a.priority,
-                        attachment_file_name=a.attachment_file_name,
-                        attachment_file_url=a.attachment_file_url,
-                        created_by=a.created_by,
-                        created_at=a.created_at,
-                        updated_at=a.updated_at,
-                        progress_status=item["progress_status"],
-                        checklist_count=item["checklist_count"],
-                        completed_checklist_count=item["completed_checklist_count"],
-                        progress_percentage=item["progress_percentage"],
-                        checklists=[
-                            ChecklistResponse(
-                                id=c["id"],
-                                assignment_id=c["assignment_id"],
-                                title=c["title"],
-                                description=c["description"],
-                                display_order=c["display_order"],
-                                created_at=c["created_at"],
-                                completed=c["completed"],
-                                completed_at=c["completed_at"],
-                            )
-                            for c in checklists_data
-                        ],
-                    )
-                )
+                results.append(AssignmentService._build_assignment_response(a, progress_data=item))
             return results
 
     @staticmethod
@@ -326,6 +366,12 @@ class AssignmentService:
                 detail="Bạn không có quyền xem thông tin bài tập này.",
             )
 
+        if not is_owner and assignment.status == "DRAFT":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bài tập đang ở trạng thái nháp.",
+            )
+
         checklists_data = await AssignmentRepository.get_checklists_by_assignment_with_student_progress(
             db, assignment_id=assignment_id, student_id=current_user.id
         )
@@ -337,37 +383,21 @@ class AssignmentService:
             db, assignment_id=assignment_id, student_id=current_user.id
         )
 
-        return AssignmentResponse(
-            id=assignment.id,
-            course_id=assignment.course_id,
-            title=assignment.title,
-            description=assignment.description,
-            due_date=assignment.due_at,
-            estimated_hours=assignment.estimated_hours,
-            status=assignment.status,
-            priority=assignment.priority,
-            attachment_file_name=assignment.attachment_file_name,
-            attachment_file_url=assignment.attachment_file_url,
-            created_by=assignment.created_by,
-            created_at=assignment.created_at,
-            updated_at=assignment.updated_at,
-            progress_status=progress_record.progress_status if progress_record else "NOT_STARTED",
-            checklist_count=total_chk,
-            completed_checklist_count=completed_chk,
-            progress_percentage=prog_pct,
-            checklists=[
-                ChecklistResponse(
-                    id=c["id"],
-                    assignment_id=c["assignment_id"],
-                    title=c["title"],
-                    description=c["description"],
-                    display_order=c["display_order"],
-                    created_at=c["created_at"],
-                    completed=c["completed"],
-                    completed_at=c["completed_at"],
-                )
-                for c in checklists_data
-            ],
+        progress_info = {
+            "progress_status": progress_record.progress_status if progress_record else "NOT_STARTED",
+            "checklist_count": total_chk,
+            "completed_checklist_count": completed_chk,
+            "progress_percentage": prog_pct,
+        }
+
+        hide_questions = False
+        if not is_owner:
+            existing_sub = await AssignmentRepository.get_student_submission(db, assignment_id, current_user.id)
+            if existing_sub and (existing_sub.submitted_at or existing_sub.status in ["submitted", "graded"]):
+                hide_questions = True
+
+        return AssignmentService._build_assignment_response(
+            assignment, progress_data=progress_info, hide_questions=hide_questions
         )
 
     @staticmethod
@@ -397,27 +427,31 @@ class AssignmentService:
             assignment=assignment,
             title=payload.title,
             description=payload.description,
+            available_from=payload.available_from,
             due_date=payload.due_date,
             estimated_hours=payload.estimated_hours,
             status=payload.status,
             priority=payload.priority,
         )
 
-        return AssignmentResponse(
-            id=updated_assignment.id,
-            course_id=updated_assignment.course_id,
-            title=updated_assignment.title,
-            description=updated_assignment.description,
-            due_date=updated_assignment.due_at,
-            estimated_hours=updated_assignment.estimated_hours,
-            status=updated_assignment.status,
-            priority=updated_assignment.priority,
-            attachment_file_name=updated_assignment.attachment_file_name,
-            attachment_file_url=updated_assignment.attachment_file_url,
-            created_by=updated_assignment.created_by,
-            created_at=updated_assignment.created_at,
-            updated_at=updated_assignment.updated_at,
-        )
+        if payload.questions is not None:
+            await AssignmentRepository.delete_questions_by_assignment(db, assignment_id)
+            for idx, q_req in enumerate(payload.questions):
+                opts = [opt.model_dump() for opt in q_req.options] if q_req.options else None
+                await AssignmentRepository.create_question(
+                    db=db,
+                    assignment_id=assignment_id,
+                    question_type=q_req.question_type,
+                    question_text=q_req.question_text,
+                    points=q_req.points,
+                    display_order=q_req.display_order if q_req.display_order is not None else idx,
+                    expected_answer=q_req.expected_answer,
+                    options=opts,
+                )
+
+        full_updated = await AssignmentRepository.get_by_id(db, assignment_id)
+        return AssignmentService._build_assignment_response(full_updated or updated_assignment)
+
 
     @staticmethod
     async def delete_assignment(
@@ -442,6 +476,38 @@ class AssignmentService:
 
         await AssignmentRepository.delete_assignment(db, assignment)
         return {"message": "Xóa bài tập thành công."}
+
+    @staticmethod
+    async def update_student_progress(
+        db: AsyncSession,
+        assignment_id: str,
+        payload: AssignmentProgressUpdateRequest,
+        current_user: UserResponse,
+    ) -> AssignmentResponse:
+        """Student updates their overall progress status for an assignment."""
+        assignment = await AssignmentRepository.get_by_id(db, assignment_id)
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy bài tập.",
+            )
+
+        is_enrolled = await CourseRepository.check_enrollment_exists(
+            db, student_id=current_user.id, course_id=assignment.course_id
+        )
+        if not is_enrolled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn chưa đăng ký khóa học này.",
+            )
+
+        await AssignmentRepository.upsert_student_progress(
+            db=db,
+            assignment_id=assignment_id,
+            student_id=current_user.id,
+            progress_status=payload.progress_status,
+        )
+        return await AssignmentService.get_assignment_detail(db, assignment_id, current_user)
 
     # --- Student Submission Operations ---
 
@@ -468,6 +534,14 @@ class AssignmentService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Bạn chưa đăng ký khóa học này nên không thể nộp bài.",
+            )
+
+        existing_sub = await AssignmentRepository.get_student_submission(db, assignment_id, current_user.id)
+        has_questions = bool(getattr(assignment, "questions", None) and len(assignment.questions) > 0)
+        if has_questions and existing_sub and (existing_sub.submitted_at or existing_sub.status in ["submitted", "graded"]):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bài tập trắc nghiệm / có bộ câu hỏi chỉ được phép nộp bài 1 lần. Bạn đã nộp bài trước đó.",
             )
 
         file_name = None
@@ -500,20 +574,29 @@ class AssignmentService:
                     detail="Lỗi trong quá trình nộp tập tin.",
                 )
 
-        submission = await AssignmentRepository.upsert_submission(
-            db=db,
-            assignment_id=assignment_id,
-            student_id=current_user.id,
-            file_name=file_name,
-            file_url=None,
-            object_key=object_key,
-            submission_text=submission_text,
-        )
+        try:
+            submission = await AssignmentRepository.upsert_submission(
+                db=db,
+                assignment_id=assignment_id,
+                student_id=current_user.id,
+                file_name=file_name,
+                file_url=None,
+                object_key=object_key,
+                submission_text=submission_text,
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
 
         if file_name:
             submission.file_url = f"/api/v1/submissions/{submission.id}/download"
             db.add(submission)
             await db.commit()
+
+        due_dt = assignment.due_at
+        is_late = bool(due_dt and submission.submitted_at and submission.submitted_at > due_dt)
 
         return SubmissionResponse(
             id=submission.id,
@@ -526,9 +609,77 @@ class AssignmentService:
             has_file=bool(submission.object_key),
             submission_text=submission.submission_text,
             submitted_at=submission.submitted_at,
-            status=submission.status,
+            status=submission.status.value if hasattr(submission.status, 'value') else str(submission.status),
+            student_status="Late" if is_late else "Submitted",
+            grading_status="Graded" if submission.score is not None else "Pending",
+            is_late=is_late,
             score=submission.score,
             grade=submission.grade,
+            feedback=submission.feedback,
+        )
+
+    @staticmethod
+    async def undo_turn_in_assignment(
+        db: AsyncSession,
+        assignment_id: str,
+        current_user: UserResponse,
+    ) -> SubmissionResponse:
+        """Student unlocks their active submission (Undo Turn In) to make changes."""
+        assignment = await AssignmentRepository.get_by_id(db, assignment_id)
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy bài tập.",
+            )
+
+        existing_sub = await AssignmentRepository.get_student_submission(db, assignment_id, current_user.id)
+        if not existing_sub:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bạn chưa nộp bài tập này.",
+            )
+
+        if existing_sub.status == "graded" or existing_sub.score is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bài nộp đã được giảng viên chấm điểm, không thể hủy nộp bài.",
+            )
+
+        has_questions = bool(getattr(assignment, "questions", None) and len(assignment.questions) > 0)
+        if has_questions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bài tập trắc nghiệm / có bộ câu hỏi chỉ được phép nộp 1 lần và không thể hủy nộp bài để bảo mật đề thi.",
+            )
+
+        unlocked_sub = await AssignmentRepository.undo_turn_in_submission(db, assignment_id, current_user.id)
+        if not unlocked_sub:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Không thể thực hiện hủy nộp bài.",
+            )
+
+        due_dt = assignment.due_at
+        is_late = bool(due_dt and unlocked_sub.submitted_at and unlocked_sub.submitted_at > due_dt)
+
+        return SubmissionResponse(
+            id=unlocked_sub.id,
+            assignment_id=unlocked_sub.assignment_id,
+            student_id=unlocked_sub.student_id,
+            student_name=current_user.full_name,
+            student_email=current_user.email,
+            file_name=unlocked_sub.file_name,
+            file_url=unlocked_sub.file_url,
+            has_file=bool(unlocked_sub.object_key),
+            submission_text=unlocked_sub.submission_text,
+            submitted_at=unlocked_sub.submitted_at,
+            status=unlocked_sub.status.value if hasattr(unlocked_sub.status, 'value') else str(unlocked_sub.status),
+            student_status="Not Submitted",
+            grading_status="-",
+            is_late=is_late,
+            score=unlocked_sub.score,
+            grade=unlocked_sub.grade,
+            feedback=unlocked_sub.feedback,
         )
 
     @staticmethod
@@ -542,6 +693,10 @@ class AssignmentService:
         if not sub:
             return None
 
+        assignment = sub.assignment
+        due_dt = assignment.due_at if assignment else None
+        is_late = bool(due_dt and sub.submitted_at and sub.submitted_at > due_dt)
+
         return SubmissionResponse(
             id=sub.id,
             assignment_id=sub.assignment_id,
@@ -553,9 +708,13 @@ class AssignmentService:
             has_file=bool(sub.object_key),
             submission_text=sub.submission_text,
             submitted_at=sub.submitted_at,
-            status=sub.status,
+            status=sub.status.value if hasattr(sub.status, 'value') else str(sub.status),
+            student_status="Late" if is_late else ("Submitted" if sub.submitted_at else "Not Submitted"),
+            grading_status="Graded" if sub.score is not None else ("Pending" if sub.submitted_at else "-"),
+            is_late=is_late,
             score=sub.score,
             grade=sub.grade,
+            feedback=sub.feedback,
         )
 
     @staticmethod
@@ -563,8 +722,8 @@ class AssignmentService:
         db: AsyncSession,
         assignment_id: str,
         current_user: UserResponse,
-    ) -> list[SubmissionResponse]:
-        """Instructor views all submissions for an assignment."""
+    ) -> AssignmentSubmissionsOverviewResponse:
+        """Instructor views overview statistics and complete student submission roster."""
         assignment = await AssignmentRepository.get_by_id(db, assignment_id)
         if not assignment:
             raise HTTPException(
@@ -579,25 +738,158 @@ class AssignmentService:
                 detail="Chỉ có Giảng viên sở hữu khóa học mới có quyền xem bài nộp.",
             )
 
-        subs = await AssignmentRepository.get_all_submissions_for_assignment(db, assignment_id)
-        return [
-            SubmissionResponse(
-                id=s.id,
-                assignment_id=s.assignment_id,
-                student_id=s.student_id,
-                student_name=s.student.full_name if s.student else "Sinh viên",
-                student_email=s.student.email if s.student else "",
-                file_name=s.file_name,
-                file_url=s.file_url,
-                has_file=bool(s.object_key),
-                submission_text=s.submission_text,
-                submitted_at=s.submitted_at,
-                status=s.status,
-                score=s.score,
-                grade=s.grade,
+        enrolled_students = await CourseRepository.get_enrolled_students(db, course.id)
+        existing_subs = await AssignmentRepository.get_all_submissions_for_assignment(db, assignment_id)
+        subs_by_student_id = {s.student_id: s for s in existing_subs}
+
+        questions = assignment.questions or []
+        question_count = len(questions)
+        total_points = sum(q.points for q in questions) if questions else 0.0
+
+        due_dt = assignment.due_at
+
+        sub_responses: list[SubmissionResponse] = []
+        submitted_count = 0
+        not_submitted_count = 0
+        late_count = 0
+        graded_count = 0
+        pending_count = 0
+
+        for st in enrolled_students:
+            st_id = st["id"]
+            st_name = st["full_name"]
+            st_email = st["email"]
+
+            if st_id in subs_by_student_id:
+                s = subs_by_student_id[st_id]
+                is_late = bool(due_dt and s.submitted_at and s.submitted_at > due_dt)
+                student_status = "Late" if is_late else "Submitted"
+                is_graded = (s.score is not None) or (s.grade == "GRADED")
+                grading_status = "Graded" if is_graded else "Pending"
+
+                submitted_count += 1
+                if is_late:
+                    late_count += 1
+                if is_graded:
+                    graded_count += 1
+                else:
+                    pending_count += 1
+
+                sub_responses.append(
+                    SubmissionResponse(
+                        id=s.id,
+                        assignment_id=s.assignment_id,
+                        student_id=s.student_id,
+                        student_name=st_name,
+                        student_email=st_email,
+                        file_name=s.file_name,
+                        file_url=s.file_url,
+                        has_file=bool(s.object_key),
+                        submission_text=s.submission_text,
+                        submitted_at=s.submitted_at,
+                        status=s.status.value if hasattr(s.status, 'value') else str(s.status),
+                        student_status=student_status,
+                        grading_status=grading_status,
+                        is_late=is_late,
+                        score=s.score,
+                        grade=s.grade,
+                        feedback=s.feedback,
+                    )
+                )
+            else:
+                not_submitted_count += 1
+                sub_responses.append(
+                    SubmissionResponse(
+                        id=f"unsubmitted_{st_id}",
+                        assignment_id=assignment_id,
+                        student_id=st_id,
+                        student_name=st_name,
+                        student_email=st_email,
+                        file_name=None,
+                        file_url=None,
+                        has_file=False,
+                        submission_text=None,
+                        submitted_at=None,
+                        status="unsubmitted",
+                        student_status="Not Submitted",
+                        grading_status="-",
+                        is_late=False,
+                        score=None,
+                        grade=None,
+                        feedback=None,
+                    )
+                )
+
+        return AssignmentSubmissionsOverviewResponse(
+            assignment_id=assignment.id,
+            assignment_title=assignment.title,
+            course_title=course.name,
+            available_from=assignment.available_from,
+            due_date=assignment.due_at,
+            question_count=question_count,
+            total_points=total_points,
+            total_students=len(enrolled_students),
+            submitted_count=submitted_count,
+            not_submitted_count=not_submitted_count,
+            late_count=late_count,
+            graded_count=graded_count,
+            pending_count=pending_count,
+            submissions=sub_responses,
+        )
+
+    @staticmethod
+    async def grade_submission(
+        db: AsyncSession,
+        submission_id: str,
+        payload: GradeSubmissionRequest,
+        current_user: UserResponse,
+    ) -> SubmissionResponse:
+        """Instructor grades a student submission."""
+        sub = await AssignmentRepository.get_submission_by_id(db, submission_id)
+        if not sub:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy bản ghi bài nộp.",
             )
-            for s in subs
-        ]
+
+        assignment = sub.assignment
+        course = assignment.course
+        if not AssignmentService._is_instructor_or_admin(current_user) or course.instructor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ có Giảng viên sở hữu khóa học mới có quyền chấm điểm.",
+            )
+
+        graded_sub = await AssignmentRepository.grade_submission(
+            db=db,
+            submission=sub,
+            score=payload.score,
+            grade=payload.grade or "GRADED",
+            feedback=payload.feedback,
+        )
+
+        due_dt = assignment.due_at
+        is_late = bool(due_dt and graded_sub.submitted_at and graded_sub.submitted_at > due_dt)
+
+        return SubmissionResponse(
+            id=graded_sub.id,
+            assignment_id=graded_sub.assignment_id,
+            student_id=graded_sub.student_id,
+            student_name=graded_sub.student.full_name if graded_sub.student else "Sinh viên",
+            student_email=graded_sub.student.email if graded_sub.student else "",
+            file_name=graded_sub.file_name,
+            file_url=graded_sub.file_url,
+            has_file=bool(graded_sub.object_key),
+            submission_text=graded_sub.submission_text,
+            submitted_at=graded_sub.submitted_at,
+            status=graded_sub.status.value if hasattr(graded_sub.status, 'value') else str(graded_sub.status),
+            student_status="Late" if is_late else "Submitted",
+            grading_status="Graded",
+            is_late=is_late,
+            score=graded_sub.score,
+            grade=graded_sub.grade,
+            feedback=graded_sub.feedback,
+        )
 
     @staticmethod
     async def download_submission_file(
@@ -895,3 +1187,278 @@ class AssignmentService:
 
         analytics_data = await AssignmentRepository.get_assignment_analytics(db, assignment_id)
         return AssignmentAnalyticsResponse(**analytics_data)
+
+    # --- Question Service Methods ---
+
+    @staticmethod
+    async def create_question(
+        db: AsyncSession,
+        assignment_id: str,
+        payload: AssignmentQuestionCreateRequest,
+        current_user: UserResponse,
+    ) -> AssignmentQuestionResponse:
+        assignment = await AssignmentRepository.get_by_id(db, assignment_id)
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy bài tập.",
+            )
+
+        course = assignment.course
+        if not AssignmentService._is_instructor_or_admin(current_user) or course.instructor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ có Giảng viên sở hữu khóa học mới có quyền thêm câu hỏi.",
+            )
+
+        opts = [opt.model_dump() for opt in payload.options] if payload.options else None
+        q = await AssignmentRepository.create_question(
+            db=db,
+            assignment_id=assignment_id,
+            question_type=payload.question_type,
+            question_text=payload.question_text,
+            points=payload.points,
+            display_order=payload.display_order,
+            expected_answer=payload.expected_answer,
+            options=opts,
+        )
+
+        return AssignmentQuestionResponse(
+            id=q.id,
+            assignment_id=q.assignment_id,
+            question_type=q.question_type,
+            question_text=q.question_text,
+            points=q.points,
+            display_order=q.display_order,
+            expected_answer=q.expected_answer,
+            options=[
+                QuestionOptionResponse(
+                    id=opt.id,
+                    question_id=opt.question_id,
+                    option_text=opt.option_text,
+                    is_correct=opt.is_correct,
+                    display_order=opt.display_order,
+                )
+                for opt in q.options
+            ],
+        )
+
+    @staticmethod
+    async def update_question(
+        db: AsyncSession,
+        question_id: str,
+        payload: AssignmentQuestionUpdateRequest,
+        current_user: UserResponse,
+    ) -> AssignmentQuestionResponse:
+        question = await AssignmentRepository.get_question_by_id(db, question_id)
+        if not question:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy câu hỏi.",
+            )
+
+        assignment = await AssignmentRepository.get_by_id(db, question.assignment_id)
+        if not assignment or not AssignmentService._is_instructor_or_admin(current_user) or assignment.course.instructor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền chỉnh sửa câu hỏi này.",
+            )
+
+        opts = [opt.model_dump() for opt in payload.options] if payload.options is not None else None
+        q = await AssignmentRepository.update_question(
+            db=db,
+            question=question,
+            question_type=payload.question_type,
+            question_text=payload.question_text,
+            points=payload.points,
+            display_order=payload.display_order,
+            expected_answer=payload.expected_answer,
+            options=opts,
+        )
+
+        return AssignmentQuestionResponse(
+            id=q.id,
+            assignment_id=q.assignment_id,
+            question_type=q.question_type,
+            question_text=q.question_text,
+            points=q.points,
+            display_order=q.display_order,
+            expected_answer=q.expected_answer,
+            options=[
+                QuestionOptionResponse(
+                    id=opt.id,
+                    question_id=opt.question_id,
+                    option_text=opt.option_text,
+                    is_correct=opt.is_correct,
+                    display_order=opt.display_order,
+                )
+                for opt in q.options
+            ],
+        )
+
+    @staticmethod
+    async def delete_question(
+        db: AsyncSession,
+        question_id: str,
+        current_user: UserResponse,
+    ) -> dict:
+        question = await AssignmentRepository.get_question_by_id(db, question_id)
+        if not question:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy câu hỏi.",
+            )
+
+        assignment = await AssignmentRepository.get_by_id(db, question.assignment_id)
+        if not assignment or not AssignmentService._is_instructor_or_admin(current_user) or assignment.course.instructor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xóa câu hỏi này.",
+            )
+
+        await AssignmentRepository.delete_question(db, question)
+        return {"detail": "Xóa câu hỏi thành công."}
+
+    @staticmethod
+    async def reorder_questions(
+        db: AsyncSession,
+        payload: AssignmentQuestionReorderRequest,
+        current_user: UserResponse,
+    ) -> dict:
+        if not payload.items:
+            return {"detail": "Thành công."}
+
+        first_q = await AssignmentRepository.get_question_by_id(db, payload.items[0].id)
+        if first_q:
+            assignment = await AssignmentRepository.get_by_id(db, first_q.assignment_id)
+            if not assignment or not AssignmentService._is_instructor_or_admin(current_user) or assignment.course.instructor_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Bạn không có quyền sắp xếp câu hỏi.",
+                )
+
+        items_dict = [item.model_dump() for item in payload.items]
+        await AssignmentRepository.reorder_questions(db, items_dict)
+        return {"detail": "Sắp xếp thứ tự câu hỏi thành công."}
+
+    @staticmethod
+    async def import_questions_from_csv(
+        db: AsyncSession,
+        assignment_id: str,
+        file: UploadFile,
+        current_user: UserResponse,
+    ) -> list[AssignmentQuestionResponse]:
+        import csv
+        from io import StringIO
+
+        assignment = await AssignmentRepository.get_by_id(db, assignment_id)
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy bài tập.",
+            )
+
+        course = assignment.course
+        if not AssignmentService._is_instructor_or_admin(current_user) or course.instructor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ có Giảng viên sở hữu khóa học mới có quyền nhập câu hỏi.",
+            )
+
+        content_bytes = await file.read()
+        try:
+            content_str = content_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            content_str = content_bytes.decode("latin-1")
+
+        created_questions = []
+        reader = csv.DictReader(StringIO(content_str))
+        start_order = len(assignment.questions)
+
+        for idx, row in enumerate(reader):
+            q_type = (row.get("question_type") or row.get("type") or "").strip().upper()
+            q_text = (row.get("question_text") or row.get("text") or row.get("question") or "").strip()
+            if not q_text:
+                continue
+
+            if q_type not in ["MULTIPLE_CHOICE", "ESSAY", "SHORT_ANSWER"]:
+                if row.get("option_1") or row.get("options"):
+                    q_type = "MULTIPLE_CHOICE"
+                else:
+                    q_type = "SHORT_ANSWER"
+
+            try:
+                pts = float(row.get("points") or 1.0)
+            except ValueError:
+                pts = 1.0
+
+            exp_ans = (row.get("expected_answer") or row.get("rubric") or row.get("answer") or "").strip() or None
+
+            options = []
+            if q_type == "MULTIPLE_CHOICE":
+                correct_idx = None
+                raw_correct = (row.get("correct_option") or row.get("correct") or "").strip()
+                if raw_correct.isdigit():
+                    correct_idx = int(raw_correct) - 1
+                elif raw_correct.lower().startswith("option_") and raw_correct[7:].isdigit():
+                    correct_idx = int(raw_correct[7:]) - 1
+                elif raw_correct.lower().startswith("option") and raw_correct[6:].isdigit():
+                    correct_idx = int(raw_correct[6:]) - 1
+                elif len(raw_correct) == 1 and raw_correct.upper() in ["A", "B", "C", "D", "E", "F"]:
+                    correct_idx = ord(raw_correct.upper()) - ord("A")
+
+                opt_texts = []
+                for i in range(1, 10):
+                    key = f"option_{i}"
+                    if key in row and row[key] and row[key].strip():
+                        opt_texts.append(row[key].strip())
+
+                if not opt_texts and row.get("options"):
+                    opt_texts = [o.strip() for o in row["options"].split("|") if o.strip()]
+
+                for opt_i, opt_t in enumerate(opt_texts):
+                    is_corr = False
+                    if correct_idx is not None and opt_i == correct_idx:
+                        is_corr = True
+                    elif raw_correct.lower() == opt_t.lower():
+                        is_corr = True
+                    options.append({
+                        "option_text": opt_t,
+                        "is_correct": is_corr,
+                        "display_order": opt_i,
+                    })
+
+            q = await AssignmentRepository.create_question(
+                db=db,
+                assignment_id=assignment_id,
+                question_type=q_type,
+                question_text=q_text,
+                points=pts,
+                display_order=start_order + idx,
+                expected_answer=exp_ans,
+                options=options if options else None,
+            )
+            created_questions.append(
+                AssignmentQuestionResponse(
+                    id=q.id,
+                    assignment_id=q.assignment_id,
+                    question_type=q.question_type,
+                    question_text=q.question_text,
+                    points=q.points,
+                    display_order=q.display_order,
+                    expected_answer=q.expected_answer,
+                    options=[
+                        QuestionOptionResponse(
+                            id=opt.id,
+                            question_id=opt.question_id,
+                            option_text=opt.option_text,
+                            is_correct=opt.is_correct,
+                            display_order=opt.display_order,
+                        )
+                        for opt in q.options
+                    ],
+                )
+            )
+
+        return created_questions
+

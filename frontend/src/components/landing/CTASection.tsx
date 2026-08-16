@@ -14,10 +14,10 @@ export const CTASection: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <motion.div
-          className={`rounded-3xl p-10 sm:p-16 text-center relative overflow-hidden border shadow-2xl ${
+          className={`rounded-3xl p-10 sm:p-16 text-center relative overflow-hidden border-2 shadow-2xl ${
             themeMode === 'dark'
-              ? 'bg-gradient-to-br from-blue-950/80 via-slate-900 to-indigo-950/80 border-blue-800/50 shadow-indigo-950/50'
-              : 'bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 border-blue-500 text-white shadow-indigo-500/20'
+              ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder shadow-emerald-950/50'
+              : 'bg-gradient-to-br from-minecraft-grassDark via-emerald-600 to-green-700 border-minecraft-grassBorder text-white shadow-emerald-500/20'
           }`}
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -25,32 +25,26 @@ export const CTASection: React.FC = () => {
           transition={{ duration: 0.6 }}
         >
           {/* Decorative glow circles */}
-          <div className="absolute -top-24 -left-24 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-72 h-72 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 max-w-3xl mx-auto">
-            <h2 className={`text-3xl sm:text-5xl font-extrabold tracking-tight mb-6 ${
-              themeMode === 'dark' ? 'text-white' : 'text-white'
-            }`}>
-              Start Learning Smarter Today
+            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-6 text-white">
+              Bắt Đầu Học Tập Thông Minh Ngay Hôm Nay
             </h2>
 
-            <p className={`text-lg sm:text-xl font-normal leading-relaxed mb-8 ${
-              themeMode === 'dark' ? 'text-slate-300' : 'text-blue-50'
-            }`}>
-              Join thousands of students leveraging AI to boost productivity, master difficult subjects, and achieve top grades.
+            <p className="text-lg sm:text-xl font-medium leading-relaxed mb-8 text-emerald-50">
+              Gia nhập cộng đồng người học nâng cao hiệu suất cùng trợ lý AI cá nhân hóa đỉnh cao.
             </p>
 
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block">
-              <Button
-                type="primary"
-                size="large"
-                icon={<RocketOutlined />}
+              <button
                 onClick={() => navigate('/register')}
-                className="h-14 px-10 text-lg font-bold bg-white text-blue-600 hover:bg-blue-50 border-none shadow-xl rounded-xl flex items-center justify-center gap-2.5 mx-auto"
+                className="btn-voxel-gold text-base px-10 py-4 shadow-xl"
               >
-                Get Started Free
-              </Button>
+                <RocketOutlined />
+                <span>Đăng Ký Miễn Phí</span>
+              </button>
             </motion.div>
           </div>
         </motion.div>

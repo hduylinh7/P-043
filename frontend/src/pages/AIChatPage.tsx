@@ -30,9 +30,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { api, ChatSession, ChatMessage, Citation } from '../services/api';
 import { courseService } from '../services/courseService';
+import { assignmentService } from '../services/assignmentService';
+import { goalService } from '../services/goalService';
 import { Course } from '../types/course';
+import { Assignment } from '../types/assignment';
+import { Goal } from '../types/goal';
+import { EntityContext } from '../components/MarkdownRenderer';
 
 export const AIChatPage: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +54,8 @@ export const AIChatPage: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(initialCourseId);
 
   // UI States
@@ -67,17 +75,37 @@ export const AIChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages, sending]);
 
-  // Load User Courses & Sessions on Mount
+  // Load User Courses, Assignments, Goals & Sessions on Mount
   useEffect(() => {
     const fetchData = async () => {
       setLoadingSessions(true);
       try {
-        // Fetch courses for context selector
+        // Fetch courses for context selector & entity matching
         const userCourses = await courseService.getStudentCourses();
         setCourses(userCourses);
 
-        // Fetch chat sessions
-        const userSessions = await api.getSessions(user?.id || 'default_user');
+        // Fetch assignments for entity matching
+        let userAssignments: Assignment[] = [];
+        for (const c of userCourses) {
+          try {
+            const cAss = await assignmentService.getCourseAssignments(c.id);
+            userAssignments = [...userAssignments, ...cAss];
+          } catch (e) {
+            console.error('Failed to load course assignments:', e);
+          }
+        }
+        setAssignments(userAssignments);
+
+        // Fetch goals for entity matching
+        try {
+          const userGoals = await goalService.getGoals();
+          setGoals(userGoals);
+        } catch (e) {
+          console.error('Failed to load user goals:', e);
+        }
+
+        // Fetch chat sessions for Personal Companion ONLY
+        const userSessions = await api.getSessions(user?.id || 'default_user', 'companion');
         setSessions(userSessions);
 
         if (userSessions.length > 0) {
@@ -90,7 +118,7 @@ export const AIChatPage: React.FC = () => {
             {
               role: 'assistant',
               content:
-                'Xin chào! Tôi là Trợ Lý AI Học Tập thông minh (RAG Assistant). Bạn có thể hỏi tôi bất kỳ nội dung nào từ giáo trình, bài giảng hoặc tài liệu đã tải lên trong các khóa học!',
+                'Xin chào! Tôi là Trợ Lý Học Tập Cá Nhân (Personal Learning Companion). Tôi có thể giúp bạn theo dõi thông tin khóa học, bài tập, hạn nộp, điểm số, mục tiêu cá nhân và gợi ý những bài tập cần ưu tiên!',
             },
           ]);
         }
@@ -113,7 +141,7 @@ export const AIChatPage: React.FC = () => {
           {
             role: 'assistant',
             content:
-              'Phiên trò chuyện mới đã sẵn sàng. Hãy đặt câu hỏi để tôi truy vấn dữ liệu tài liệu cho bạn nhé!',
+              'Phiên trò chuyện mới đã sẵn sàng. Bạn có thể hỏi tôi về các môn học, bài tập sắp đến hạn, điểm số, hoặc xin gợi ý ưu tiên làm bài tập!',
           },
         ]);
       } else {
@@ -138,7 +166,7 @@ export const AIChatPage: React.FC = () => {
       {
         role: 'assistant',
         content:
-          'Đã khởi tạo phiên hỏi đáp mới. Vui lòng chọn môn học (nếu có) và nhập câu hỏi để tra cứu từ tài liệu!',
+          'Đã khởi tạo phiên hỏi đáp mới. Hãy đặt câu hỏi về khóa học, bài tập, hạn nộp, điểm số hoặc mục tiêu cá nhân của bạn!',
       },
     ]);
   };
@@ -164,14 +192,16 @@ export const AIChatPage: React.FC = () => {
         userMsgContent,
         activeSessionId || undefined,
         user?.id || 'default_user',
-        selectedCourseId
+        selectedCourseId,
+        undefined,
+        'companion'
       );
 
       // If new session was created by backend
       if (!activeSessionId && response.session_id) {
         setActiveSessionId(response.session_id);
         // Refresh sessions list
-        const updatedSessions = await api.getSessions(user?.id || 'default_user');
+        const updatedSessions = await api.getSessions(user?.id || 'default_user', 'companion');
         setSessions(updatedSessions);
       }
 
@@ -192,7 +222,7 @@ export const AIChatPage: React.FC = () => {
         ...prev,
         {
           role: 'assistant',
-          content: '⚠️ Đã xảy ra lỗi khi truy vấn tài liệu. Vui lòng thử lại sau giây lát.',
+          content: '⚠️ Đã xảy ra lỗi khi truy vấn dữ liệu học tập. Vui lòng thử lại sau giây lát.',
         },
       ]);
     } finally {
@@ -202,16 +232,24 @@ export const AIChatPage: React.FC = () => {
 
   const quickPrompts = [
     {
-      label: '💡 Tóm tắt nội dung chính',
-      query: 'Hãy tóm tắt ngắn gọn các khái niệm chính trong các tài liệu bài giảng đã tải lên.',
+      label: '📚 Môn học của tôi',
+      query: 'Tôi đang học những môn học nào?',
     },
     {
-      label: '🔍 Tìm kiếm công thức & định nghĩa',
-      query: 'Liệt kê các định nghĩa quan trọng và công thức cốt lõi cần nhớ.',
+      label: '⏰ Bài tập sắp đến hạn',
+      query: 'Tôi có những bài tập nào sắp đến hạn nộp?',
     },
     {
-      label: '❓ Tạo 3 câu hỏi ôn tập',
-      query: 'Tạo cho tôi 3 câu hỏi trắc nghiệm tự luyện kèm đáp án từ tài liệu môn học.',
+      label: '🎯 Mục tiêu cá nhân',
+      query: 'Mục tiêu cá nhân của tôi hiện tại là gì?',
+    },
+    {
+      label: '📊 Điểm số & Đánh giá',
+      query: 'Tôi đã nhận được điểm số và nhận xét nào?',
+    },
+    {
+      label: '💡 Gợi ý ưu tiên bài tập',
+      query: 'Tôi nên ưu tiên tập trung làm bài tập nào tuần này?',
     },
   ];
 
@@ -219,10 +257,16 @@ export const AIChatPage: React.FC = () => {
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const entityContext: EntityContext = {
+    courses: courses.map((c) => ({ id: c.id, code: c.code, name: c.name })),
+    assignments: assignments.map((a) => ({ id: a.id, title: a.title, course_id: a.course_id })),
+    goals: goals.map((g) => ({ id: g.id, title: g.title })),
+  };
+
   return (
     <div
       className={`min-h-screen flex transition-colors duration-300 ${
-        isDark ? 'bg-[#090b10] text-slate-100' : 'bg-slate-50 text-slate-900'
+        isDark ? 'bg-[#0F1710] text-[#F2F9F3]' : 'bg-[#FDFBF7] text-slate-900'
       }`}
     >
       {/* Sidebar */}
@@ -232,30 +276,30 @@ export const AIChatPage: React.FC = () => {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header Bar */}
         <header
-          className={`h-16 px-6 border-b flex items-center justify-between shrink-0 backdrop-blur-md z-10 ${
+          className={`h-20 px-6 border-b flex items-center justify-between shrink-0 backdrop-blur-md z-10 ${
             isDark
-              ? 'bg-slate-950/80 border-slate-800/80 text-white'
-              : 'bg-white/80 border-slate-200 text-slate-900'
+              ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder text-white'
+              : 'bg-[#FDFBF7]/90 border-amber-900/10 text-slate-900'
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shadow-sm">
-              <ThunderboltOutlined className="text-lg animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-minecraft-grass/20 border-2 border-minecraft-grassBorder flex items-center justify-center text-emerald-500 shadow-sm">
+              <ThunderboltOutlined className="text-xl animate-pulse" />
             </div>
             <div>
-              <h1 className="font-bold text-base tracking-tight flex items-center gap-2 m-0">
-                AI RAG Chat Assistant
+              <h1 className="font-bold text-lg tracking-tight flex items-center gap-2 m-0">
+                Personal Learning Companion
                 <Badge
                   status="processing"
                   text={
                     <span className="text-[11px] font-medium text-emerald-500 dark:text-emerald-400">
-                      ChromaDB & Gemini RAG
+                      Learning Companion Agent
                     </span>
                   }
                 />
               </h1>
               <p className="text-xs text-slate-400 m-0">
-                Truy vấn dữ liệu bài giảng & tài liệu môn học tự động
+                Đồng hành theo dõi khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân
               </p>
             </div>
           </div>
@@ -285,22 +329,20 @@ export const AIChatPage: React.FC = () => {
         <div className="flex-1 flex overflow-hidden">
           {/* Left Session Drawer/Panel */}
           <div
-            className={`w-72 border-r flex flex-col shrink-0 transition-all ${
-              isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-100/60 border-slate-200'
+            className={`w-72 border-r-2 flex flex-col shrink-0 transition-all ${
+              isDark ? 'bg-slate-950/60 border-minecraft-obsidianBorder' : 'bg-slate-100/70 border-amber-900/10'
             }`}
           >
             {/* New Chat Button */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800/80 space-y-3">
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                block
-                size="large"
+            <div className="p-4 border-b-2 border-slate-200 dark:border-minecraft-obsidianBorder space-y-3">
+              <button
+                type="button"
                 onClick={handleCreateNewSession}
-                className="bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl shadow-md shadow-blue-500/20"
+                className="w-full btn-voxel-green py-3 text-sm rounded-xl font-bold flex items-center justify-center gap-2"
               >
-                Tạo Đoạn Chat Mới
-              </Button>
+                <PlusOutlined />
+                <span>Tạo Đoạn Chat Mới</span>
+              </button>
 
               <Input
                 prefix={<SearchOutlined className="text-slate-400" />}
@@ -309,12 +351,12 @@ export const AIChatPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 allowClear
                 size="small"
-                className="rounded-lg"
+                className="rounded-xl border-2 border-slate-200 dark:border-slate-800"
               />
             </div>
 
             {/* Sessions List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">
                 Lịch sử trò chuyện ({filteredSessions.length})
               </div>
@@ -333,18 +375,16 @@ export const AIChatPage: React.FC = () => {
                   return (
                     <motion.button
                       key={session.id}
-                      whileHover={{ x: 3 }}
+                      whileHover={{ x: 2 }}
                       onClick={() => handleSelectSession(session.id)}
-                      className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 text-xs font-medium ${
+                      className={
                         isActive
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                          : isDark
-                          ? 'hover:bg-slate-900 text-slate-300'
-                          : 'hover:bg-white text-slate-700'
-                      }`}
+                          ? 'tab-voxel-active text-xs w-full text-left justify-start'
+                          : 'tab-voxel-inactive text-xs w-full text-left justify-start'
+                      }
                     >
                       <MessageOutlined
-                        className={`text-sm shrink-0 ${isActive ? 'text-white' : 'text-blue-500'}`}
+                        className={`text-sm shrink-0 ${isActive ? 'text-emerald-700 dark:text-emerald-300' : 'text-emerald-500'}`}
                       />
                       <span className="truncate flex-1">{session.title || 'Trò chuyện RAG'}</span>
                     </motion.button>
@@ -379,39 +419,31 @@ export const AIChatPage: React.FC = () => {
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-voxel-sm border-2 ${
                           isUser
-                            ? 'bg-blue-600 text-white shadow-blue-500/20'
-                            : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-indigo-500/20'
+                            ? 'bg-minecraft-grass text-white border-minecraft-grassBorder font-extrabold'
+                            : 'bg-minecraft-gold text-slate-900 border-minecraft-goldBorder font-bold text-lg'
                         }`}
                       >
-                        {isUser ? <UserOutlined /> : <RobotOutlined className="text-lg" />}
+                        {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined />}
                       </div>
 
                       {/* Content Bubble */}
                       <div className={`space-y-3 max-w-[82%]`}>
                         <div
-                          className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                          className={
                             isUser
-                              ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-500/15'
-                              : isDark
-                              ? 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-none shadow-md'
-                              : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none shadow-sm'
-                          }`}
+                              ? 'p-5 rounded-2xl text-sm leading-relaxed border-2 border-minecraft-grassBorder bg-minecraft-grass text-white font-bold shadow-voxel-sm shadow-minecraft-grassBorder/40 rounded-tr-none'
+                              : 'card-voxel-3d p-5 rounded-2xl text-sm leading-relaxed rounded-tl-none font-sans'
+                          }
                         >
-                          <p className="whitespace-pre-wrap m-0 font-sans">{msg.content}</p>
+                          <MarkdownRenderer content={msg.content} isUser={isUser} entityContext={entityContext} />
                         </div>
 
                         {/* RAG Citations Cards (AI Messages only) */}
                         {!isUser && msg.citations && msg.citations.length > 0 && (
-                          <div
-                            className={`p-3.5 rounded-xl border space-y-2 text-xs ${
-                              isDark
-                                ? 'bg-slate-950/60 border-blue-500/20 text-slate-300'
-                                : 'bg-blue-50/50 border-blue-100 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 font-bold text-blue-500">
+                          <div className="card-voxel-3d p-4 space-y-3 text-xs">
+                            <div className="flex items-center gap-1.5 font-extrabold text-emerald-600 dark:text-emerald-400">
                               <FileTextOutlined />
                               <span>Trích dẫn từ tài liệu RAG ({msg.citations.length})</span>
                             </div>
@@ -420,20 +452,20 @@ export const AIChatPage: React.FC = () => {
                               {msg.citations.map((cite, cIdx) => (
                                 <div
                                   key={cIdx}
-                                  className={`p-2.5 rounded-lg border transition-colors ${
+                                  className={`p-3 rounded-xl border-2 transition-all ${
                                     isDark
-                                      ? 'bg-slate-900 border-slate-800 hover:border-blue-500/40'
-                                      : 'bg-white border-slate-200 hover:border-blue-300'
+                                      ? 'bg-slate-900/80 border-minecraft-obsidianBorder hover:border-emerald-500/40'
+                                      : 'bg-slate-50 border-slate-200 hover:border-emerald-300'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between font-semibold">
-                                    <span className="text-blue-500 truncate max-w-[240px]">
+                                  <div className="flex items-center justify-between font-bold">
+                                    <span className="text-emerald-700 dark:text-emerald-300 truncate max-w-[240px]">
                                       📄 {cite.file_name || 'Tài liệu môn học'}
                                     </span>
                                     {cite.score !== undefined && (
-                                      <Tag color="blue" className="rounded-full text-[10px]">
+                                      <span className="badge-voxel-green text-[10px] py-0.5 px-2">
                                         Độ khớp: {Math.round(cite.score * 100)}%
-                                      </Tag>
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -445,17 +477,16 @@ export const AIChatPage: React.FC = () => {
                         {/* RAG Sources Tags */}
                         {!isUser && msg.sources && msg.sources.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <span className="text-[11px] font-semibold text-slate-400">
+                            <span className="text-[11px] font-bold text-slate-400">
                               Nguồn tham khảo:
                             </span>
                             {msg.sources.map((src, sIdx) => (
-                              <Tag
+                              <span
                                 key={sIdx}
-                                color="cyan"
-                                className="rounded-full text-[11px] font-medium border-0"
+                                className="badge-voxel-green text-[11px] py-0.5 px-2.5"
                               >
                                 {src}
-                              </Tag>
+                              </span>
                             ))}
                           </div>
                         )}
@@ -472,18 +503,12 @@ export const AIChatPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex items-center gap-3 max-w-4xl mx-auto"
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+                  <div className="w-11 h-11 rounded-2xl bg-minecraft-gold text-slate-900 flex items-center justify-center shadow-voxel-sm border-2 border-minecraft-goldBorder font-bold">
                     <RobotOutlined className="text-lg animate-spin" />
                   </div>
-                  <div
-                    className={`p-4 rounded-2xl rounded-tl-none border text-xs flex items-center gap-3 ${
-                      isDark
-                        ? 'bg-slate-900 border-slate-800 text-blue-400'
-                        : 'bg-white border-slate-200 text-blue-600'
-                    }`}
-                  >
+                  <div className="card-voxel-3d p-4 rounded-2xl rounded-tl-none text-xs flex items-center gap-3 text-emerald-700 dark:text-emerald-300 font-bold">
                     <Spin size="small" />
-                    <span>Đang tìm kiếm dữ liệu trong ChromaDB & tổng hợp câu trả lời...</span>
+                    <span>Đang phân tích thông tin học tập cá nhân & tổng hợp câu trả lời...</span>
                   </div>
                 </motion.div>
               )}
@@ -493,8 +518,8 @@ export const AIChatPage: React.FC = () => {
 
             {/* Quick Suggestions & Input Bar */}
             <div
-              className={`p-4 border-t shrink-0 ${
-                isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-slate-200'
+              className={`p-4 border-t-2 shrink-0 ${
+                isDark ? 'bg-slate-950/80 border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10'
               }`}
             >
               <div className="max-w-4xl mx-auto space-y-3">
@@ -505,11 +530,7 @@ export const AIChatPage: React.FC = () => {
                       key={idx}
                       onClick={() => handleSendMessage(item.query)}
                       disabled={sending}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all shrink-0 ${
-                        isDark
-                          ? 'border-slate-800 bg-slate-900/80 text-slate-300 hover:border-blue-500 hover:text-blue-400'
-                          : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-blue-400 hover:bg-blue-50'
-                      }`}
+                      className="tab-voxel-inactive text-xs font-bold shrink-0 cursor-pointer"
                     >
                       {item.label}
                     </button>
@@ -517,7 +538,7 @@ export const AIChatPage: React.FC = () => {
                 </div>
 
                 {/* Input Controls */}
-                <div className="relative flex items-center">
+                <div className="card-voxel-3d p-2 flex items-end gap-2 relative">
                   <Input.TextArea
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
@@ -527,30 +548,26 @@ export const AIChatPage: React.FC = () => {
                         handleSendMessage();
                       }
                     }}
-                    placeholder="Hỏi bất kỳ điều gì từ tài liệu bài giảng..."
+                    placeholder="Hỏi về khóa học, bài tập, hạn nộp, điểm số, mục tiêu cá nhân..."
                     autoSize={{ minRows: 2, maxRows: 5 }}
                     disabled={sending}
-                    className={`pr-14 rounded-2xl text-sm ${
-                      isDark
-                        ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500 focus:border-blue-500'
-                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500'
-                    }`}
+                    bordered={false}
+                    className="flex-1 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
                   />
 
-                  <Button
-                    type="primary"
-                    shape="circle"
-                    size="large"
-                    icon={<SendOutlined />}
+                  <button
+                    type="button"
                     onClick={() => handleSendMessage()}
-                    loading={sending}
                     disabled={!inputMessage.trim() || sending}
-                    className="absolute right-3 bottom-3 bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-500/30 border-none"
-                  />
+                    className="btn-voxel-green p-3 rounded-xl font-bold flex items-center justify-center shrink-0 disabled:opacity-40"
+                    title="Gửi câu hỏi"
+                  >
+                    <SendOutlined className="text-base" />
+                  </button>
                 </div>
 
-                <div className="text-[11px] text-center text-slate-400">
-                  Hệ thống sử dụng RAG với bộ khớp Embedding từ các tài liệu bài giảng đã tải lên.
+                <div className="text-[11px] text-center text-slate-400 font-medium">
+                  Trợ lý học tập cá nhân tự động tổng hợp thông tin khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân.
                 </div>
               </div>
             </div>

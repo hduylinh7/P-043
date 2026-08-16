@@ -33,7 +33,7 @@ async def test_create_and_list_sessions(client):
     assert session_data["title"] == "Test Chat"
     assert session_data["user_id"] == "test_user_1"
 
-    list_res = await client.get("/api/v1/sessions?user_id=test_user_1")
+    list_res = await client.get("/api/v1/sessions")
     assert list_res.status_code == 200
     sessions = list_res.json()
     assert len(sessions) == 1

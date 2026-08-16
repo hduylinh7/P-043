@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Drawer, Tooltip } from 'antd';
 import {
-  BookOutlined,
   SunOutlined,
   MoonOutlined,
   MenuOutlined,
@@ -11,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { LitaLogo } from '../common/LitaLogo';
 
 export const LandingNavbar: React.FC = () => {
   const { themeMode, toggleTheme } = useTheme();
@@ -27,28 +27,23 @@ export const LandingNavbar: React.FC = () => {
   };
 
   const navLinks = [
-    { label: 'Features', id: 'features' },
-    { label: 'How It Works', id: 'how-it-works' },
-    { label: 'Testimonials', id: 'testimonials' },
-    { label: 'About', id: 'about' },
+    { label: 'Tính năng', id: 'features' },
+    { label: 'Cách hoạt động', id: 'how-it-works' },
+    { label: 'Đánh giá', id: 'testimonials' },
+    { label: 'Về chúng tôi', id: 'about' },
   ];
 
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-md transition-colors duration-300 border-b ${
       themeMode === 'dark' 
-        ? 'bg-slate-950/80 border-slate-800 text-slate-100' 
-        : 'bg-white/80 border-slate-200 text-slate-900'
+        ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder text-slate-100' 
+        : 'bg-[#FDFBF7]/90 border-amber-900/10 text-slate-900'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo & Brand */}
-          <Link to="/" className="flex items-center gap-2.5 font-bold text-xl tracking-tight transition-transform hover:scale-105">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
-              <BookOutlined className="text-xl" />
-            </div>
-            <span className={themeMode === 'dark' ? 'text-white font-extrabold' : 'text-slate-900 font-extrabold'}>
-              Lita <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500">Learning</span>
-            </span>
+          <Link to="/" className="flex items-center gap-2.5">
+            <LitaLogo size="md" />
           </Link>
 
           {/* Desktop Nav Links */}
@@ -80,35 +75,31 @@ export const LandingNavbar: React.FC = () => {
             </Tooltip>
 
             {isAuthenticated ? (
-              <Button
-                type="primary"
-                size="large"
-                icon={<RocketOutlined />}
+              <button
                 onClick={() => navigate('/dashboard')}
-                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 shadow-md shadow-indigo-500/25 border-none font-semibold"
+                className="btn-voxel-green text-sm"
               >
-                Go to Dashboard
-              </Button>
+                <RocketOutlined />
+                <span>Vào Bảng Điều Khiển</span>
+              </button>
             ) : (
               <>
-                <Button
-                  type="text"
-                  size="large"
-                  icon={<LoginOutlined />}
+                <button
                   onClick={() => navigate('/login')}
-                  className={themeMode === 'dark' ? 'text-slate-200 hover:text-blue-400' : 'text-slate-700 hover:text-blue-600'}
+                  className={`px-4 py-2 text-sm font-bold rounded-xl transition-colors ${
+                    themeMode === 'dark' ? 'text-slate-200 hover:text-emerald-400' : 'text-slate-800 hover:text-emerald-600'
+                  }`}
                 >
-                  Sign In
-                </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<RocketOutlined />}
+                  <LoginOutlined className="mr-1.5" />
+                  Đăng nhập
+                </button>
+                <button
                   onClick={() => navigate('/register')}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 shadow-md shadow-indigo-500/25 border-none font-semibold"
+                  className="btn-voxel-green text-sm"
                 >
-                  Get Started
-                </Button>
+                  <RocketOutlined />
+                  <span>Bắt đầu ngay</span>
+                </button>
               </>
             )}
           </div>

@@ -10,7 +10,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   if (isLoading) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
         <p className="text-slate-400 text-sm">Đang tải thông tin đăng nhập...</p>
       </div>
     );

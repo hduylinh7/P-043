@@ -13,14 +13,16 @@ from src.db.models.knowledge import Document, DocumentChunk
 from src.db.models.learning import (
     Assignment,
     AssignmentChecklist,
+    AssignmentQuestion,
     Course,
     CourseMaterial,
     Enrollment,
+    QuestionOption,
     StudentAssignmentProgress,
     StudentChecklistProgress,
     Submission,
 )
-from src.db.models.planning import Notification, PersonalTask, Task, WeeklyGoal
+from src.db.models.planning import Goal, Notification, Task, WeeklyGoal
 from src.db.models.reflection import ReflectionMessage, ReflectionSession
 
 __all__ = [
@@ -42,9 +44,9 @@ __all__ = [
 
 
     # Planning
+    "Goal",
     "WeeklyGoal",
     "Task",
-    "PersonalTask",
     "Notification",
     # Reflection
     "ReflectionSession",

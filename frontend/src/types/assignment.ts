@@ -1,5 +1,45 @@
 export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 export type PriorityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type QuestionType = 'MULTIPLE_CHOICE' | 'ESSAY' | 'SHORT_ANSWER';
+
+export interface QuestionOption {
+  id: string;
+  question_id: string;
+  option_text: string;
+  is_correct: boolean;
+  display_order: number;
+}
+
+export interface QuestionOptionPayload {
+  option_text: string;
+  is_correct: boolean;
+  display_order?: number;
+}
+
+export interface AssignmentQuestion {
+  id: string;
+  assignment_id: string;
+  question_type: QuestionType;
+  question_text: string;
+  points: number;
+  display_order: number;
+  expected_answer?: string | null;
+  options: QuestionOption[];
+}
+
+export interface AssignmentQuestionPayload {
+  question_type: QuestionType;
+  question_text: string;
+  points: number;
+  display_order?: number;
+  expected_answer?: string | null;
+  options?: QuestionOptionPayload[];
+}
+
+export interface AssignmentQuestionReorderItem {
+  id: string;
+  display_order: number;
+}
 
 export interface Checklist {
   id: string;
@@ -24,8 +64,35 @@ export interface Submission {
   submission_text?: string | null;
   submitted_at?: string | null;
   status: string;
+  student_status?: string;  // "Submitted", "Late", "Not Submitted"
+  grading_status?: string;  // "Graded", "Pending", "-"
+  is_late?: boolean;
   score?: number | null;
   grade?: string | null;
+  feedback?: string | null;
+}
+
+export interface AssignmentSubmissionsOverview {
+  assignment_id: string;
+  assignment_title: string;
+  course_title: string;
+  available_from?: string | null;
+  due_date?: string | null;
+  question_count: number;
+  total_points: number;
+  total_students: number;
+  submitted_count: number;
+  not_submitted_count: number;
+  late_count: number;
+  graded_count: number;
+  pending_count: number;
+  submissions: Submission[];
+}
+
+export interface GradeSubmissionPayload {
+  score: number;
+  grade?: string;
+  feedback?: string;
 }
 
 export interface Assignment {
@@ -33,6 +100,7 @@ export interface Assignment {
   course_id: string;
   title: string;
   description?: string | null;
+  available_from?: string | null;
   due_date?: string | null;
   estimated_hours?: number | null;
   status: string;
@@ -46,25 +114,32 @@ export interface Assignment {
   checklist_count?: number;
   completed_checklist_count?: number;
   progress_percentage?: number;
+  question_count?: number;
+  total_points?: number;
   checklists?: Checklist[];
+  questions?: AssignmentQuestion[];
 }
 
 export interface AssignmentCreatePayload {
   title: string;
   description?: string;
+  available_from?: string;
   due_date?: string;
   estimated_hours?: number;
   status?: string;
   priority?: PriorityLevel;
+  questions?: AssignmentQuestionPayload[];
 }
 
 export interface AssignmentUpdatePayload {
   title?: string;
   description?: string;
+  available_from?: string;
   due_date?: string;
   estimated_hours?: number;
   status?: string;
   priority?: PriorityLevel;
+  questions?: AssignmentQuestionPayload[];
 }
 
 export interface AssignmentProgressPayload {
@@ -96,3 +171,4 @@ export interface AssignmentAnalytics {
   in_progress_students_count: number;
   not_started_students_count: number;
 }
+

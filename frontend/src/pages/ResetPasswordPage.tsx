@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AuthLayout } from '../components/auth/AuthLayout';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Lock, Mail } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 
 export const ResetPasswordPage: React.FC = () => {
   const { resetPassword } = useAuth();
@@ -92,10 +92,10 @@ export const ResetPasswordPage: React.FC = () => {
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
           isDark
-            ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
-            : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+            ? 'bg-rose-950/60 border-rose-800/80 text-rose-200'
+            : 'bg-rose-50 border-rose-200 text-rose-800'
         }`}>
-          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -129,8 +129,8 @@ export const ResetPasswordPage: React.FC = () => {
                 required
                 className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                   isDark
-                    ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                    : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                    ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                    : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
                 }`}
               />
             </div>
@@ -152,8 +152,8 @@ export const ResetPasswordPage: React.FC = () => {
               required
               className={`w-full rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -175,8 +175,8 @@ export const ResetPasswordPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
             <button
@@ -205,8 +205,8 @@ export const ResetPasswordPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -215,11 +215,11 @@ export const ResetPasswordPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 active:scale-[0.99] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+          className="w-full btn-voxel-green py-3.5 text-base rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-3"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
               <span>Đang đặt lại mật khẩu...</span>
             </>
           ) : (
@@ -230,8 +230,8 @@ export const ResetPasswordPage: React.FC = () => {
         <div className="text-center pt-2">
           <Link
             to="/login"
-            className={`text-xs font-semibold transition-colors ${
-              isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+            className={`text-xs font-bold transition-colors ${
+              isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-700 hover:text-emerald-800'
             }`}
           >
             Quay lại Đăng nhập

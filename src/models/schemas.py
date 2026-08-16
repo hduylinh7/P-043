@@ -7,7 +7,10 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=5000, description="User query message")
     session_id: str | None = Field(default=None, description="Optional existing chat session ID")
     course_id: str | None = Field(default=None, description="Optional course ID context")
-    user_id: str = Field(default="default_user", description="User identifier")
+    material_id: str | None = Field(default=None, description="Optional material ID context")
+    mode: str | None = Field(default=None, description="Optional agent mode: 'companion' or 'material'")
+    user_id: str | None = Field(default=None, description="Optional user identifier (overridden by JWT)")
+    study_session_context: dict | None = Field(default=None, description="Active study session execution context")
 
 
 class ChatResponse(BaseModel):
@@ -20,7 +23,7 @@ class ChatResponse(BaseModel):
 
 
 class SessionCreate(BaseModel):
-    user_id: str = Field(default="default_user", description="User identifier")
+    user_id: str | None = Field(default=None, description="Optional user identifier (overridden by JWT)")
     title: str = Field(default="New Chat", description="Session title")
 
 

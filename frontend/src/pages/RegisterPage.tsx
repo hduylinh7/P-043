@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AuthLayout } from '../components/auth/AuthLayout';
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { themeMode } = useTheme();
   const navigate = useNavigate();
 
@@ -31,6 +32,34 @@ export const RegisterPage: React.FC = () => {
 
   const isDark = themeMode === 'dark';
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setError(null);
+    if (!credentialResponse.credential) {
+      setError('Không nhận được thông tin xác thực từ Google.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await loginWithGoogle({ id_token: credentialResponse.credential });
+      setTimeout(() => {
+        if (!res.user.roles || res.user.roles.length === 0) {
+          navigate('/onboarding/role-select', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }, 500);
+    } catch (err: any) {
+      console.error('Google Register error:', err);
+      const msg =
+        err.response?.data?.detail ||
+        'Đăng ký bằng Google thất bại. Vui lòng thử lại sau.';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Password strength logic
   const getPasswordStrength = (pwd: string) => {
     if (!pwd) return { score: 0, label: '', color: 'bg-slate-300 dark:bg-slate-700' };
@@ -41,8 +70,8 @@ export const RegisterPage: React.FC = () => {
     if (/[0-9]/.test(pwd)) score += 1;
     if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
 
-    if (score <= 1) return { score, label: 'Yếu', color: 'bg-indigo-500' };
-    if (score <= 3) return { score, label: 'Trung bình', color: 'bg-blue-500' };
+    if (score <= 1) return { score, label: 'Yếu', color: 'bg-rose-500' };
+    if (score <= 3) return { score, label: 'Trung bình', color: 'bg-amber-500' };
     return { score, label: 'Mạnh', color: 'bg-emerald-500' };
   };
 
@@ -94,7 +123,7 @@ export const RegisterPage: React.FC = () => {
         subtitle="Vui lòng kiểm tra hộp thư email của bạn"
       >
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
+          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500">
             <Send className="w-8 h-8" />
           </div>
 
@@ -102,7 +131,7 @@ export const RegisterPage: React.FC = () => {
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
             Hệ thống đã gửi mã OTP xác thực 6 chữ số tới địa chỉ{' '}
-            <strong className="text-blue-500">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
+            <strong className="text-emerald-600 dark:text-emerald-400">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
           </p>
 
           <div className={`p-4 rounded-xl border text-xs mb-6 flex items-center gap-2.5 ${
@@ -116,7 +145,7 @@ export const RegisterPage: React.FC = () => {
 
           <button
             onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-            className="w-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-500 hover:from-blue-300 hover:to-blue-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-xl"
           >
             Nhập mã OTP xác thực
           </button>
@@ -133,10 +162,10 @@ export const RegisterPage: React.FC = () => {
       {error && (
         <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
           isDark
-            ? 'bg-indigo-950/60 border-indigo-800/80 text-indigo-200'
-            : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+            ? 'bg-amber-950/60 border-amber-800/80 text-amber-200'
+            : 'bg-amber-50 border-amber-200 text-amber-900'
         }`}>
-          <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
@@ -158,8 +187,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -181,8 +210,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -204,8 +233,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
             <button
@@ -250,8 +279,8 @@ export const RegisterPage: React.FC = () => {
               required
               className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
                 isDark
-                  ? 'bg-slate-950/80 border-slate-800 text-slate-100 placeholder-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400'
+                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
               }`}
             />
           </div>
@@ -260,11 +289,11 @@ export const RegisterPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#eff6ff] hover:bg-[#dbeafe] active:scale-[0.99] text-blue-950 dark:text-blue-900 font-extrabold py-3.5 rounded-xl border border-[#bfdbfe] shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          className="w-full btn-voxel-green text-base py-3.5 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin text-blue-900" />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
               <span>Đang khởi tạo tài khoản...</span>
             </>
           ) : (
@@ -273,11 +302,37 @@ export const RegisterPage: React.FC = () => {
         </button>
       </form>
 
+      {/* Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className={`w-full border-t ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}></div>
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className={`px-3 font-semibold ${isDark ? 'bg-minecraft-obsidianCard text-slate-500' : 'bg-white text-slate-400'
+            }`}>
+            Hoặc đăng ký bằng
+          </span>
+        </div>
+      </div>
+
+      {/* Google Login Button */}
+      <div className="flex justify-center w-full">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError('Đăng ký bằng Google không thành công')}
+          theme={isDark ? 'filled_black' : 'outline'}
+          shape="pill"
+          text="signup_with"
+          useOneTap={false}
+          use_fedcm_for_prompt={false}
+        />
+      </div>
+
       <div className={`mt-8 text-center border-t pt-6 text-sm ${
-        isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
+        isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-500'
       }`}>
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-blue-700 dark:text-blue-400 hover:underline">
+        <Link to="/login" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
           Đăng nhập
         </Link>
       </div>

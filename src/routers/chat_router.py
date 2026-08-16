@@ -5,10 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.companion_agent import PersonalLearningCompanionAgent
 from src.agents.graph import agent
 from src.config import get_settings
 from src.db.database import get_db
+from src.models.auth import UserResponse
 from src.models.schemas import ChatRequest, ChatResponse
+from src.routers.auth_router import get_current_user
 from src.services.db_service import (
     add_message,
     create_session,
@@ -23,22 +26,29 @@ router = APIRouter(tags=["Chat"])
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
-    request: ChatRequest, db: AsyncSession = Depends(get_db)
+    request: ChatRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
 ) -> ChatResponse:
     """Send a message to the RAG AI agent and receive a grounded response with citations."""
     try:
         settings = get_settings()
 
-        # 1. Resolve or create chat session
+        # 1. Determine agent mode and session scope
+        is_material_mode = (request.mode == "material") or (request.material_id is not None)
+        target_agent_name = "material_rag" if is_material_mode else "companion"
+
         session_id = request.session_id
         course_id = request.course_id
+        user_id = current_user.id
 
         if not session_id:
             db_session = await create_session(
                 db,
-                user_id=request.user_id,
+                user_id=user_id,
                 course_id=course_id,
                 title=request.message[:30],
+                agent_name=target_agent_name,
             )
             session_id = db_session.id
         else:
@@ -46,18 +56,19 @@ async def chat(
             if not db_session:
                 db_session = await create_session(
                     db,
-                    user_id=request.user_id,
+                    user_id=user_id,
                     course_id=course_id,
                     title=request.message[:30],
+                    agent_name=target_agent_name,
                 )
                 session_id = db_session.id
             elif course_id and not db_session.course_id:
-                # Update course context if not previously set
                 db_session.course_id = course_id
                 await db.commit()
 
-        # Effective course_id from session if not in request
+        # Effective course_id and material_id
         effective_course_id = course_id or getattr(db_session, "course_id", None)
+        material_id = request.material_id
 
         # 2. Fetch recent conversation history BEFORE adding current message
         recent_db_msgs = await get_recent_messages(
@@ -91,14 +102,25 @@ async def chat(
                 analysis="Retrieved from Redis Cache",
             )
 
-        # 5. Invoke LangGraph RAG AI Agent
-        result = await agent.ainvoke({
-            "query": request.message,
-            "session_id": session_id,
-            "course_id": effective_course_id,
-            "user_id": request.user_id,
-            "recent_messages": history_langchain_msgs,
-        })
+        # 5. Invoke AI Agent (Personal Learning Companion vs Course Material RAG Agent)
+        if is_material_mode:
+            result = await agent.ainvoke({
+                "query": request.message,
+                "session_id": session_id,
+                "course_id": effective_course_id,
+                "material_id": material_id,
+                "user_id": user_id,
+                "recent_messages": history_langchain_msgs,
+                "study_session_context": request.study_session_context,
+            })
+        else:
+            result = await PersonalLearningCompanionAgent.run(
+                db=db,
+                current_user=current_user,
+                query=request.message,
+                recent_messages=history_langchain_msgs,
+                study_session_context=request.study_session_context,
+            )
 
         ai_response = result.get("response", "No response generated.")
         analysis = result.get("analysis", "")
@@ -139,9 +161,10 @@ async def chat(
 async def course_chat(
     course_id: str,
     request: ChatRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ) -> ChatResponse:
     """Course-scoped chat endpoint."""
     request.course_id = course_id
-    return await chat(request=request, db=db)
+    return await chat(request=request, current_user=current_user, db=db)
 

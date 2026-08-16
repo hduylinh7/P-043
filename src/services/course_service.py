@@ -6,12 +6,31 @@ from src.models.course import (
     CourseCreateRequest,
     CourseDetailResponse,
     CourseResponse,
+    CourseUpdateRequest,
     EnrolledStudentResponse,
 )
 from src.repositories.course_repository import CourseRepository
 
 
 class CourseService:
+    @staticmethod
+    def _build_course_response(course, student_count: int = 0, is_enrolled: bool = False, instructor_name: str | None = None) -> CourseResponse:
+        return CourseResponse(
+            id=course.id,
+            code=course.code,
+            name=course.name,
+            description=course.description,
+            term=course.term,
+            start_date=course.start_date,
+            end_date=course.end_date,
+            status=course.computed_status,
+            instructor_id=course.instructor_id,
+            instructor_name=instructor_name or (course.instructor.full_name if getattr(course, "instructor", None) else None),
+            created_at=course.created_at,
+            student_count=student_count,
+            is_enrolled=is_enrolled,
+        )
+
     @staticmethod
     async def create_course(
         db: AsyncSession, payload: CourseCreateRequest, current_user: UserResponse
@@ -28,21 +47,54 @@ class CourseService:
             name=payload.name,
             code=payload.code,
             instructor_id=current_user.id,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
             description=payload.description,
             term=payload.term,
         )
 
-        return CourseResponse(
-            id=course.id,
-            code=course.code,
-            name=course.name,
-            description=course.description,
-            term=course.term,
-            instructor_id=current_user.id,
-            instructor_name=current_user.full_name,
-            created_at=course.created_at,
-            student_count=0,
-            is_enrolled=False,
+        return CourseService._build_course_response(
+            course, student_count=0, is_enrolled=False, instructor_name=current_user.full_name
+        )
+
+    @staticmethod
+    async def update_course(
+        db: AsyncSession, course_id: str, payload: CourseUpdateRequest, current_user: UserResponse
+    ) -> CourseResponse:
+        """Update existing course owned by current instructor."""
+        if "instructor" not in current_user.roles and "admin" not in current_user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ có Giảng viên mới có quyền chỉnh sửa khóa học.",
+            )
+
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy khóa học.",
+            )
+
+        if course.instructor_id != current_user.id and "admin" not in current_user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền chỉnh sửa khóa học này.",
+            )
+
+        updated_course = await CourseRepository.update_course(
+            db=db,
+            course_id=course_id,
+            name=payload.name,
+            code=payload.code,
+            description=payload.description,
+            term=payload.term,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+        )
+
+        students_data = await CourseRepository.get_enrolled_students(db, course_id)
+        return CourseService._build_course_response(
+            updated_course, student_count=len(students_data), is_enrolled=False, instructor_name=current_user.full_name
         )
 
     @staticmethod
@@ -61,17 +113,8 @@ class CourseService:
         for item in courses_data:
             course = item["course"]
             res.append(
-                CourseResponse(
-                    id=course.id,
-                    code=course.code,
-                    name=course.name,
-                    description=course.description,
-                    term=course.term,
-                    instructor_id=current_user.id,
-                    instructor_name=current_user.full_name,
-                    created_at=course.created_at,
-                    student_count=item["student_count"],
-                    is_enrolled=False,
+                CourseService._build_course_response(
+                    course, student_count=item["student_count"], is_enrolled=False, instructor_name=current_user.full_name
                 )
             )
         return res
@@ -86,17 +129,11 @@ class CourseService:
         for item in items:
             course = item["course"]
             res.append(
-                CourseResponse(
-                    id=course.id,
-                    code=course.code,
-                    name=course.name,
-                    description=course.description,
-                    term=course.term,
-                    instructor_id=course.instructor_id,
-                    instructor_name=item["instructor_name"],
-                    created_at=course.created_at,
+                CourseService._build_course_response(
+                    course,
                     student_count=item["student_count"],
                     is_enrolled=item["is_enrolled"],
+                    instructor_name=item["instructor_name"],
                 )
             )
         return res
@@ -126,17 +163,8 @@ class CourseService:
 
         instructor_name = course.instructor.full_name if course.instructor else "Giảng viên"
 
-        return CourseResponse(
-            id=course.id,
-            code=course.code,
-            name=course.name,
-            description=course.description,
-            term=course.term,
-            instructor_id=course.instructor_id,
-            instructor_name=instructor_name,
-            created_at=course.created_at,
-            student_count=1,
-            is_enrolled=True,
+        return CourseService._build_course_response(
+            course, student_count=1, is_enrolled=True, instructor_name=instructor_name
         )
 
     @staticmethod
@@ -149,17 +177,11 @@ class CourseService:
         for item in items:
             course = item["course"]
             res.append(
-                CourseResponse(
-                    id=course.id,
-                    code=course.code,
-                    name=course.name,
-                    description=course.description,
-                    term=course.term,
-                    instructor_id=course.instructor_id,
-                    instructor_name=item["instructor_name"],
-                    created_at=course.created_at,
+                CourseService._build_course_response(
+                    course,
                     student_count=item["student_count"],
                     is_enrolled=True,
+                    instructor_name=item["instructor_name"],
                 )
             )
         return res
@@ -183,17 +205,11 @@ class CourseService:
 
         instructor_name = course.instructor.full_name if course.instructor else "Giảng viên"
 
-        course_resp = CourseResponse(
-            id=course.id,
-            code=course.code,
-            name=course.name,
-            description=course.description,
-            term=course.term,
-            instructor_id=course.instructor_id,
-            instructor_name=instructor_name,
-            created_at=course.created_at,
+        course_resp = CourseService._build_course_response(
+            course,
             student_count=len(students_data),
             is_enrolled=is_enrolled,
+            instructor_name=instructor_name,
         )
 
         students_list = [
@@ -232,3 +248,31 @@ class CourseService:
             )
             for st in students_data
         ]
+
+    @staticmethod
+    async def delete_course(
+        db: AsyncSession, course_id: str, current_user: UserResponse
+    ) -> bool:
+        """Delete an existing course owned by instructor or admin."""
+        if "instructor" not in current_user.roles and "admin" not in current_user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ có Giảng viên mới có quyền xóa khóa học.",
+            )
+
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy khóa học.",
+            )
+
+        if course.instructor_id != current_user.id and "admin" not in current_user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xóa khóa học này.",
+            )
+
+        return await CourseRepository.delete_course(db, course_id)
+
+

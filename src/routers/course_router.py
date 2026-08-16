@@ -10,6 +10,7 @@ from src.models.course import (
     CourseCreateRequest,
     CourseDetailResponse,
     CourseResponse,
+    CourseUpdateRequest,
     EnrolledStudentResponse,
 )
 from src.models.material import CourseMaterialResponse
@@ -28,6 +29,29 @@ async def create_course(
 ):
     """Instructor creates a new course."""
     return await CourseService.create_course(db, payload, current_user)
+
+
+@router.put("/{course_id}", response_model=CourseResponse)
+async def update_course(
+    course_id: str,
+    payload: CourseUpdateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor updates an existing course."""
+    return await CourseService.update_course(db, course_id, payload, current_user)
+
+
+@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
+async def delete_course(
+    course_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor deletes an existing course."""
+    success = await CourseService.delete_course(db, course_id, current_user)
+    return {"message": "Xóa khóa học thành công", "success": success}
+
 
 
 @router.get("/instructor/my-courses", response_model=list[CourseResponse])
@@ -132,6 +156,19 @@ async def download_course_material(
     """Download or stream material file for a course (Instructor or Enrolled Student)."""
     return await MaterialService.download_material(
         db, course_id, material_id, current_user, inline=inline
+    )
+
+
+@router.get("/{course_id}/materials/{material_id}/content")
+async def get_course_material_content(
+    course_id: str,
+    material_id: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Extract and return text content of material."""
+    return await MaterialService.get_material_content(
+        db, course_id, material_id, current_user
     )
 
 

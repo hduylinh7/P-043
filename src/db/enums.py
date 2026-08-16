@@ -29,11 +29,38 @@ class GoalStatusEnum(enum.StrEnum):
     ABANDONED = "abandoned"
 
 
+class WeeklyPlanStatusEnum(enum.StrEnum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
+
+
+class TaskSourceTypeEnum(enum.StrEnum):
+    ASSIGNMENT = "ASSIGNMENT"
+    PERSONAL_TASK = "PERSONAL_TASK"
+    GOAL = "GOAL"
+    MANUAL = "MANUAL"
+
+
 class TaskPriorityEnum(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     URGENT = "urgent"
+
+
+def normalize_priority(val: str | None) -> str:
+    """Normalize priority string to valid TaskPriorityEnum value (max 6 characters)."""
+    if not val:
+        return TaskPriorityEnum.MEDIUM.value
+    clean = str(val).lower().strip()
+    if clean in ("critical", "urgent"):
+        return TaskPriorityEnum.URGENT.value
+    if clean in {e.value for e in TaskPriorityEnum}:
+        return clean
+    return TaskPriorityEnum.MEDIUM.value
+
 
 
 class TaskStatusEnum(enum.StrEnum):
