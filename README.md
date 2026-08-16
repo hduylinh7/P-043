@@ -33,7 +33,7 @@
 
 ## Vấn đề & Giải pháp
 
-### Pain Points của sinh viên
+### Pain Points của sinh viênnnn
 
 | # | Vấn đề | Mô tả |
 |---|--------|-------|
