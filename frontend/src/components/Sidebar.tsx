@@ -15,6 +15,7 @@ import {
   BookOpen,
   Target,
   Calendar,
+  Clock,
   Settings,
   LucideIcon,
 } from 'lucide-react';
@@ -55,9 +56,9 @@ export const Sidebar: React.FC = () => {
     ...(isStudent
       ? [
           {
-            id: 'weekly-plan',
-            name: 'Study Plan (Kế hoạch học tập)',
-            path: '/weekly-plan',
+            id: 'calendar',
+            name: 'My Learning Calendar',
+            path: '/calendar',
             icon: Calendar,
           },
           {

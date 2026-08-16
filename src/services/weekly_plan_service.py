@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -6,7 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.db.enums import normalize_priority
+from src.db.enums import EnrollmentRoleEnum, normalize_priority
+from src.db.models.learning.course import Course
+from src.db.models.learning.enrollment import Enrollment
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
@@ -20,6 +22,7 @@ from src.models.weekly_plan import (
     WeeklyPlanResponse,
     WeeklyPlanUpdateRequest,
 )
+from src.services.schedule_utils import check_task_conflict_with_fixed_schedules
 
 
 import json
@@ -368,8 +371,35 @@ class WeeklyPlanService:
                 detail=f"Giờ bắt đầu ({payload.start_time}) phải trước giờ kết thúc ({payload.end_time}).",
             )
 
-        # Check schedule conflict with existing tasks in the same plan
+        # Check schedule conflict with fixed university course schedules and existing plan tasks
         if sched_dt and payload.start_time and payload.end_time:
+            # 1. Fixed Course Schedules Conflict Check
+            enroll_stmt = (
+                select(Course)
+                .join(Enrollment, Enrollment.course_id == Course.id)
+                .options(selectinload(Course.schedules))
+                .where(
+                    (Enrollment.user_id == current_user.id)
+                    & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                    & (Enrollment.status == "active")
+                )
+            )
+            enroll_res = await db.execute(enroll_stmt)
+            enrolled_courses = enroll_res.scalars().all()
+
+            fixed_conflict = check_task_conflict_with_fixed_schedules(
+                scheduled_date=sched_dt,
+                start_time=payload.start_time,
+                end_time=payload.end_time,
+                enrolled_courses=enrolled_courses,
+            )
+            if fixed_conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Trùng lịch! Khung giờ ({payload.start_time} - {payload.end_time}) bị trùng với Lịch học giảng đường cố định môn '{fixed_conflict['course_name']}' ({fixed_conflict['fixed_start_time']} - {fixed_conflict['fixed_end_time']}). Vui lòng chọn khung giờ khác.",
+                )
+
+            # 2. Existing Tasks Conflict Check
             tasks_stmt = select(Task).where(Task.weekly_goal_id == plan.id)
             tasks_res = await db.execute(tasks_stmt)
             existing_tasks = tasks_res.scalars().all()
@@ -551,6 +581,33 @@ class WeeklyPlanService:
             )
 
         if eff_date and eff_start and eff_end:
+            # 1. Fixed Course Schedules Conflict Check
+            enroll_stmt = (
+                select(Course)
+                .join(Enrollment, Enrollment.course_id == Course.id)
+                .options(selectinload(Course.schedules))
+                .where(
+                    (Enrollment.user_id == current_user.id)
+                    & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                    & (Enrollment.status == "active")
+                )
+            )
+            enroll_res = await db.execute(enroll_stmt)
+            enrolled_courses = enroll_res.scalars().all()
+
+            fixed_conflict = check_task_conflict_with_fixed_schedules(
+                scheduled_date=eff_date,
+                start_time=eff_start,
+                end_time=eff_end,
+                enrolled_courses=enrolled_courses,
+            )
+            if fixed_conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với Lịch học giảng đường cố định môn '{fixed_conflict['course_name']}' ({fixed_conflict['fixed_start_time']} - {fixed_conflict['fixed_end_time']}). Vui lòng chọn khung giờ khác.",
+                )
+
+            # 2. Existing Tasks Conflict Check
             tasks_stmt = select(Task).where(
                 Task.weekly_goal_id == task.weekly_goal_id,
                 Task.id != task.id,
@@ -768,3 +825,117 @@ class WeeklyPlanService:
         await db.commit()
         await db.refresh(task)
         return serialize_task(task)
+
+    @staticmethod
+    async def get_unified_calendar(
+        db: AsyncSession,
+        current_user: UserResponse,
+        week_start: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch unified calendar events for a student (Fixed University Classes, AI Planned, Student Study Sessions).
+        """
+        WeeklyPlanService._ensure_student(current_user)
+        student_id = current_user.id
+
+        # Determine Monday start date
+        today = datetime.now(timezone.utc).date()
+        if week_start:
+            try:
+                parsed_d = date.fromisoformat(week_start.split("T")[0])
+                monday = parsed_d - timedelta(days=parsed_d.weekday())
+            except ValueError:
+                monday = today - timedelta(days=today.weekday())
+        else:
+            monday = today - timedelta(days=today.weekday())
+
+        week_dates = [(monday + timedelta(days=i)) for i in range(7)]
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+        events: list[dict[str, Any]] = []
+
+        # 1. Fetch Enrolled Fixed Course Schedules
+        enroll_stmt = (
+            select(Course)
+            .join(Enrollment, Enrollment.course_id == Course.id)
+            .options(selectinload(Course.schedules))
+            .where(
+                (Enrollment.user_id == student_id)
+                & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                & (Enrollment.status == "active")
+            )
+        )
+        enroll_res = await db.execute(enroll_stmt)
+        enrolled_courses = enroll_res.scalars().all()
+
+        for c in enrolled_courses:
+            c_start = c.start_date.date() if isinstance(c.start_date, datetime) else c.start_date
+            c_end = c.end_date.date() if isinstance(c.end_date, datetime) else c.end_date
+
+            for s in (c.schedules or []):
+                s_day = s.day_of_week.strip().lower()
+                for idx, w_date in enumerate(week_dates):
+                    w_day_name = day_names[idx]
+                    if s_day == w_day_name.lower():
+                        if c_start and c_end and not (c_start <= w_date <= c_end):
+                            continue
+
+                        events.append({
+                            "id": f"fixed_{c.id}_{s.id}_{w_date.strftime('%Y%m%d')}",
+                            "type": "FIXED_CLASS",
+                            "title": f"{c.code} — {c.name}",
+                            "description": f"Lịch học giảng đường cố định ({c.credits or 3} tín chỉ)",
+                            "course_id": c.id,
+                            "course_code": c.code,
+                            "course_name": c.name,
+                            "day_of_week": s.day_of_week,
+                            "scheduled_date": w_date.strftime("%Y-%m-%d"),
+                            "start_time": s.start_time,
+                            "end_time": s.end_time,
+                            "priority": "HIGH",
+                            "status": "FIXED",
+                            "task_data": None,
+                        })
+
+        # 2. Fetch Weekly Plan Tasks for requested week
+        plans = await WeeklyPlanService.get_weekly_plans(db, current_user)
+        matched_plan = None
+        for p in plans:
+            p_start = parse_datetime(p.week_start_date)
+            if p_start and p_start.date() == monday:
+                matched_plan = p
+                break
+
+        if matched_plan and matched_plan.tasks:
+            for t in matched_plan.tasks:
+                if not t.scheduled_date or not t.start_time or not t.end_time:
+                    continue
+
+                t_dt = parse_datetime(t.scheduled_date)
+                date_str = t_dt.strftime("%Y-%m-%d") if t_dt else str(t.scheduled_date).split("T")[0]
+                d_idx = t_dt.weekday() if t_dt else 0
+                d_name = day_names[d_idx]
+
+                s_type = (t.source_type or "MANUAL").upper()
+                event_type = "STUDENT_STUDY" if s_type == "MANUAL" else "AI_STUDY"
+
+                task_dict = t.model_dump() if hasattr(t, "model_dump") else t.__dict__
+
+                events.append({
+                    "id": t.id,
+                    "type": event_type,
+                    "title": t.title,
+                    "description": t.description,
+                    "course_id": t.course_id,
+                    "course_name": t.course_name,
+                    "course_code": None,
+                    "day_of_week": d_name,
+                    "scheduled_date": date_str,
+                    "start_time": t.start_time,
+                    "end_time": t.end_time,
+                    "priority": t.priority,
+                    "status": t.status,
+                    "task_data": task_dict,
+                })
+
+        return events

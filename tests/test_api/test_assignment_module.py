@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -63,10 +63,16 @@ async def test_assignment_lifecycle_and_permissions(async_session: AsyncSession)
         is_active=True,
     )
 
-    # 2. Instructor creates a course
+    now = datetime.now(timezone.utc)
     course_resp = await CourseService.create_course(
         async_session,
-        CourseCreateRequest(name="Software Engineering", code="CS301", description="SE Course"),
+        CourseCreateRequest(
+            name="Software Engineering",
+            code="CS301",
+            description="SE Course",
+            start_date=now,
+            end_date=now + timedelta(days=90),
+        ),
         instructor_user,
     )
     course_id = course_resp.id

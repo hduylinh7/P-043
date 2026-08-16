@@ -125,12 +125,14 @@ ACADEMIC INTEGRITY RULES:
 2. If the user asks to "do my assignment", convert it into study and preparation sessions (e.g. "Review requirements", "Study lecture material", "Draft solution", "Self-test").
 
 DATE & TIME CONSTRAINTS:
-1. Check explicit day/time preferences in student request or assignment deadlines.
-2. Weekday Date Mapping ({week_start} to {week_end}):
+1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER generate or schedule an AI Study Session during hours occupied by a fixed university class lecture! Choose free open hours (e.g. evening 19:00 - 20:30).
+2. Respect Course start_date and end_date. Do NOT create study sessions before a course starts or after it ends.
+3. Check explicit day/time preferences in student request or assignment deadlines.
+4. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
-3. priority MUST be strictly one of: "low", "medium", "high", "urgent".
-4. Ensure start_time < end_time (e.g. "19:00" to "20:30").
-5. Do NOT overlap sessions on the same day.
+5. priority MUST be strictly one of: "low", "medium", "high", "urgent".
+6. Ensure start_time < end_time (e.g. "19:00" to "20:30").
+7. Do NOT overlap sessions on the same day.
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
@@ -432,7 +434,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
             "warnings": [f"Lỗi tạo kế hoạch học tập: {e}"],
         }
 
-    # 2. Track existing & newly scheduled tasks to avoid conflicts
+    # 2. Track existing tasks & fixed university class schedules to avoid conflicts
     existing_tasks: list[dict[str, Any]] = []
     try:
         plan_tasks = await PlannerTools.get_weekly_plan_tasks(db, current_user, weekly_plan_id)
@@ -444,8 +446,25 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
                 "start_time": pt.start_time,
                 "end_time": pt.end_time,
             })
+
+        # Load fixed class schedules and add as occupied slots
+        context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+        start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        for idx in range(7):
+            d_curr = start_d + timedelta(days=idx)
+            d_str = d_curr.strftime("%Y-%m-%d")
+            d_day_name = day_names[idx]
+            for fs in (context.fixed_course_schedules or []):
+                if fs.day_of_week.strip().lower() == d_day_name.lower():
+                    existing_tasks.append({
+                        "title": f"Lịch học cố định: {fs.course_name}",
+                        "scheduled_date": d_str,
+                        "start_time": fs.start_time,
+                        "end_time": fs.end_time,
+                    })
     except Exception as e:
-        logger.warning(f"Could not load existing tasks for conflict checking: {e}")
+        logger.warning(f"Could not load existing tasks/fixed schedules for conflict checking: {e}")
 
     for task_data in decision.get("tasks", []):
         raw_date = task_data.get("scheduled_date")

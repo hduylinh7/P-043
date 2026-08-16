@@ -191,8 +191,22 @@ async def init_db() -> None:
                     );
                 """))
                 await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_goals_student_id ON goals(student_id);"))
+                await conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS credits INTEGER DEFAULT 3 NOT NULL;"))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS course_schedules (
+                        id VARCHAR(36) PRIMARY KEY,
+                        course_id VARCHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                        day_of_week VARCHAR(20) NOT NULL,
+                        start_time VARCHAR(10) NOT NULL,
+                        end_time VARCHAR(10) NOT NULL,
+                        room VARCHAR(100),
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    );
+                """))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_course_schedules_course_id ON course_schedules(course_id);"))
         except Exception as assign_err:
-            logger.debug(f"assignments / checklists / submissions / personal_tasks / goals check notice: {assign_err}")
+            logger.debug(f"assignments / checklists / submissions / personal_tasks / goals / course_schedules check notice: {assign_err}")
 
         logger.info(f"Database tables initialized using {engine.url.drivername}")
 
@@ -206,6 +220,10 @@ async def init_db() -> None:
             from sqlalchemy import text
             try:
                 await conn.execute(text("ALTER TABLE courses ADD COLUMN instructor_id VARCHAR(36);"))
+            except Exception:
+                pass
+            try:
+                await conn.execute(text("ALTER TABLE courses ADD COLUMN credits INTEGER DEFAULT 3;"))
             except Exception:
                 pass
             try:

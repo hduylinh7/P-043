@@ -59,6 +59,7 @@ import {
   FilterOutlined,
   SaveOutlined,
   LockOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 
 import { motion } from 'framer-motion';
@@ -69,7 +70,7 @@ import { Sidebar } from '../components/Sidebar';
 import { courseService } from '../services/courseService';
 import { materialService } from '../services/materialService';
 import { assignmentService } from '../services/assignmentService';
-import { CourseDetail, EnrolledStudent } from '../types/course';
+import { CourseDetail, EnrolledStudent, ScheduleConflictInfo } from '../types/course';
 import { CourseMaterial } from '../types/material';
 import {
   Assignment,
@@ -96,6 +97,53 @@ export const CourseDetailPage: React.FC = () => {
 
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Join / Leave / Conflict State
+  const [joiningCourse, setJoiningCourse] = useState<boolean>(false);
+  const [leavingCourse, setLeavingCourse] = useState<boolean>(false);
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState<boolean>(false);
+  const [conflictInfo, setConflictInfo] = useState<{ targetCourseName: string; conflict: ScheduleConflictInfo } | null>(null);
+
+  const handleJoinCourseDetail = async () => {
+    if (!courseId || !detail?.course) return;
+    setJoiningCourse(true);
+    try {
+      await courseService.joinCourse(courseId);
+      message.success(`Đã tham gia thành công môn ${detail.course.name}!`);
+      fetchDetail();
+    } catch (err: any) {
+      console.error('Join course error:', err);
+      if (err.response?.status === 409 && err.response?.data?.detail?.conflict) {
+        setConflictInfo({
+          targetCourseName: detail.course.name,
+          conflict: err.response.data.detail.conflict,
+        });
+        setIsConflictModalOpen(true);
+      } else {
+        const detailMsg = typeof err.response?.data?.detail === 'string'
+          ? err.response.data.detail
+          : err.response?.data?.detail?.message || 'Không thể tham gia khóa học.';
+        message.error(detailMsg);
+      }
+    } finally {
+      setJoiningCourse(false);
+    }
+  };
+
+  const handleLeaveCourseDetail = async () => {
+    if (!courseId) return;
+    setLeavingCourse(true);
+    try {
+      await courseService.leaveCourse(courseId);
+      message.success('Đã rời khỏi khóa học.');
+      fetchDetail();
+    } catch (err: any) {
+      console.error('Leave course error:', err);
+      message.error(err.response?.data?.detail || 'Không thể rời khóa học.');
+    } finally {
+      setLeavingCourse(false);
+    }
+  };
 
   // Materials State
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
@@ -1602,15 +1650,72 @@ export const CourseDetailPage: React.FC = () => {
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                  Môn Học Lita Learning
-                </span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="badge-voxel-green text-xs font-mono tracking-wider">
+                    {course.code}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                    {course.credits || 3} Tín chỉ
+                  </span>
+                </div>
                 <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {course.name}
                 </h2>
-                <p className={`text-sm max-w-2xl leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p className={`text-sm max-w-2xl leading-relaxed mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   {course.description || 'Chưa có thông tin mô tả chi tiết cho môn học này.'}
                 </p>
+
+                {/* Official Class Schedule Display */}
+                <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 space-y-2 max-w-2xl">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                    <ClockCircleOutlined /> Lịch Học Giảng Đường Cố Định:
+                  </div>
+                  {course.schedules && course.schedules.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {course.schedules.map((s, idx) => (
+                        <span key={idx} className="text-xs font-bold px-3 py-1 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm">
+                          📅 {s.day_of_week}: {s.start_time} – {s.end_time}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Chưa xếp lịch học giảng đường chính thức</span>
+                  )}
+                </div>
+
+                {/* Join / Leave Actions for Student */}
+                {!isInstructor && (
+                  <div className="mt-4 flex items-center gap-3">
+                    {course.is_enrolled ? (
+                      <>
+                        <span className="badge-voxel-green text-xs">
+                          <CheckCircleOutlined /> Bạn Đã Tham Gia Môn Học Này
+                        </span>
+                        <Popconfirm
+                          title="Hủy đăng ký môn học"
+                          description="Bạn có chắc chắn muốn rời khỏi môn học này?"
+                          onConfirm={handleLeaveCourseDetail}
+                          okText="Rời khỏi"
+                          cancelText="Hủy"
+                          okButtonProps={{ danger: true }}
+                        >
+                          <Button danger loading={leavingCourse} size="small" className="rounded-xl text-xs font-semibold">
+                            Rời Môn Học
+                          </Button>
+                        </Popconfirm>
+                      </>
+                    ) : (
+                      <button
+                        disabled={joiningCourse}
+                        onClick={handleJoinCourseDetail}
+                        className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2"
+                      >
+                        <PlusOutlined />
+                        <span>Đăng Ký Tham Gia Môn Học</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Metadata Badges */}
@@ -1640,6 +1745,67 @@ export const CourseDetailPage: React.FC = () => {
               </div>
             </div>
           </motion.div>
+
+          {/* Schedule Conflict Warning Modal */}
+          <Modal
+            open={isConflictModalOpen}
+            onCancel={() => setIsConflictModalOpen(false)}
+            footer={null}
+            centered
+            className="rounded-2xl overflow-hidden"
+          >
+            <div className="text-center p-2 space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-full bg-rose-500/15 border-2 border-rose-500/30 text-rose-500 flex items-center justify-center text-2xl shadow-voxel-sm">
+                <WarningOutlined />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-extrabold text-rose-600 dark:text-rose-400 m-0">
+                  ⚠ Schedule Conflict (Xung Đột Thời Khóa Biểu)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 m-0">
+                  Bạn không thể đăng ký khóa học <strong>{conflictInfo?.targetCourseName}</strong> do trùng giờ học cố định với môn học bạn đã tham gia.
+                </p>
+              </div>
+
+              {conflictInfo?.conflict && (
+                <div className="bg-rose-500/10 dark:bg-rose-950/40 p-4 rounded-2xl border-2 border-rose-500/30 text-left space-y-3 text-xs">
+                  <div className="flex items-center justify-between font-bold text-rose-700 dark:text-rose-300 pb-2 border-b border-rose-500/20">
+                    <span>Môn học đã đăng ký:</span>
+                    <span className="font-mono text-xs">{conflictInfo.conflict.conflicting_course_code} — {conflictInfo.conflict.conflicting_course_name}</span>
+                  </div>
+
+                  <div className="space-y-1.5 text-slate-700 dark:text-slate-200">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Ngày trong tuần:</span>
+                      <span className="font-bold">{conflictInfo.conflict.day_of_week}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Khung giờ môn đã đăng ký:</span>
+                      <span className="font-mono font-bold">{conflictInfo.conflict.existing_start_time} – {conflictInfo.conflict.existing_end_time}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Khung giờ môn muốn đăng ký:</span>
+                      <span className="font-mono font-bold text-rose-500">{conflictInfo.conflict.new_start_time} – {conflictInfo.conflict.new_end_time}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-rose-500/20 font-bold text-rose-600 dark:text-rose-400">
+                      <span>Thời gian bị trùng lắp:</span>
+                      <span className="font-mono">{conflictInfo.conflict.overlap_start_time} – {conflictInfo.conflict.overlap_end_time}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setIsConflictModalOpen(false)}
+                  className="btn-voxel-green text-xs px-5 py-2 rounded-xl"
+                >
+                  Đã Hiểu / Đóng
+                </button>
+              </div>
+            </div>
+          </Modal>
 
           {/* Roster, Materials & Assignments Tabs */}
           <Tabs

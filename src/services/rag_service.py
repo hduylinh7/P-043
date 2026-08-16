@@ -5,11 +5,27 @@ import xml.etree.ElementTree as ET
 import zipfile
 from typing import Any
 
-from langchain_community.vectorstores import Chroma
-from langchain_core.documents import Document
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from pypdf import PdfReader
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    try:
+        from langchain_community.vectorstores import Chroma
+    except ImportError:
+        Chroma = None
+
+try:
+    from langchain_core.documents import Document
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    Document = None
+    GoogleGenerativeAIEmbeddings = None
+    RecursiveCharacterTextSplitter = None
+
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 from src.config import get_settings
 from src.db.database import AsyncSessionLocal
