@@ -42,6 +42,17 @@ async def update_course(
     return await CourseService.update_course(db, course_id, payload, current_user)
 
 
+@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
+async def delete_course(
+    course_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor deletes an existing course."""
+    success = await CourseService.delete_course(db, course_id, current_user)
+    return {"message": "Xóa khóa học thành công", "success": success}
+
+
 
 @router.get("/instructor/my-courses", response_model=list[CourseResponse])
 async def get_instructor_courses(

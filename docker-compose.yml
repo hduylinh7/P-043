@@ -60,6 +60,8 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-""}
       S3_REGION: ${S3_REGION:-auto}
       S3_SECURE: "true"
+    volumes:
+      - ./src:/app/src
     depends_on:
       postgres:
         condition: service_healthy

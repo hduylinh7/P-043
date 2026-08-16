@@ -249,3 +249,30 @@ class CourseService:
             for st in students_data
         ]
 
+    @staticmethod
+    async def delete_course(
+        db: AsyncSession, course_id: str, current_user: UserResponse
+    ) -> bool:
+        """Delete an existing course owned by instructor or admin."""
+        if "instructor" not in current_user.roles and "admin" not in current_user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ có Giảng viên mới có quyền xóa khóa học.",
+            )
+
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy khóa học.",
+            )
+
+        if course.instructor_id != current_user.id and "admin" not in current_user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xóa khóa học này.",
+            )
+
+        return await CourseRepository.delete_course(db, course_id)
+
+

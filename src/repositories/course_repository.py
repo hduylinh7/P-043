@@ -68,6 +68,16 @@ class CourseRepository:
         await db.refresh(course)
         return course
 
+    @staticmethod
+    async def delete_course(db: AsyncSession, course_id: str) -> bool:
+        """Delete course by ID."""
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            return False
+        await db.delete(course)
+        await db.commit()
+        return True
+
 
     @staticmethod
     async def get_by_id(db: AsyncSession, course_id: str) -> Course | None:

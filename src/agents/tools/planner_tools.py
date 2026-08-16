@@ -18,6 +18,7 @@ from src.models.weekly_plan import (
     PlanTaskUpdateRequest,
     WeeklyPlanCreateRequest,
     WeeklyPlanResponse,
+    WeeklyPlanUpdateRequest,
 )
 from src.services.planner_context_builder import (
     PlannerContextBuilder,
@@ -183,10 +184,7 @@ class PlannerTools:
         # 4. Validate source_type
         clean_source_type = source_type.upper() if source_type else "MANUAL"
         if clean_source_type not in VALID_SOURCE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid source_type '{source_type}'. Must be one of {list(VALID_SOURCE_TYPES)}.",
-            )
+            clean_source_type = "MANUAL"
 
         # 5. Validate source entity exists if source_id provided
         if source_id and clean_source_type != "MANUAL":

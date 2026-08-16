@@ -296,6 +296,13 @@ export const WeeklyPlanPage: React.FC = () => {
         }) || plans[0];
       }
 
+      if (matchedPlan && matchedPlan.week_start_date) {
+        const pMonday = dayjs(matchedPlan.week_start_date).startOf('isoWeek');
+        if (!pMonday.isSame(weekStart, 'day')) {
+          setCurrentMonday(pMonday);
+        }
+      }
+
       setActivePlan(matchedPlan || null);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tải Kế hoạch học tập');

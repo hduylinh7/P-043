@@ -368,22 +368,47 @@ class WeeklyPlanService:
                 detail=f"Giờ bắt đầu ({payload.start_time}) phải trước giờ kết thúc ({payload.end_time}).",
             )
 
-        # Check schedule conflict with existing tasks in the same plan
+        # Check schedule conflict with existing tasks in the same plan & auto-shift to free slot if overlapped
         if sched_dt and payload.start_time and payload.end_time:
             tasks_stmt = select(Task).where(Task.weekly_goal_id == plan.id)
             tasks_res = await db.execute(tasks_stmt)
             existing_tasks = tasks_res.scalars().all()
 
             target_date = sched_dt.date() if isinstance(sched_dt, datetime) else sched_dt
-            for t in existing_tasks:
-                if t.scheduled_date and t.start_time and t.end_time:
-                    t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
-                    if t_date == target_date:
-                        if payload.start_time < t.end_time and payload.end_time > t.start_time:
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"Trùng lịch! Khung giờ ({payload.start_time} - {payload.end_time}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
-                            )
+
+            def check_overlap(st_str: str, et_str: str) -> bool:
+                for t in existing_tasks:
+                    if t.scheduled_date and t.start_time and t.end_time:
+                        t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
+                        if t_date == target_date:
+                            if st_str < t.end_time and et_str > t.start_time:
+                                return True
+                return False
+
+            if check_overlap(payload.start_time, payload.end_time):
+                try:
+                    t1 = datetime.strptime(payload.start_time, "%H:%M")
+                    t2 = datetime.strptime(payload.end_time, "%H:%M")
+                    duration_mins = int((t2 - t1).total_seconds() / 60)
+                    if duration_mins <= 0:
+                        duration_mins = 120
+                except Exception:
+                    duration_mins = 120
+
+                # Search next available slot starting from 07:00 to 22:00
+                found_slot = False
+                for hour in range(7, 22):
+                    candidate_st = datetime.strptime(f"{hour:02d}:00", "%H:%M")
+                    candidate_et = candidate_st + timedelta(minutes=duration_mins)
+                    if candidate_et.hour >= 23 and candidate_et.minute > 0:
+                        break
+                    st_str = candidate_st.strftime("%H:%M")
+                    et_str = candidate_et.strftime("%H:%M")
+                    if not check_overlap(st_str, et_str):
+                        payload.start_time = st_str
+                        payload.end_time = et_str
+                        found_slot = True
+                        break
 
         packed_desc = pack_task_description(
             description=payload.description,

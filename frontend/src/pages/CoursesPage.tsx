@@ -12,6 +12,7 @@ import {
   Spin,
   message,
   DatePicker,
+  Popconfirm,
 } from 'antd';
 import {
   PlusOutlined,
@@ -23,6 +24,7 @@ import {
   ArrowRightOutlined,
   CalendarOutlined,
   EditOutlined,
+  DeleteOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
@@ -157,6 +159,17 @@ export const CoursesPage: React.FC = () => {
       date_range: c.start_date && c.end_date ? [dayjs(c.start_date), dayjs(c.end_date)] : undefined,
     });
     setIsEditModalOpen(true);
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    try {
+      await courseService.deleteCourse(courseId);
+      message.success('Xóa khóa học thành công!');
+      fetchCourses(activeTab);
+    } catch (err: any) {
+      console.error('Delete course error:', err);
+      message.error(err.response?.data?.detail || 'Không thể xóa khóa học.');
+    }
   };
 
   const handleJoinCourse = async (courseId: string) => {
@@ -340,13 +353,38 @@ export const CoursesPage: React.FC = () => {
 
                     <div className="flex items-center gap-2">
                       {isInstructor && activeTab === 'managed' && (
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={(e) => openEditModal(course, e)}
-                          className="rounded-lg text-slate-500 hover:text-indigo-600"
-                        />
+                        <>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={(e) => openEditModal(course, e)}
+                            className="rounded-lg text-slate-500 hover:text-indigo-600"
+                          />
+                          <Popconfirm
+                            title="Xóa khóa học"
+                            description="Bạn có chắc chắn muốn xóa khóa học này cùng toàn bộ tài liệu liên quan không?"
+                            onConfirm={(e) => {
+                              if (e) e.stopPropagation();
+                              handleDeleteCourse(course.id);
+                            }}
+                            onCancel={(e) => {
+                              if (e) e.stopPropagation();
+                            }}
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            okButtonProps={{ danger: true }}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded-lg text-rose-500 hover:text-rose-700"
+                            />
+                          </Popconfirm>
+                        </>
                       )}
 
                       {activeTab === 'discover' && !isInstructor ? (

@@ -296,30 +296,47 @@ export const CourseDetailPage: React.FC = () => {
         return result;
       };
 
-      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
       const parsedQuestions: AssignmentQuestionPayload[] = [];
+
+      const getOptVal = (r: Record<string, string>, idx: number) => {
+        const char = String.fromCharCode(97 + idx); // 'a', 'b', 'c', 'd'
+        const num = idx + 1; // 1, 2, 3, 4
+        return (
+          r[`option_${num}`] || r[`option${num}`] || r[`opt_${num}`] || r[`opt${num}`] ||
+          r[`option_${char}`] || r[`option${char}`] || r[`opt_${char}`] || r[`opt${char}`] ||
+          r[char] || r[`${num}`] || ''
+        );
+      };
 
       for (let i = 1; i < lines.length; i++) {
         const cols = parseCsvLine(lines[i]);
-        if (cols.length === 0 || !cols[0]) continue;
+        if (cols.length === 0 || !cols.some((c) => c && c.trim().length > 0)) continue;
 
         const row: Record<string, string> = {};
         headers.forEach((h, idx) => {
           row[h] = cols[idx] || '';
         });
 
-        let qTypeRaw = (row['question_type'] || row['type'] || 'SHORT_ANSWER').toUpperCase().replace(/[\s-]/g, '_');
-        let qType: QuestionType = qTypeRaw as QuestionType;
-        if (!['MULTIPLE_CHOICE', 'ESSAY', 'SHORT_ANSWER'].includes(qType)) {
-          qType = row['option_1'] ? 'MULTIPLE_CHOICE' : 'SHORT_ANSWER';
+        let qTypeRaw = (row['question_type'] || row['type'] || '').toUpperCase().replace(/[\s-]/g, '_');
+        let qType: QuestionType = 'SHORT_ANSWER';
+        if (['MULTIPLE_CHOICE', 'ESSAY', 'SHORT_ANSWER'].includes(qTypeRaw)) {
+          qType = qTypeRaw as QuestionType;
+        } else if (qTypeRaw.includes('TRAC_NGHIEM') || qTypeRaw.includes('MCQ') || getOptVal(row, 0)) {
+          qType = 'MULTIPLE_CHOICE';
+        } else if (qTypeRaw.includes('TU_LUAN')) {
+          qType = 'ESSAY';
         }
-        const qText = row['question_text'] || row['question'] || row['text'] || cols[0];
+
+        const qText = (row['question_text'] || row['question'] || row['text'] || cols[0] || '').trim();
+        if (!qText) continue;
+
         const pts = parseFloat(row['points'] || '1.0') || 1.0;
-        const expAns = row['expected_answer'] || row['answer'] || row['rubric'] || '';
+        const expAns = (row['expected_answer'] || row['answer'] || row['rubric'] || '').trim();
 
         const opts: any[] = [];
         if (qType === 'MULTIPLE_CHOICE') {
-          const rawCorrect = (row['correct_option'] || row['correct'] || '').toString().trim();
+          const rawCorrect = (row['correct_option'] || row['correct'] || row['dap_an'] || '').toString().trim();
           let correctIdx = -1;
 
           if (/^\d+$/.test(rawCorrect)) {
@@ -331,16 +348,16 @@ export const CourseDetailPage: React.FC = () => {
             correctIdx = rawCorrect.toUpperCase().charCodeAt(0) - 65;
           }
 
-          for (let o = 1; o <= 6; o++) {
-            const optVal = row[`option_${o}`] || row[`option${o}`];
+          for (let o = 0; o < 6; o++) {
+            const optVal = getOptVal(row, o);
             if (optVal && optVal.trim()) {
               const trimmedOpt = optVal.trim();
-              const isCorr = (correctIdx >= 0 && o - 1 === correctIdx) ||
+              const isCorr = (correctIdx >= 0 && o === correctIdx) ||
                              (rawCorrect.length > 0 && rawCorrect.toLowerCase() === trimmedOpt.toLowerCase());
               opts.push({
                 option_text: trimmedOpt,
                 is_correct: isCorr,
-                display_order: o - 1,
+                display_order: o,
               });
             }
           }
@@ -351,7 +368,7 @@ export const CourseDetailPage: React.FC = () => {
           question_text: qText,
           points: pts,
           display_order: questions.length + parsedQuestions.length,
-          expected_answer: expAns,
+          expected_answer: expAns || null,
           options: opts.length > 0 ? opts : undefined,
         });
       }
@@ -516,21 +533,56 @@ export const CourseDetailPage: React.FC = () => {
     }
   };
 
+  // Helper to clean questions payload and prevent Pydantic 422 validation errors
+  const sanitizeQuestionsForPayload = (rawQuestions: AssignmentQuestionPayload[]): AssignmentQuestionPayload[] => {
+    return (rawQuestions || [])
+      .filter((q) => q && q.question_text && q.question_text.trim().length > 0)
+      .map((q, idx) => {
+        let validQType: QuestionType = 'SHORT_ANSWER';
+        const rawType = (q.question_type || '').toUpperCase();
+        if (rawType === 'MULTIPLE_CHOICE' || rawType === 'ESSAY' || rawType === 'SHORT_ANSWER') {
+          validQType = rawType as QuestionType;
+        } else if (rawType.includes('TRAC_NGHIEM') || rawType.includes('MCQ') || (q.options && q.options.length > 0)) {
+          validQType = 'MULTIPLE_CHOICE';
+        }
+
+        const rawOpts = q.options || [];
+        const cleanOpts = rawOpts
+          .filter((opt) => opt && opt.option_text && opt.option_text.trim().length > 0)
+          .map((opt, optIdx) => ({
+            option_text: opt.option_text.trim(),
+            is_correct: Boolean(opt.is_correct),
+            display_order: opt.display_order ?? optIdx,
+          }));
+
+        return {
+          question_type: validQType,
+          question_text: q.question_text.trim(),
+          points: Math.max(0, Number(q.points) || 1.0),
+          display_order: q.display_order ?? idx,
+          expected_answer: q.expected_answer?.trim() || null,
+          options: validQType === 'MULTIPLE_CHOICE' ? cleanOpts : [],
+        };
+      });
+  };
+
   // Assignment Actions
   const handleCreateAssignment = async (values: any, statusOverride?: string) => {
     if (!courseId) return;
     setSubmittingAssignment(true);
     try {
       const finalStatus = statusOverride || values.status || 'ACTIVE';
+      const cleanQuestions = sanitizeQuestionsForPayload(questions);
+
       const newAssignment = await assignmentService.createAssignment(courseId, {
-        title: values.title,
-        description: values.description,
+        title: values.title?.trim() || 'Bài tập trắc nghiệm',
+        description: values.description?.trim() || undefined,
         available_from: values.available_from ? new Date(values.available_from).toISOString() : undefined,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : undefined,
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
         status: finalStatus,
         priority: values.priority || 'MEDIUM',
-        questions: questions,
+        questions: cleanQuestions,
       });
 
       // Upload reference file if attached
@@ -589,15 +641,17 @@ export const CourseDetailPage: React.FC = () => {
     setSubmittingAssignment(true);
     try {
       const finalStatus = statusOverride || values.status || editingAssignment.status || 'ACTIVE';
+      const cleanQuestions = sanitizeQuestionsForPayload(questions);
+
       await assignmentService.updateAssignment(editingAssignment.id, {
-        title: values.title,
-        description: values.description,
+        title: values.title?.trim(),
+        description: values.description?.trim(),
         available_from: values.available_from ? new Date(values.available_from).toISOString() : undefined,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : undefined,
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
         status: finalStatus,
         priority: values.priority,
-        questions: questions,
+        questions: cleanQuestions,
       });
 
       // Upload reference file if attached
@@ -631,6 +685,19 @@ export const CourseDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Delete assignment error:', err);
       message.error(err.response?.data?.detail || 'Không thể xóa bài tập.');
+    }
+  };
+
+  const handlePublishAssignmentDirectly = async (assignment: Assignment) => {
+    try {
+      await assignmentService.updateAssignment(assignment.id, {
+        status: 'ACTIVE',
+      });
+      message.success(`Đã phát hành bài tập "${assignment.title}" thành công! Sinh viên giờ đây có thể làm bài.`);
+      fetchAssignments();
+    } catch (err: any) {
+      console.error('Publish assignment error:', err);
+      message.error(err.response?.data?.detail || 'Không thể phát hành bài tập.');
     }
   };
 
@@ -1788,6 +1855,17 @@ export const CourseDetailPage: React.FC = () => {
                               <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-800 flex-wrap">
                                 {isCourseOwner && (
                                   <>
+                                    {isDraft && (
+                                      <Button
+                                        type="primary"
+                                        icon={<SendOutlined />}
+                                        onClick={() => handlePublishAssignmentDirectly(item)}
+                                        className="rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-sm"
+                                      >
+                                        Phát Hành
+                                      </Button>
+                                    )}
+
                                     <Button
                                       type="default"
                                       icon={<FolderOpenOutlined />}
@@ -2401,7 +2479,18 @@ export const CourseDetailPage: React.FC = () => {
                 loading={submittingAssignment}
                 className="rounded-xl border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
               >
-                Chuyển về Bản Nháp (Draft)
+                Lưu Thành Bản Nháp (Draft)
+              </Button>
+              <Button
+                htmlType="button"
+                onClick={() => {
+                  const vals = editAssignmentForm.getFieldsValue();
+                  handleEditAssignment(vals, 'ACTIVE');
+                }}
+                loading={submittingAssignment}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold border-0"
+              >
+                🚀 Phát Hành Bài Tập (Active)
               </Button>
               <Button
                 type="primary"

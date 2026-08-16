@@ -262,7 +262,7 @@ class PlannerContextBuilder:
         matched_plan: WeeklyGoal | None = None
         for p in user_plans:
             p_start = p.week_start_date.date() if isinstance(p.week_start_date, datetime) else p.week_start_date
-            if p_start == start_date:
+            if p_start == start_d:
                 matched_plan = p
                 break
 
@@ -313,8 +313,8 @@ class PlannerContextBuilder:
                 id=matched_plan.id,
                 title=matched_plan.title,
                 description=matched_plan.description,
-                week_start_date=format_iso(matched_plan.week_start_date) or start_date.strftime("%Y-%m-%d"),
-                week_end_date=format_iso(matched_plan.week_end_date) or end_date.strftime("%Y-%m-%d"),
+                week_start_date=format_iso(matched_plan.week_start_date) or start_d.strftime("%Y-%m-%d"),
+                week_end_date=format_iso(matched_plan.week_end_date) or end_d.strftime("%Y-%m-%d"),
                 status=plan_status,
                 tasks=task_dtos,
             )

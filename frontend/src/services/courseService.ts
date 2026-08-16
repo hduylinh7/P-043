@@ -18,6 +18,10 @@ export const courseService = {
     return response.data;
   },
 
+  async deleteCourse(courseId: string): Promise<void> {
+    await api.delete(`/courses/${courseId}`);
+  },
+
   async getInstructorCourses(): Promise<Course[]> {
     const response = await api.get<Course[]>('/courses/instructor/my-courses');
     return response.data;
