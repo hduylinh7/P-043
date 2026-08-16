@@ -1,4 +1,4 @@
-# 🎓 AI20K Learning Companion — P-043
+# AI20K Learning Companion — P-043
 
 > **Trợ lý AI Agent** kết hợp **LangGraph + RAG (Groq Llama 3.3 70B · Gemini Vision OCR)** giúp sinh viên tự động hóa lập kế hoạch ôn thi, phân bổ thời gian học thông minh và hỗ trợ hỏi đáp tài liệu không vi phạm đạo đức học thuật.
 
@@ -12,27 +12,28 @@
 
 ---
 
-## 📋 Mục lục
+## Mục lục
 
-- [🎯 Vấn đề & Giải pháp](#-vấn-đề--giải-pháp)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [🏗️ Kiến trúc hệ thống](#️-kiến-trúc-hệ-thống)
-- [⚡ Quick Start](#-quick-start)
+- [Vấn đề & Giải pháp](#vấn-đề--giải-pháp)
+- [Tech Stack](#tech-stack)
+- [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)
+- [Quick Start](#quick-start)
   - [Option A — Chạy local (Development)](#option-a--chạy-local-development)
   - [Option B — Docker Compose (Recommended)](#option-b--docker-compose-recommended)
-- [🔑 Environment Variables](#-environment-variables)
-- [🗃️ Database Setup & Migration](#️-database-setup--migration)
-- [📡 API Reference](#-api-reference)
-- [💬 Sample Queries — Câu hỏi mẫu](#-sample-queries--câu-hỏi-mẫu)
-- [🧪 Testing](#-testing)
-- [📁 Project Structure](#-project-structure)
-- [🤝 Contributing](#-contributing)
+- [Environment Variables](#environment-variables)
+- [Database Setup & Migration](#database-setup--migration)
+- [API Reference](#api-reference)
+- [Sample Queries — Câu hỏi mẫu](#sample-queries--câu-hỏi-mẫu)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [Deliverables Checklist (Gate G2)](#deliverables-checklist-gate-g2)
 
 ---
 
-## 🎯 Vấn đề & Giải pháp
+## Vấn đề & Giải pháp
 
-### 🚨 Pain Points của sinh viên
+### Pain Points của sinh viên
 
 | # | Vấn đề | Mô tả |
 |---|--------|-------|
@@ -40,15 +41,15 @@
 | 2 | **Hoang mang tài liệu** | Đề cương slide, sách, PDF hàng trăm trang không biết bắt đầu từ đâu |
 | 3 | **Vi phạm học thuật** | Nhờ AI giải bài hộ thay vì học bản chất của vấn đề |
 
-### 💡 Giải pháp của P-043
+### Giải pháp của P-043
 
-- **Dynamic Weekly Plan** — AI phân tích các bài tập, deadline , mục tiêu các nhân, phân bổ thời gian hợp lí cho từng mục tiêu, bài tập.
+- **Dynamic Weekly Plan** — AI phân tích các bài tập, deadline, mục tiêu cá nhân, phân bổ thời gian hợp lý cho từng mục tiêu, bài tập.
 - **Multimodal RAG + OCR** — Đọc PDF, Excel, ảnh sơ đồ bài giảng qua Gemini Vision để trích xuất trọng tâm các kiến thức trong tài liệu ôn tập.
 - **AI Tutor (Companion Agent)** — Chatbot gợi ý hướng tư duy, giải thích kiến thức dựa trên tài liệu — **không giải bài hộ**.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology | Phiên bản | Mô tả |
 |-------|-----------|-----------|-------|
@@ -68,7 +69,7 @@
 
 ---
 
-## 🏗️ Kiến trúc hệ thống
+## Kiến trúc hệ thống
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -104,11 +105,11 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-> 📌 Xem sơ đồ chi tiết tại [`ARCHITECTURE.md`](./ARCHITECTURE.md) và [`docs/architecture_diagram.md`](./docs/architecture_diagram.md)
+> Xem sơ đồ chi tiết tại [`ARCHITECTURE.md`](./ARCHITECTURE.md) và [`docs/architecture_diagram.md`](./docs/architecture_diagram.md)
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### Yêu cầu hệ thống
 
@@ -149,7 +150,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Mở `.env` và điền các giá trị cần thiết (xem chi tiết ở [mục Environment Variables](#-environment-variables)).
+Mở `.env` và điền các giá trị cần thiết (xem chi tiết ở [mục Environment Variables](#environment-variables)).
 
 #### Bước 3: Khởi động PostgreSQL & Redis (cần Docker)
 
@@ -174,9 +175,9 @@ make run
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-> ✅ Backend sẵn sàng tại: `http://localhost:8000`
-> 📄 API Docs (Swagger): `http://localhost:8000/docs`
-> 📄 ReDoc: `http://localhost:8000/redoc`
+> Backend sẵn sàng tại: `http://localhost:8000`
+> API Docs (Swagger): `http://localhost:8000/docs`
+> ReDoc: `http://localhost:8000/redoc`
 
 #### Bước 6: Khởi chạy Frontend
 
@@ -186,7 +187,7 @@ npm install
 npm run dev
 ```
 
-> ✅ Frontend sẵn sàng tại: `http://localhost:3000`
+> Frontend sẵn sàng tại: `http://localhost:3000`
 
 ---
 
@@ -224,20 +225,20 @@ docker compose down -v
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 Tạo file `.env` từ `.env.example`. Dưới đây là toàn bộ biến môi trường và ý nghĩa:
 
-### 🤖 LLM & Embeddings
+### LLM & Embeddings
 
 | Biến | Giá trị mặc định | Bắt buộc | Mô tả |
 |------|-----------------|----------|-------|
-| `LLM_PROVIDER` | `groq` | ✅ | Provider LLM: `groq` \| `openai` \| `gemini` |
-| `MODEL_NAME` | `llama-3.3-70b-versatile` | ✅ | Tên model LLM |
-| `GROQ_API_KEY` | — | ✅ (nếu dùng Groq) | API key từ [console.groq.com](https://console.groq.com) |
-| `OPENAI_API_KEY` | — | ✅ (nếu dùng OpenAI) | API key từ [platform.openai.com](https://platform.openai.com) |
-| `GEMINI_API_KEY` | — | ✅ | API key Gemini (dùng cho Embedding & Vision OCR) |
-| `EMBEDDING_MODEL_NAME` | `models/gemini-embedding-001` | ✅ | Model embedding cho ChromaDB RAG |
+| `LLM_PROVIDER` | `groq` | Có | Provider LLM: `groq` \| `openai` \| `gemini` |
+| `MODEL_NAME` | `llama-3.3-70b-versatile` | Có | Tên model LLM |
+| `GROQ_API_KEY` | — | Có (nếu dùng Groq) | API key từ [console.groq.com](https://console.groq.com) |
+| `OPENAI_API_KEY` | — | Có (nếu dùng OpenAI) | API key từ [platform.openai.com](https://platform.openai.com) |
+| `GEMINI_API_KEY` | — | Có | API key Gemini (dùng cho Embedding & Vision OCR) |
+| `EMBEDDING_MODEL_NAME` | `models/gemini-embedding-001` | Có | Model embedding cho ChromaDB RAG |
 
 ```env
 # .env — LLM Configuration
@@ -260,11 +261,11 @@ EMBEDDING_MODEL_NAME=models/gemini-embedding-001
 > MODEL_NAME=gemini-2.0-flash
 > ```
 
-### 🗄️ Database
+### Database
 
 | Biến | Giá trị mẫu | Bắt buộc | Mô tả |
 |------|------------|----------|-------|
-| `DATABASE_URL` | `postgresql+asyncpg://postgres:password@localhost:5432/p043_db` | ✅ | PostgreSQL connection string (async) |
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:password@localhost:5432/p043_db` | Có | PostgreSQL connection string (async) |
 
 ```env
 # PostgreSQL (Production / Docker)
@@ -274,23 +275,23 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@localhost:5432/p043_
 # DATABASE_URL=sqlite+aiosqlite:///./data/app.db
 ```
 
-### ⚡ Redis Cache
+### Redis Cache
 
 | Biến | Giá trị mặc định | Bắt buộc | Mô tả |
 |------|-----------------|----------|-------|
-| `REDIS_URL` | `redis://localhost:6379/0` | ✅ | Redis connection URL |
+| `REDIS_URL` | `redis://localhost:6379/0` | Có | Redis connection URL |
 
-### 🔮 Vector Store (ChromaDB)
+### Vector Store (ChromaDB)
 
 | Biến | Giá trị mặc định | Mô tả |
 |------|-----------------|-------|
 | `CHROMA_PERSIST_DIR` | `./data/chroma` | Thư mục lưu vector embeddings local |
 
-### 🔒 JWT Authentication
+### JWT Authentication
 
 | Biến | Giá trị mặc định | Bắt buộc | Mô tả |
 |------|-----------------|----------|-------|
-| `JWT_SECRET_KEY` | — | ✅ | Secret key bảo mật (ít nhất 32 ký tự random) |
+| `JWT_SECRET_KEY` | — | Có | Secret key bảo mật (ít nhất 32 ký tự random) |
 | `JWT_ALGORITHM` | `HS256` | — | Thuật toán ký JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | — | Thời gian hết hạn Access Token (phút) |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | — | Thời gian hết hạn Refresh Token (ngày) |
@@ -303,7 +304,7 @@ openssl rand -hex 32
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-### 📦 Object Storage (MinIO / Cloudflare R2)
+### Object Storage (MinIO / Cloudflare R2)
 
 | Biến | Mô tả |
 |------|-------|
@@ -315,7 +316,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 | `S3_REGION` | Region (mặc định `us-east-1` hoặc `auto` cho R2) |
 | `MAX_UPLOAD_SIZE_MB` | Giới hạn dung lượng upload (MB), mặc định `50` |
 
-### 📧 SMTP Email
+### SMTP Email
 
 | Biến | Giá trị mẫu | Mô tả |
 |------|------------|-------|
@@ -326,7 +327,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 | `SMTP_FROM` | `noreply@ailearningcompanion.com` | Địa chỉ gửi hiển thị |
 | `SMTP_TLS` | `true` | Bật TLS |
 
-### ⚙️ App Configuration
+### App Configuration
 
 | Biến | Giá trị mặc định | Mô tả |
 |------|-----------------|-------|
@@ -336,7 +337,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 | `CORS_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Allowed CORS origins (phân tách bằng `,`) |
 | `LOG_LEVEL` | `INFO` | Mức log: `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 
-### 🔍 LangSmith Tracing (tuỳ chọn)
+### LangSmith Tracing (tuỳ chọn)
 
 | Biến | Mô tả |
 |------|-------|
@@ -346,7 +347,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ---
 
-## 🗃️ Database Setup & Migration
+## Database Setup & Migration
 
 ### Tạo database mới
 
@@ -386,13 +387,13 @@ alembic revision --autogenerate -m "add new table"
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 Base URL: `http://localhost:8000/api/v1`
 
-> 📄 Xem Swagger UI đầy đủ tại: `http://localhost:8000/docs`
+> Xem Swagger UI đầy đủ tại: `http://localhost:8000/docs`
 
-### 🔐 Authentication (`/auth`)
+### Authentication (`/auth`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -415,7 +416,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 }
 ```
 
-### 💬 Chat Agent (`/chat`)
+### Chat Agent (`/chat`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -433,7 +434,7 @@ curl -X POST http://localhost:8000/api/v1/chat/message \
   }'
 ```
 
-### 📚 Session Management (`/sessions`)
+### Session Management (`/sessions`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -441,7 +442,7 @@ curl -X POST http://localhost:8000/api/v1/chat/message \
 | `POST` | `/sessions` | Tạo phiên chat mới |
 | `DELETE` | `/sessions/{session_id}` | Xóa phiên chat |
 
-### 📖 Courses (`/courses`)
+### Courses (`/courses`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -450,7 +451,7 @@ curl -X POST http://localhost:8000/api/v1/chat/message \
 | `GET` | `/courses/{id}` | Chi tiết môn học |
 | `POST` | `/courses/{id}/materials` | Upload tài liệu cho môn học |
 
-### 📅 Weekly Planner (`/weekly-plans`)
+### Weekly Planner (`/weekly-plans`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -458,7 +459,7 @@ curl -X POST http://localhost:8000/api/v1/chat/message \
 | `POST` | `/weekly-plans/generate` | Yêu cầu AI tạo kế hoạch tuần |
 | `PUT` | `/weekly-plans/{id}` | Cập nhật / điều chỉnh kế hoạch |
 
-### 📝 Assignments (`/assignments`)
+### Assignments (`/assignments`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -466,20 +467,20 @@ curl -X POST http://localhost:8000/api/v1/chat/message \
 | `POST` | `/assignments` | Thêm assignment mới |
 | `PUT` | `/assignments/{id}` | Cập nhật trạng thái |
 
-### 🎯 Goals (`/goals`)
+### Goals (`/goals`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | `GET` | `/goals` | Xem mục tiêu học tập |
 | `POST` | `/goals` | Tạo mục tiêu mới |
 
-### 🤖 Planner Agent (`/planner`)
+### Planner Agent (`/planner`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | `POST` | `/planner/run` | Chạy Planner Agent để sinh/điều chỉnh kế hoạch |
 
-### 🩺 System Health (`/system`)
+### System Health (`/system`)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -493,11 +494,11 @@ curl http://localhost:8000/health
 
 ---
 
-## 💬 Sample Queries — Câu hỏi mẫu
+## Sample Queries — Câu hỏi mẫu
 
 Sau khi đăng nhập và tạo session, gửi các câu hỏi mẫu dưới đây để trải nghiệm hệ thống:
 
-### 📅 Lập kế hoạch học tập
+### Lập kế hoạch học tập
 
 ```
 "Tạo cho tôi kế hoạch ôn tập môn Xác Suất Thống Kê trong 4 tuần tới,
@@ -509,7 +510,7 @@ mục tiêu đạt điểm A. Tôi có thể học 2 giờ mỗi ngày vào bu�
 Kỳ thi bắt đầu từ ngày 15/01, tôi muốn hoàn thành ôn tập trước 3 ngày."
 ```
 
-### 🔄 Dynamic Replanning
+### Dynamic Replanning
 
 ```
 "Hôm nay tôi bận đột xuất từ 14h–18h, không học được. 
@@ -521,7 +522,7 @@ Hãy cập nhật lại lịch học tuần này giúp tôi mà không để d�
 Hãy điều chỉnh lịch để tôi bắt đầu Chương 4 sớm hơn."
 ```
 
-### 📖 RAG — Hỏi đáp tài liệu
+### RAG — Hỏi đáp tài liệu
 
 > *(Cần upload tài liệu qua `POST /courses/{id}/materials` trước)*
 
@@ -535,7 +536,7 @@ khái niệm Tứ phân vị (Quartile) và cách tính Q1, Q2, Q3."
 Độ lệch chuẩn (Standard Deviation) được trình bày như thế nào?"
 ```
 
-### ✍️ Sinh câu hỏi ôn tập (Reflect & Review)
+### Sinh câu hỏi ôn tập (Reflect & Review)
 
 ```
 "Sinh cho tôi 10 câu hỏi trắc nghiệm A/B/C/D về Chương 2: Phân phối xác suất,
@@ -547,7 +548,7 @@ dựa trên slide bài giảng và kèm lời giải thích đáp án đúng."
 trong môn Giải Tích mà tôi có thể ôn trong 10 phút."
 ```
 
-### 🧭 Tư vấn học tập
+### Tư vấn học tập
 
 ```
 "Tôi đang gặp khó khăn với phần Tích phân bội. 
@@ -557,7 +558,7 @@ nhưng đừng giải bài tập hộ tôi."
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Chạy toàn bộ test suite
 
@@ -607,37 +608,37 @@ make check
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 P-043/
-├── 📄 README.md                    # File này
-├── 📄 ARCHITECTURE.md              # Kiến trúc hệ thống
-├── 📄 requirements.txt             # Python dependencies
-├── 📄 Makefile                     # Shortcut commands
-├── 📄 Dockerfile                   # Docker build backend
-├── 📄 docker-compose.yml           # Toàn bộ stack
-├── 📄 alembic.ini                  # Cấu hình DB migration
-├── 📄 ruff.toml                    # Cấu hình linter/formatter
-├── 📄 .env.example                 # Template biến môi trường
+├── README.md                       # File này
+├── ARCHITECTURE.md                 # Kiến trúc hệ thống
+├── requirements.txt                # Python dependencies
+├── Makefile                        # Shortcut commands
+├── Dockerfile                      # Docker build backend
+├── docker-compose.yml              # Toàn bộ stack
+├── alembic.ini                     # Cấu hình DB migration
+├── ruff.toml                       # Cấu hình linter/formatter
+├── .env.example                    # Template biến môi trường
 │
-├── 📂 src/                         # 🧠 Backend source code
+├── src/                            # Backend source code
 │   ├── main.py                     # FastAPI entry point
 │   ├── config.py                   # Pydantic Settings (env vars)
-│   ├── 📂 agents/                  # AI Agent Engine (LangGraph)
+│   ├── agents/                     # AI Agent Engine (LangGraph)
 │   │   ├── companion_agent.py      # Companion Agent (chat + RAG)
 │   │   ├── graph.py                # StateGraph definition
 │   │   ├── state.py                # AgentState schema
 │   │   ├── planner_graph.py        # Planner Agent graph
 │   │   ├── planner_state.py        # Planner state schema
-│   │   ├── 📂 nodes/
+│   │   ├── nodes/
 │   │   │   ├── rag_nodes.py        # RAG retrieval node
 │   │   │   ├── planner_nodes.py    # Planning logic nodes
 │   │   │   └── example_node.py     # Example node template
-│   │   └── 📂 tools/
+│   │   └── tools/
 │   │       ├── planner_tools.py    # Planner tools (@tool)
 │   │       └── example_tool.py     # Example tool template
-│   ├── 📂 routers/                 # API Endpoints
+│   ├── routers/                    # API Endpoints
 │   │   ├── auth_router.py          # /auth/*
 │   │   ├── chat_router.py          # /chat/*
 │   │   ├── session_router.py       # /sessions/*
@@ -647,10 +648,10 @@ P-043/
 │   │   ├── goal_router.py          # /goals/*
 │   │   ├── weekly_plan_router.py   # /weekly-plans/*
 │   │   └── system_router.py        # /system/*
-│   ├── 📂 services/                # Business Logic
+│   ├── services/                   # Business Logic
 │   │   ├── auth_service.py         # Auth business logic
 │   │   ├── course_service.py       # Course management
-│   │   ├── rag_service.py          # RAG + OCR pipeline ⭐
+│   │   ├── rag_service.py          # RAG + OCR pipeline
 │   │   ├── weekly_plan_service.py  # Weekly planning logic
 │   │   ├── assignment_service.py   # Assignment management
 │   │   ├── planner_agent_service.py# Planner Agent service
@@ -659,24 +660,24 @@ P-043/
 │   │   ├── redis_service.py        # Redis cache service
 │   │   ├── email_service.py        # Email sending
 │   │   └── db_service.py           # DB utilities
-│   ├── 📂 core/
+│   ├── core/
 │   │   └── security.py             # JWT + bcrypt auth
-│   ├── 📂 db/                      # Database layer
+│   ├── db/                         # Database layer
 │   │   ├── database.py             # AsyncEngine + SessionLocal
 │   │   ├── base.py                 # DeclarativeBase
 │   │   ├── enums.py                # DB Enums
-│   │   └── 📂 models/              # SQLAlchemy models
+│   │   └── models/                 # SQLAlchemy models
 │   │       ├── identity/           # User, Role, Permission
 │   │       ├── chat/               # ChatSession, ChatMessage
 │   │       ├── ai/                 # AgentConfig, PromptTemplate
 │   │       └── knowledge/          # Course, Material, Plan
-│   ├── 📂 models/                  # Pydantic schemas (DTOs)
+│   ├── models/                     # Pydantic schemas (DTOs)
 │   │   ├── auth.py                 # Auth request/response
 │   │   └── schemas.py              # General schemas
-│   └── 📂 repositories/            # Repository pattern
+│   └── repositories/               # Repository pattern
 │       └── user_repository.py      # User CRUD
 │
-├── 📂 frontend/                    # 🖥️ React / Next.js UI
+├── frontend/                       # React / Next.js UI
 │   ├── src/
 │   │   ├── components/             # Reusable UI components
 │   │   ├── pages/                  # App pages
@@ -685,24 +686,24 @@ P-043/
 │   │   └── types/                  # TypeScript interfaces
 │   └── public/                     # Static assets
 │
-├── 📂 alembic/                     # DB migration scripts
+├── alembic/                        # DB migration scripts
 │   ├── env.py
 │   └── versions/                   # Migration files
 │
-├── 📂 data/                        # Local data (dev)
+├── data/                           # Local data (dev)
 │   ├── app.db                      # SQLite (dev fallback)
 │   └── chroma/                     # ChromaDB vector store
 │
-├── 📂 tests/                       # Test suite
+├── tests/                          # Test suite
 │   ├── conftest.py                 # Fixtures (mock DB, Redis)
 │   ├── test_agents/                # Agent unit tests
 │   ├── test_api/                   # API integration tests
 │   └── test_db_schema.py           # DB schema tests
 │
-├── 📂 docs/                        # Documentation
+├── docs/                           # Documentation
 │   └── architecture_diagram.md
 │
-└── 📂 scripts/                     # Automation scripts
+└── scripts/                        # Automation scripts
     ├── setup_hooks.sh              # Git hooks (Linux/macOS)
     ├── setup_hooks.ps1             # Git hooks (Windows)
     └── log_antigravity.py          # AI usage logger
@@ -710,7 +711,7 @@ P-043/
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork repository và tạo branch mới: `git checkout -b feature/ten-tinh-nang`
 2. Viết code tuân thủ chuẩn Ruff: `make lint && make format`
@@ -731,23 +732,23 @@ P-043/
 
 ---
 
-## 📊 Deliverables Checklist (Gate G2)
+## Deliverables Checklist (Gate G2)
 
 - [x] **Source Code** — Hoàn thiện trên GitHub
 - [x] **Repo PRs** — Đã merge ≥ 10 PRs (hiện tại: 23 PRs merged)
 - [x] **README.md** — Setup, env vars, sample queries (file này)
 - [x] **Architecture Diagram** — `docs/architecture_diagram.md`
 - [x] **Eval Evidences** — `eval/results/report.md` (5 manual test cases)
-- [ ] **MVP Video Demo** — Video 3 phút quay end-to-end user flow
+- [x] **MVP Video Demo** — [click vào đây để xem Video 3 phút quay end-to-end user flow](https://drive.google.com/file/d/16xWr9M-7cCP68SeS2B4XdAfEm-397nbI/view?usp=drive_link)
 
 ---
 
-## 📄 License
+## License
 
 MIT License — VinUni AI20K Build Phase Cohort 3 — Team P-043
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ by Team P-043 — VinUni AI20K Build Phase · 2025</sub>
+  <sub>Built by Team P-043 — VinUni AI20K Build Phase · 2025</sub>
 </div>
