@@ -46,12 +46,47 @@
     @apply bg-slate-100/80 dark:bg-slate-900/60 border-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-xl px-4 py-2.5 font-bold transition-all duration-150 flex items-center gap-2;
   }
 
+  /* Minecraft Voxel Input */
+  .input-voxel {
+    @apply w-full rounded-2xl py-3.5 pl-11 pr-4 text-sm font-semibold transition-all outline-none border-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 bg-white dark:bg-minecraft-obsidianCard border-amber-900/15 dark:border-minecraft-obsidianBorder shadow-[0_3px_0_0_rgba(184,92,0,0.08)] dark:shadow-[0_3px_0_0_rgba(0,0,0,0.4)] focus:border-minecraft-grass dark:focus:border-minecraft-grass focus:ring-2 focus:ring-emerald-500/25 focus:shadow-voxel-sm;
+  }
+
   .badge-voxel-green {
     @apply border-2 border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 font-bold px-3 py-1 rounded-xl shadow-voxel-sm shadow-minecraft-grassBorder/40 inline-flex items-center gap-1.5;
+  }
+
+  .badge-voxel-gold {
+    @apply border-2 border-minecraft-goldBorder bg-minecraft-gold/15 text-amber-800 dark:text-amber-300 font-bold px-3 py-1 rounded-xl shadow-voxel-sm shadow-minecraft-goldBorder/40 inline-flex items-center gap-1.5;
+  }
+
+  .alert-voxel-red {
+    @apply p-4 rounded-2xl border-2 border-rose-600/40 bg-rose-50/90 dark:bg-rose-950/70 text-rose-900 dark:text-rose-200 shadow-voxel-sm shadow-rose-900/20 text-sm flex items-start gap-3;
+  }
+
+  .alert-voxel-green {
+    @apply p-4 rounded-2xl border-2 border-emerald-600/40 bg-emerald-50/90 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 shadow-voxel-sm shadow-emerald-900/20 text-sm flex items-start gap-3;
   }
 
   .font-pixel {
     font-family: 'Pixelify Sans', cursive, sans-serif;
   }
 }
+
+@keyframes floatVoxel {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(4deg);
+  }
+}
+
+.animate-float-voxel {
+  animation: floatVoxel 5s ease-in-out infinite;
+}
+
+.animate-float-voxel-delayed {
+  animation: floatVoxel 6.5s ease-in-out infinite 1.5s;
+}
+
 

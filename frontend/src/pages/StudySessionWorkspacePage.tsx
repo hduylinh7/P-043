@@ -299,8 +299,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 font-sans">
         <div className="text-center space-y-4">
           <p className="text-lg font-bold text-rose-400">Không tìm thấy thông tin buổi học.</p>
-          <Button type="primary" onClick={() => navigate('/weekly-plan')}>
-            Quay lại Study Plan
+          <Button type="primary" onClick={() => navigate('/calendar')}>
+            Quay lại My Learning Calendar
           </Button>
         </div>
       </div>
@@ -323,10 +323,10 @@ export const StudySessionWorkspacePage: React.FC = () => {
             <Button
               type="text"
               icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/weekly-plan')}
+              onClick={() => navigate('/calendar')}
               className="font-bold text-slate-400 hover:text-slate-200"
             >
-              Quay lại Study Plan
+              Quay lại Calendar
             </Button>
             <div className="h-5 w-px bg-slate-700" />
             <div className="truncate">

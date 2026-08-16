@@ -21,6 +21,16 @@ from src.services.weekly_plan_service import WeeklyPlanService
 router = APIRouter(tags=["Weekly Plans"])
 
 
+@router.get("/weekly-plans/unified-calendar")
+async def get_unified_calendar(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    week_start: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch unified student calendar events (Fixed Classes, AI Planned, Student Study Sessions)."""
+    return await WeeklyPlanService.get_unified_calendar(db, current_user, week_start=week_start)
+
+
 # 1. Weekly Plan APIs
 @router.get("/weekly-plans", response_model=list[WeeklyPlanResponse])
 async def get_weekly_plans(

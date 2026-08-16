@@ -4,17 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AuthLayout } from '../components/auth/AuthLayout';
 import {
-  AlertCircle,
   ArrowLeft,
-  CheckCircle2,
   Eye,
   EyeOff,
-  KeyRound,
   Loader2,
   Lock,
   Mail,
   ShieldCheck,
 } from 'lucide-react';
+import { VoxelRedstone, VoxelEmerald } from '../components/common/MinecraftIcons';
 
 export const ForgotPasswordPage: React.FC = () => {
   const { forgotPassword, verifyResetCode, resetPassword } = useAuth();
@@ -145,40 +143,31 @@ export const ForgotPasswordPage: React.FC = () => {
     <AuthLayout
       title={titles[step]}
       subtitle={subtitles[step]}
-      badgeText={`Password Reset - Step ${step} of 3`}
+      badgeText={`RECOVERY • STEP ${step}/3`}
     >
-      {/* Step Indicator Bar */}
+      {/* Voxel Step Indicator Bar */}
       <div className="flex items-center justify-center gap-2 mb-6">
-        <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-          step >= 1 ? 'bg-minecraft-grass' : isDark ? 'bg-minecraft-obsidianBorder' : 'bg-slate-200'
-        }`} />
-        <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-          step >= 2 ? 'bg-minecraft-grass' : isDark ? 'bg-minecraft-obsidianBorder' : 'bg-slate-200'
-        }`} />
-        <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-          step >= 3 ? 'bg-minecraft-grass' : isDark ? 'bg-minecraft-obsidianBorder' : 'bg-slate-200'
-        }`} />
+        {[1, 2, 3].map((s) => (
+          <div
+            key={s}
+            className={`h-2 flex-1 rounded-full border border-minecraft-grassBorder/40 transition-all duration-300 ${
+              step >= s ? 'bg-minecraft-grass shadow-voxel-sm shadow-minecraft-grassBorder/30' : isDark ? 'bg-minecraft-obsidianBorder' : 'bg-slate-200'
+            }`}
+          />
+        ))}
       </div>
 
       {error && (
-        <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
-          isDark
-            ? 'bg-amber-950/60 border-amber-800/80 text-amber-200'
-            : 'bg-amber-50 border-amber-200 text-amber-900'
-        }`}>
-          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="mb-6 alert-voxel-red animate-fade-in">
+          <VoxelRedstone className="shrink-0 mt-0.5" size={22} />
+          <span className="font-bold">{error}</span>
         </div>
       )}
 
       {message && (
-        <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
-          isDark
-            ? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-200'
-            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-        }`}>
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-          <span>{message}</span>
+        <div className="mb-6 alert-voxel-green animate-fade-in">
+          <VoxelEmerald className="shrink-0 mt-0.5" size={22} />
+          <span className="font-bold">{message}</span>
         </div>
       )}
 
@@ -186,24 +175,20 @@ export const ForgotPasswordPage: React.FC = () => {
       {step === 1 && (
         <form onSubmit={handleStep1Submit} className="space-y-5">
           <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
               isDark ? 'text-slate-300' : 'text-slate-700'
             }`}>
               Email tài khoản
             </label>
             <div className="relative">
-              <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
                 required
-                className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
-                  isDark
-                    ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                    : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
-                }`}
+                className="input-voxel"
               />
             </div>
           </div>
@@ -211,7 +196,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full btn-voxel-green py-3.5 text-base rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-2xl font-bold tracking-wide shadow-voxel shadow-minecraft-grassBorder active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -219,16 +204,14 @@ export const ForgotPasswordPage: React.FC = () => {
                 <span>Đang gửi mã OTP...</span>
               </>
             ) : (
-              <span>Gửi mã OTP đặt lại</span>
+              <span>Gửi Mã OTP Đặt Lại →</span>
             )}
           </button>
 
           <div className="text-center pt-2">
             <Link
               to="/login"
-              className={`inline-flex items-center gap-1.5 text-xs font-bold transition-colors ${
-                isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-700 hover:text-emerald-800'
-              }`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Quay lại Đăng nhập</span>
@@ -241,13 +224,13 @@ export const ForgotPasswordPage: React.FC = () => {
       {step === 2 && (
         <form onSubmit={handleStep2Submit} className="space-y-5">
           <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
               isDark ? 'text-slate-300' : 'text-slate-700'
             }`}>
               Mã OTP (6 chữ số)
             </label>
             <div className="relative">
-              <ShieldCheck className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <ShieldCheck className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 maxLength={6}
@@ -255,11 +238,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
                 required
-                className={`w-full rounded-xl pl-11 pr-4 py-3 tracking-widest text-center text-lg font-bold outline-none border transition-all ${
-                  isDark
-                    ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500'
-                    : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 shadow-sm'
-                }`}
+                className="input-voxel tracking-widest text-center text-xl font-bold font-mono"
               />
             </div>
           </div>
@@ -267,7 +246,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || code.length !== 6}
-            className="w-full btn-voxel-green py-3.5 text-base rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-2xl font-bold tracking-wide shadow-voxel shadow-minecraft-grassBorder active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -275,7 +254,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <span>Đang xác thực OTP...</span>
               </>
             ) : (
-              <span>Xác nhận mã OTP</span>
+              <span>Xác Nhận Mã OTP →</span>
             )}
           </button>
 
@@ -283,9 +262,7 @@ export const ForgotPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className={`font-medium transition-colors flex items-center gap-1 ${
-                isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className="font-bold text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Nhập lại email</span>
@@ -306,24 +283,20 @@ export const ForgotPasswordPage: React.FC = () => {
       {step === 3 && (
         <form onSubmit={handleStep3Submit} className="space-y-4">
           <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
               isDark ? 'text-slate-300' : 'text-slate-700'
             }`}>
               Mật khẩu mới
             </label>
             <div className="relative">
-              <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Ít nhất 6 ký tự"
                 required
-                className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${
-                  isDark
-                    ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500'
-                    : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 shadow-sm'
-                }`}
+                className="input-voxel pr-11"
               />
               <button
                 type="button"
@@ -336,24 +309,20 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
 
           <div>
-            <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
               isDark ? 'text-slate-300' : 'text-slate-700'
             }`}>
               Xác nhận mật khẩu mới
             </label>
             <div className="relative">
-              <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Nhập lại mật khẩu mới"
                 required
-                className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
-                  isDark
-                    ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500'
-                    : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 shadow-sm'
-                }`}
+                className="input-voxel"
               />
             </div>
           </div>
@@ -361,7 +330,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || !newPassword || newPassword !== confirmPassword}
-            className="w-full btn-voxel-green py-3.5 text-base rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-2xl font-bold tracking-wide shadow-voxel shadow-minecraft-grassBorder active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-3"
           >
             {isLoading ? (
               <>
@@ -369,7 +338,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <span>Đang đổi mật khẩu...</span>
               </>
             ) : (
-              <span>Đổi mật khẩu & Đăng nhập</span>
+              <span>Đổi Mật Khẩu & Đăng Nhập</span>
             )}
           </button>
         </form>
@@ -377,3 +346,4 @@ export const ForgotPasswordPage: React.FC = () => {
     </AuthLayout>
   );
 };
+

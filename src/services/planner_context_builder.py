@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from src.db.enums import EnrollmentRoleEnum, SubmissionStatusEnum
 from src.db.models.identity.user import User
 from src.db.models.learning.assignment import Assignment
+from src.db.models.learning.course import Course
 from src.db.models.learning.enrollment import Enrollment
 from src.db.models.learning.submission import Submission
 from src.db.models.planning.goal import Goal
@@ -20,6 +21,7 @@ from src.models.planner_context import (
     AssignmentContextDTO,
     CourseMaterialContextDTO,
     CurrentWeeklyPlanContextDTO,
+    FixedCourseScheduleDTO,
     GoalContextDTO,
     PlanTaskContextDTO,
     PlannerContext,
@@ -250,6 +252,33 @@ class PlannerContextBuilder:
                     )
                 )
 
+            # Query fixed course schedules for enrolled courses
+            courses_stmt = (
+                select(Course)
+                .options(selectinload(Course.schedules))
+                .where(Course.id.in_(course_ids))
+            )
+            courses_res = await db.execute(courses_stmt)
+            enrolled_courses = courses_res.scalars().all()
+
+            fixed_course_schedule_dtos: list[FixedCourseScheduleDTO] = []
+            for c in enrolled_courses:
+                for s in (c.schedules or []):
+                    fixed_course_schedule_dtos.append(
+                        FixedCourseScheduleDTO(
+                            course_id=c.id,
+                            course_code=c.code,
+                            course_name=c.name,
+                            day_of_week=s.day_of_week,
+                            start_time=s.start_time,
+                            end_time=s.end_time,
+                            start_date=format_iso(c.start_date),
+                            end_date=format_iso(c.end_date),
+                        )
+                    )
+        else:
+            fixed_course_schedule_dtos = []
+
         # 4. Current Weekly Plan for requested week
         plan_stmt = (
             select(WeeklyGoal)
@@ -326,5 +355,6 @@ class PlannerContextBuilder:
             goals=goal_dtos,
             assignments=assignment_dtos,
             course_materials=course_material_dtos,
+            fixed_course_schedules=fixed_course_schedule_dtos,
             current_weekly_plan=current_weekly_plan_dto,
         )
