@@ -43,7 +43,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
 import { materialService } from '../services/materialService';
-import { api, ChatMessage } from '../services/api';
+import { api, ChatMessage, API_BASE_URL } from '../services/api';
 import { PlanTask, TaskReflectionData } from '../types/weeklyPlan';
 
 const { TextArea } = Input;
@@ -283,7 +283,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
   const materialStreamUrl = useMemo(() => {
     if (!task?.course_id || !task?.material_id) return null;
     const token = localStorage.getItem('access_token');
-    return `/api/v1/courses/${task.course_id}/materials/${task.material_id}/download?inline=true&token=${token}`;
+    return `${API_BASE_URL}/courses/${task.course_id}/materials/${task.material_id}/download?inline=true&token=${token}`;
   }, [task?.course_id, task?.material_id]);
 
   if (loading) {

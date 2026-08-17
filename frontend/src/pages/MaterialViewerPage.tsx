@@ -30,7 +30,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { materialService } from '../services/materialService';
-import { api, ChatSession } from '../services/api';
+import { api, ChatSession, API_BASE_URL } from '../services/api';
 import { CourseMaterial } from '../types/material';
 
 
@@ -252,7 +252,7 @@ export const MaterialViewerPage: React.FC = () => {
   }
 
   const token = localStorage.getItem('access_token');
-  const streamUrl = `/api/v1/courses/${courseId}/materials/${currentMaterial.id}/download?inline=true&token=${token}`;
+  const streamUrl = `${API_BASE_URL}/courses/${courseId}/materials/${currentMaterial.id}/download?inline=true&token=${token}`;
   const ext = currentMaterial.file_name.split('.').pop()?.toLowerCase() || '';
   const isPdf = ext === 'pdf';
   const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
