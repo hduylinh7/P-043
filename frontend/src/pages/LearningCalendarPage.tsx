@@ -196,12 +196,12 @@ export const LearningCalendarPage: React.FC = () => {
   // Start Study Session Handler
   const handleStartSession = async (taskId: string) => {
     try {
-      const updated = await weeklyPlanService.startStudySession(taskId);
-      setSelectedTask(updated);
-      message.success('Đã bắt đầu buổi học!');
-      fetchCalendarData();
+      await weeklyPlanService.startStudySession(taskId);
     } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể bắt đầu buổi học.');
+      console.warn('Start study session status update:', err);
+    } finally {
+      setIsTaskDrawerOpen(false);
+      navigate(`/study-session/${taskId}`);
     }
   };
 

@@ -501,10 +501,11 @@ export const WeeklyPlanPage: React.FC = () => {
       if (task.status === 'todo' || task.status === 'TODO') {
         await weeklyPlanService.startStudySession(task.id);
       }
+    } catch (err: any) {
+      console.warn('Start study session status update:', err);
+    } finally {
       setDetailTask(null);
       navigate(`/study-session/${task.id}`);
-    } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể bắt đầu buổi học');
     }
   };
 
