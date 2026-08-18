@@ -125,7 +125,7 @@ def _get_vector_store() -> Any:
     except Exception as e:
         logger.warning(f"Could not verify/create Qdrant collection '{collection_name}': {e}")
 
-    # Ensure Payload Indexes exist for filtering by course_id and material_id on Qdrant
+    # Ensure Payload Indexes exist for filtering by course_id, material_id, assignment_id, and type on Qdrant
     try:
         client.create_payload_index(
             collection_name=collection_name,
@@ -135,6 +135,16 @@ def _get_vector_store() -> Any:
         client.create_payload_index(
             collection_name=collection_name,
             field_name="metadata.material_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="metadata.assignment_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="metadata.type",
             field_schema=models.PayloadSchemaType.KEYWORD,
         )
     except Exception as idx_err:
@@ -467,10 +477,142 @@ class RAGService:
             logger.warning(f"Could not delete vectors for material {material_id}: {e}")
 
     @staticmethod
+    def delete_assignment_vectors(assignment_id: str) -> None:
+        """Delete all vector chunks matching assignment_id from Qdrant."""
+        try:
+            settings = get_settings()
+            if QdrantClient is not None and models is not None:
+                client = _get_qdrant_client()
+                collection_name = settings.qdrant_collection_name or "course_materials"
+                client.delete(
+                    collection_name=collection_name,
+                    points_selector=models.FilterSelector(
+                        filter=models.Filter(
+                            must=[
+                                models.FieldCondition(
+                                    key="metadata.assignment_id",
+                                    match=models.MatchValue(value=assignment_id),
+                                )
+                            ]
+                        )
+                    ),
+                )
+                logger.info(f"Deleted vector chunks for assignment_id {assignment_id} from Qdrant.")
+        except Exception as e:
+            logger.warning(f"Could not delete vectors for assignment {assignment_id}: {e}")
+
+    @staticmethod
+    async def ingest_assignment_background(
+        course_id: str,
+        assignment_id: str,
+        title: str,
+        description: str | None = None,
+        questions: list[dict[str, Any]] | None = None,
+        checklists: list[dict[str, Any]] | None = None,
+        file_bytes: bytes | None = None,
+        file_name: str | None = None,
+        object_key: str | None = None,
+        mime_type: str = "",
+    ) -> None:
+        """Background task to extract text from assignment details, questions, checklists, and attached file, chunk, embed, and store into Qdrant."""
+        logger.info(f"Starting background RAG ingestion for assignment {assignment_id} ({title})...")
+        try:
+            # 1. Clean up existing vectors for this assignment first to avoid duplication
+            RAGService.delete_assignment_vectors(assignment_id)
+
+            # 2. Build structured text representation of the assignment
+            sections = [f"### YÊU CẦU & NỘI DUNG BÀI TẬP: {title}"]
+            sections.append(f"Mã môn học: {course_id} | Mã bài tập: {assignment_id}")
+
+            if description and description.strip():
+                sections.append(f"#### Mô tả & Yêu cầu bài tập:\n{description.strip()}")
+
+            if checklists:
+                chk_texts = []
+                for c in checklists:
+                    c_title = c.get("title") or (getattr(c, "title", "") if hasattr(c, "title") else "")
+                    c_desc = c.get("description") or (getattr(c, "description", "") if hasattr(c, "description") else "")
+                    if c_title:
+                        chk_texts.append(f"- {c_title}: {c_desc}".strip(": "))
+                if chk_texts:
+                    sections.append("#### Danh sách hạng mục cần hoàn thành (Checklists):\n" + "\n".join(chk_texts))
+
+            if questions:
+                q_texts = []
+                for idx, q in enumerate(questions, start=1):
+                    q_text = q.get("question_text") or (getattr(q, "question_text", "") if hasattr(q, "question_text") else "")
+                    q_pts = q.get("points", 0) or (getattr(q, "points", 0) if hasattr(q, "points") else 0)
+                    q_exp = q.get("expected_answer") or (getattr(q, "expected_answer", None) if hasattr(q, "expected_answer") else None)
+                    opts = q.get("options") or (getattr(q, "options", []) if hasattr(q, "options") else [])
+
+                    item_str = f"Câu {idx} ({q_pts} điểm): {q_text}"
+                    if opts:
+                        opt_strs = []
+                        for opt in opts:
+                            o_txt = opt.get("option_text") if isinstance(opt, dict) else getattr(opt, "option_text", str(opt))
+                            opt_strs.append(f"  + {o_txt}")
+                        item_str += "\n" + "\n".join(opt_strs)
+                    if q_exp:
+                        item_str += f"\n  (Gợi ý/Đáp án tham khảo: {q_exp})"
+                    q_texts.append(item_str)
+
+                if q_texts:
+                    sections.append("#### Bộ câu hỏi bài tập:\n" + "\n\n".join(q_texts))
+
+            # 3. Extract text from attached file if present
+            if file_bytes and file_name:
+                try:
+                    attachment_text = _extract_text_from_bytes(file_bytes, file_name, mime_type)
+                    if attachment_text:
+                        sections.append(f"#### Nội dung chi tiết từ tệp đính kèm bài tập ({file_name}):\n{attachment_text}")
+                except Exception as file_err:
+                    logger.warning(f"Could not extract text from assignment attachment {file_name}: {file_err}")
+
+            full_text = "\n\n".join(sections).strip()
+            if not full_text:
+                logger.warning(f"No text extracted for assignment {assignment_id}.")
+                return
+
+            # 4. Chunk text
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200,
+                length_function=len,
+            )
+            chunks = text_splitter.split_text(full_text)
+
+            # 5. Prepare Documents with Metadata
+            documents = []
+            for idx, chunk in enumerate(chunks):
+                doc = Document(
+                    page_content=chunk,
+                    metadata={
+                        "course_id": course_id,
+                        "assignment_id": assignment_id,
+                        "material_id": assignment_id,
+                        "type": "assignment",
+                        "file_name": file_name or f"Assignment: {title}",
+                        "title": title,
+                        "object_key": object_key or "",
+                        "chunk_index": idx,
+                    },
+                )
+                documents.append(doc)
+
+            # 6. Persist into Vector Store (Qdrant)
+            vector_store = _get_vector_store()
+            vector_store.add_documents(documents)
+            logger.info(f"Successfully ingested {len(documents)} vectors for assignment {assignment_id} ({title}).")
+
+        except Exception as e:
+            logger.error(f"Failed RAG ingestion for assignment {assignment_id}: {e}", exc_info=True)
+
+    @staticmethod
     def search_course_materials(
         course_id: str | None = None,
         query: str = "",
         material_id: str | None = None,
+        assignment_id: str | None = None,
         top_k: int | None = None,
     ) -> list[dict[str, Any]]:
         """Perform similarity search or direct fallback retrieval on Qdrant vector store."""
@@ -480,7 +622,11 @@ class RAGService:
         settings = get_settings()
         k = top_k if top_k is not None else settings.rag_top_k
 
-        if material_id:
+        if assignment_id:
+            search_filter = models.Filter(
+                must=[models.FieldCondition(key="metadata.assignment_id", match=models.MatchValue(value=assignment_id))]
+            )
+        elif material_id:
             search_filter = models.Filter(
                 must=[models.FieldCondition(key="metadata.material_id", match=models.MatchValue(value=material_id))]
             )

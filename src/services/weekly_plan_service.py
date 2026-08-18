@@ -32,11 +32,43 @@ def parse_datetime(val: datetime | str | None) -> datetime | None:
         return None
     if isinstance(val, datetime):
         return val
+    if isinstance(val, date):
+        return datetime.combine(val, datetime.min.time())
     try:
-        # Handle ISO strings
-        return datetime.fromisoformat(val.replace("Z", "+00:00"))
+        val_clean = str(val).strip()
+        if len(val_clean) == 10 and val_clean.count("-") == 2:
+            d = date.fromisoformat(val_clean)
+            return datetime.combine(d, datetime.min.time())
+        return datetime.fromisoformat(val_clean.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def format_iso_date_clean(val: datetime | date | str | None) -> str | None:
+    if val is None:
+        return None
+    if isinstance(val, str):
+        val_clean = val.strip()
+        if "T" in val_clean:
+            try:
+                dt = datetime.fromisoformat(val_clean.replace("Z", "+00:00"))
+                return format_iso_date_clean(dt)
+            except Exception:
+                return val_clean.split("T")[0]
+        return val_clean
+    if isinstance(val, datetime):
+        if val.tzinfo is not None:
+            offset = val.utcoffset()
+            if offset is not None and offset.total_seconds() == 0 and (val.hour >= 17 or (val.hour == 0 and val.minute == 0)):
+                local_dt = val + timedelta(hours=7)
+                return local_dt.strftime("%Y-%m-%d")
+            elif offset is not None:
+                local_dt = val + offset
+                return local_dt.strftime("%Y-%m-%d")
+        return val.strftime("%Y-%m-%d")
+    if isinstance(val, date):
+        return val.strftime("%Y-%m-%d")
+    return str(val)
 
 
 def normalize_time_str(ts: str | None) -> str | None:
@@ -116,6 +148,7 @@ def serialize_task(task: Task) -> PlanTaskResponse:
             meta = {}
 
     clean_desc = meta.get("description") if meta else task.description
+    clean_sched_date = format_iso_date_clean(task.scheduled_date)
 
     return PlanTaskResponse(
         id=task.id,
@@ -135,7 +168,7 @@ def serialize_task(task: Task) -> PlanTaskResponse:
         goal_title=meta.get("goal_title"),
         priority=priority_val,
         status=status_val,
-        scheduled_date=task.scheduled_date,
+        scheduled_date=clean_sched_date,
         start_time=task.start_time,
         end_time=task.end_time,
         estimated_duration=task.estimated_minutes,
@@ -163,8 +196,8 @@ def serialize_weekly_plan(plan: WeeklyGoal) -> WeeklyPlanResponse:
         student_id=plan.student_id,
         title=plan.title,
         description=plan.description,
-        week_start_date=plan.week_start_date,
-        week_end_date=plan.week_end_date,
+        week_start_date=format_iso_date_clean(plan.week_start_date) or str(plan.week_start_date),
+        week_end_date=format_iso_date_clean(plan.week_end_date) or str(plan.week_end_date),
         status=status_val,
         generated_by_agent=plan.generated_by_agent,
         version=plan.version,

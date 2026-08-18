@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.database import get_db
@@ -48,21 +48,23 @@ async def create_assignment(
     course_id: str,
     payload: AssignmentCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Instructor creates a new assignment for a course."""
-    return await AssignmentService.create_assignment(db, course_id, payload, current_user)
+    return await AssignmentService.create_assignment(db, course_id, payload, current_user, background_tasks=background_tasks)
 
 
 @router.post("/assignments/{assignment_id}/attachment", response_model=AssignmentResponse)
 async def upload_assignment_attachment(
     assignment_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Instructor uploads problem specification / reference file for an assignment."""
-    return await AssignmentService.upload_assignment_attachment(db, assignment_id, file, current_user)
+    return await AssignmentService.upload_assignment_attachment(db, assignment_id, file, current_user, background_tasks=background_tasks)
 
 
 @router.get("/assignments/{assignment_id}/download-attachment")
@@ -90,10 +92,11 @@ async def update_assignment(
     assignment_id: str,
     payload: AssignmentUpdateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Instructor updates an assignment."""
-    return await AssignmentService.update_assignment(db, assignment_id, payload, current_user)
+    return await AssignmentService.update_assignment(db, assignment_id, payload, current_user, background_tasks=background_tasks)
 
 
 @router.delete("/assignments/{assignment_id}")

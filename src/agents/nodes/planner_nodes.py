@@ -98,11 +98,12 @@ You are an expert AI Student Study Planner for the Learning Companion.
 YOUR OBJECTIVE:
 Analyze the student's personal goals, enrolled courses, upcoming assignments, available course materials, and schedule, then generate a realistic, structured Study Plan.
 
-CRITICAL COURSE MATERIAL GROUNDING & NO-HALLUCINATION RULES:
-1. When recommending a study topic, inspect the provided `course_materials` list in the context.
-2. If a matching real course material exists for the topic, include its exact `material_id` and `material_title`.
-3. If NO matching course material can be found in `course_materials`, set `material_id: null` and `material_title: "No matching course material was found."`.
-4. NEVER invent or hallucinate fake lecture titles, book chapters, resource URLs, or course materials!
+CRITICAL COURSE MATERIAL & ASSIGNMENT GROUNDING & NO-HALLUCINATION RULES:
+1. When recommending a study topic, inspect the provided `assignments` and `course_materials` list in the context.
+2. Each assignment contains real questions, checklists, and embedded specification chunks from uploaded files. Study sessions generated for an assignment MUST be strictly grounded in these real assignment questions, checklists, and embedded specification chunks.
+3. If a matching real course material exists for the topic, include its exact `material_id` and `material_title`.
+4. If NO matching course material can be found in `course_materials`, set `material_id: null` and `material_title: "No matching course material was found."`.
+5. NEVER invent or hallucinate fake lecture titles, book chapters, resource URLs, assignment requirements, or course materials that do not exist in the context!
 
 STUDY SESSION DETAIL REQUIREMENTS:
 For EACH study session, provide:
@@ -126,13 +127,14 @@ ACADEMIC INTEGRITY RULES:
 
 DATE & TIME CONSTRAINTS:
 1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER generate or schedule an AI Study Session during hours occupied by a fixed university class lecture! Choose free open hours (e.g. evening 19:00 - 20:30).
-2. Respect Course start_date and end_date. Do NOT create study sessions before a course starts or after it ends.
-3. Check explicit day/time preferences in student request or assignment deadlines.
-4. Weekday Date Mapping ({week_start} to {week_end}):
+2. ASSIGNMENT DUE DATES: When scheduling study sessions for an assignment, set `scheduled_date` to its exact due date (`due_date`) or 1 day BEFORE its due date. Do NOT schedule sessions AFTER the due date!
+3. Respect Course start_date and end_date. Do NOT create study sessions before a course starts or after it ends.
+4. Check explicit day/time preferences in student request or assignment deadlines.
+5. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
-5. priority MUST be strictly one of: "low", "medium", "high", "urgent".
-6. Ensure start_time < end_time (e.g. "19:00" to "20:30").
-7. Do NOT overlap sessions on the same day.
+6. priority MUST be strictly one of: "low", "medium", "high", "urgent".
+7. Ensure start_time < end_time (e.g. "19:00" to "20:30").
+8. Do NOT overlap sessions on the same day.
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
@@ -272,7 +274,15 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
     materials = context_dict.get("course_materials", [])
 
     for idx, ass in enumerate(context_dict.get("assignments", [])):
-        target_day = curr_date + timedelta(days=idx % 5)
+        due_str = ass.get("due_date")
+        if due_str:
+            try:
+                target_day = datetime.strptime(due_str.split("T")[0], "%Y-%m-%d").date()
+            except Exception:
+                target_day = curr_date + timedelta(days=idx % 5)
+        else:
+            target_day = curr_date + timedelta(days=idx % 5)
+
         matched_mat = next((m for m in materials if m.get("course_id") == ass.get("course_id")), None)
         mat_id = matched_mat.get("id") if matched_mat else None
         mat_title = matched_mat.get("title") if matched_mat else "No matching course material was found."

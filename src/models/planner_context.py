@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -37,6 +38,10 @@ class AssignmentContextDTO(BaseModel):
     priority: str = "MEDIUM"
     estimated_hours: float | None = None
     status: str = "ACTIVE"
+    attachment_file_name: str | None = None
+    questions: list[dict[str, Any]] = Field(default_factory=list)
+    checklists: list[dict[str, Any]] = Field(default_factory=list)
+    embedded_chunks: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
