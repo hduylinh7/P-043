@@ -6,19 +6,24 @@ import zipfile
 from typing import Any
 
 try:
-    from langchain_chroma import Chroma
-except ImportError:
+    from qdrant_client import QdrantClient, models
     try:
-        from langchain_community.vectorstores import Chroma
+        from langchain_qdrant import QdrantVectorStore
     except ImportError:
-        Chroma = None
+        from langchain_community.vectorstores import Qdrant as QdrantVectorStore
+except ImportError:
+    QdrantClient = None
+    models = None
+    QdrantVectorStore = None
 
 try:
     from langchain_core.documents import Document
+    from langchain_core.embeddings import Embeddings
     from langchain_google_genai import GoogleGenerativeAIEmbeddings
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError:
     Document = None
+    Embeddings = object
     GoogleGenerativeAIEmbeddings = None
     RecursiveCharacterTextSplitter = None
 
@@ -34,7 +39,7 @@ from src.repositories.material_repository import MaterialRepository
 logger = logging.getLogger(__name__)
 
 
-class ResilientEmbeddings:
+class ResilientEmbeddings(Embeddings):
     """Wrapper that tries primary embedding model (Google Generative AI) and falls back to hash-based pseudo-embeddings if primary API fails."""
 
     def __init__(self, primary: Any):
@@ -60,6 +65,9 @@ class ResilientEmbeddings:
             logger.warning(f"Primary query embedding failed ({e}). Utilizing resilient hash query embedding fallback.")
             return self._hash_vector(text)
 
+    def __call__(self, text: str) -> list[float]:
+        return self.embed_query(text)
+
 
 def _get_embedding_function() -> Any:
     """Instantiate Google Generative AI Embeddings with Resilient Embeddings Fallback."""
@@ -81,17 +89,69 @@ def _get_embedding_function() -> Any:
     return ResilientEmbeddings(primary=primary)
 
 
-def _get_vector_store() -> Chroma:
-    """Get persistent ChromaDB vector store instance."""
+def _get_qdrant_client() -> Any:
+    """Get QdrantClient instance connecting to Cloud or local Qdrant."""
     settings = get_settings()
-    persist_directory = settings.chroma_persist_dir or "./data/chroma"
-    os.makedirs(persist_directory, exist_ok=True)
+    url = settings.qdrant_url
+    api_key = settings.qdrant_api_key or None
+    if not url:
+        logger.warning("QDRANT_URL is not configured. Falling back to http://localhost:6333")
+        url = "http://localhost:6333"
+    if QdrantClient is None:
+        raise ImportError("qdrant-client package is not installed.")
+    return QdrantClient(url=url, api_key=api_key)
+
+
+def _get_vector_store() -> Any:
+    """Get Qdrant vector store instance."""
+    settings = get_settings()
     embeddings = _get_embedding_function()
-    return Chroma(
-        collection_name="course_materials",
-        embedding_function=embeddings,
-        persist_directory=persist_directory,
-    )
+
+    if QdrantVectorStore is None or QdrantClient is None:
+        raise ImportError("Qdrant packages (qdrant-client, langchain-qdrant) are not installed.")
+
+    client = _get_qdrant_client()
+    collection_name = settings.qdrant_collection_name or "course_materials"
+    try:
+        if not client.collection_exists(collection_name):
+            client.create_collection(
+                collection_name=collection_name,
+                vectors_config=models.VectorParams(
+                    size=3072,
+                    distance=models.Distance.COSINE,
+                ),
+            )
+            logger.info(f"Created Qdrant collection '{collection_name}' successfully.")
+    except Exception as e:
+        logger.warning(f"Could not verify/create Qdrant collection '{collection_name}': {e}")
+
+    # Ensure Payload Indexes exist for filtering by course_id and material_id on Qdrant
+    try:
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="metadata.course_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name="metadata.material_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+    except Exception as idx_err:
+        logger.debug(f"Payload index check for Qdrant: {idx_err}")
+
+    if hasattr(QdrantVectorStore, "__module__") and QdrantVectorStore.__module__.startswith("langchain_qdrant"):
+        return QdrantVectorStore(
+            client=client,
+            collection_name=collection_name,
+            embedding=embeddings,
+        )
+    else:
+        return QdrantVectorStore(
+            client=client,
+            collection_name=collection_name,
+            embeddings=embeddings,
+        )
 
 
 def _ocr_extract_text_from_image(image_bytes: bytes, mime_type: str = "image/png") -> str:
@@ -365,11 +425,11 @@ class RAGService:
                 )
                 documents.append(doc)
 
-            # 5. Persist into ChromaDB
+            # 5. Persist into Vector Store (Qdrant or ChromaDB)
             vector_store = _get_vector_store()
             vector_store.add_documents(documents)
             logger.info(
-                f"Successfully ingested {len(documents)} vectors into ChromaDB for material {material_id}."
+                f"Successfully ingested {len(documents)} vectors for material {material_id}."
             )
 
             # 6. Update status to 'completed'
@@ -383,11 +443,26 @@ class RAGService:
 
     @staticmethod
     def delete_material_vectors(material_id: str) -> None:
-        """Delete all vector chunks from ChromaDB matching material_id."""
+        """Delete all vector chunks matching material_id from Qdrant Cloud."""
         try:
-            vector_store = _get_vector_store()
-            vector_store.delete(where={"material_id": material_id})
-            logger.info(f"Deleted vector chunks for material_id {material_id} from ChromaDB.")
+            settings = get_settings()
+            if QdrantClient is not None and models is not None:
+                client = _get_qdrant_client()
+                collection_name = settings.qdrant_collection_name or "course_materials"
+                client.delete(
+                    collection_name=collection_name,
+                    points_selector=models.FilterSelector(
+                        filter=models.Filter(
+                            must=[
+                                models.FieldCondition(
+                                    key="metadata.material_id",
+                                    match=models.MatchValue(value=material_id),
+                                )
+                            ]
+                        )
+                    ),
+                )
+                logger.info(f"Deleted vector chunks for material_id {material_id} from Qdrant.")
         except Exception as e:
             logger.warning(f"Could not delete vectors for material {material_id}: {e}")
 
@@ -398,7 +473,7 @@ class RAGService:
         material_id: str | None = None,
         top_k: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Perform similarity search or direct fallback retrieval on vector store."""
+        """Perform similarity search or direct fallback retrieval on Qdrant vector store."""
         if not query.strip():
             return []
 
@@ -406,11 +481,15 @@ class RAGService:
         k = top_k if top_k is not None else settings.rag_top_k
 
         if material_id:
-            filter_dict = {"material_id": material_id}
+            search_filter = models.Filter(
+                must=[models.FieldCondition(key="metadata.material_id", match=models.MatchValue(value=material_id))]
+            )
         elif course_id:
-            filter_dict = {"course_id": course_id}
+            search_filter = models.Filter(
+                must=[models.FieldCondition(key="metadata.course_id", match=models.MatchValue(value=course_id))]
+            )
         else:
-            filter_dict = None
+            search_filter = None
 
         formatted_results = []
         try:
@@ -418,7 +497,7 @@ class RAGService:
             results = vector_store.similarity_search_with_score(
                 query=query,
                 k=k,
-                filter=filter_dict,
+                filter=search_filter,
             )
             for doc, score in results:
                 formatted_results.append({
@@ -438,24 +517,32 @@ class RAGService:
         ]
         is_summary_query = any(kw in query.lower() for kw in summary_keywords)
 
-        # Fallback: If similarity search returned 0 results or query is a summary request, do direct vector fetch
-        if filter_dict and (is_summary_query or not formatted_results):
+        # Fallback: If similarity search returned 0 results or query is a summary request, do direct vector fetch via Qdrant scroll
+        if search_filter is not None and (is_summary_query or not formatted_results):
             try:
-                vector_store = _get_vector_store()
-                raw_get = vector_store.get(where=filter_dict, limit=k)
-                docs = raw_get.get("documents", [])
-                metas = raw_get.get("metadatas", [])
-
-                existing_contents = {r["content"] for r in formatted_results}
-                for doc_str, meta_dict in zip(docs, metas):
-                    if doc_str not in existing_contents:
-                        formatted_results.append({
-                            "content": doc_str,
-                            "metadata": meta_dict or {},
-                            "score": 1.0,
-                        })
+                if QdrantClient is not None:
+                    client = _get_qdrant_client()
+                    collection_name = settings.qdrant_collection_name or "course_materials"
+                    scroll_res, _ = client.scroll(
+                        collection_name=collection_name,
+                        scroll_filter=search_filter,
+                        limit=k,
+                        with_payload=True,
+                        with_vectors=False,
+                    )
+                    existing_contents = {r["content"] for r in formatted_results}
+                    for point in scroll_res:
+                        payload = point.payload or {}
+                        page_content = payload.get("page_content", "") or payload.get("text", "")
+                        meta_dict = payload.get("metadata", {})
+                        if page_content and page_content not in existing_contents:
+                            formatted_results.append({
+                                "content": page_content,
+                                "metadata": meta_dict or {},
+                                "score": 1.0,
+                            })
             except Exception as get_err:
-                logger.warning(f"Direct fallback retrieval failed for filter {filter_dict}: {get_err}")
+                logger.warning(f"Direct fallback retrieval failed for filter {search_filter}: {get_err}")
 
         return formatted_results
 

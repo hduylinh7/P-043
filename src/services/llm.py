@@ -25,9 +25,9 @@ def get_llm(
             or "dummy-key-for-test"
         ).strip()
 
-        g_model = model_name or settings.model_name or "llama-3.3-70b-versatile"
+        g_model = model_name or settings.model_name or "openai/gpt-oss-120b"
         if "gemini" in g_model:
-            g_model = "llama-3.3-70b-versatile"
+            g_model = "openai/gpt-oss-120b"
 
         try:
             from langchain_groq import ChatGroq
@@ -91,13 +91,13 @@ def get_llm(
     try:
         from langchain_groq import ChatGroq
         return ChatGroq(
-            model=model_name or "llama-3.3-70b-versatile",
+            model=model_name or "openai/gpt-oss-120b",
             groq_api_key=api_key,
             temperature=temp,
         )
     except Exception:
         return ChatOpenAI(
-            model=model_name or "llama-3.3-70b-versatile",
+            model=model_name or "openai/gpt-oss-120b",
             api_key=api_key,
             base_url="https://api.groq.com/openai/v1",
             temperature=temp,
