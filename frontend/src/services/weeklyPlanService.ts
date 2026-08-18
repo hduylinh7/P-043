@@ -5,6 +5,7 @@ import {
   PlanTask,
   PlannerAgentRequestPayload,
   PlannerAgentResponseResult,
+  PlannerContext,
   TaskReflectionData,
   TaskStatus,
   UnifiedCalendarEvent,
@@ -101,6 +102,13 @@ export const weeklyPlanService = {
 
   async getUnifiedCalendar(weekStart?: string): Promise<UnifiedCalendarEvent[]> {
     const response = await api.get<UnifiedCalendarEvent[]>('/weekly-plans/unified-calendar', {
+      params: { week_start: weekStart },
+    });
+    return response.data;
+  },
+
+  async getPlannerContext(weekStart?: string): Promise<PlannerContext> {
+    const response = await api.get<PlannerContext>('/planner/context', {
       params: { week_start: weekStart },
     });
     return response.data;

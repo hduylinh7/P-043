@@ -39,6 +39,19 @@ def parse_datetime(val: datetime | str | None) -> datetime | None:
         return None
 
 
+def normalize_time_str(ts: str | None) -> str | None:
+    if not ts:
+        return ts
+    ts_clean = str(ts).strip()
+    parts = ts_clean.split(":")
+    if len(parts) >= 2:
+        h, m = parts[0], parts[1]
+        if len(h) == 1:
+            h = f"0{h}"
+        return f"{h}:{m[:2]}"
+    return ts_clean
+
+
 def pack_task_description(
     description: str | None = None,
     topic: str | None = None,
@@ -924,43 +937,62 @@ class WeeklyPlanService:
 
         # 2. Fetch Weekly Plan Tasks for requested week
         plans = await WeeklyPlanService.get_weekly_plans(db, current_user)
-        matched_plan = None
-        for p in plans:
-            p_start = parse_datetime(p.week_start_date)
-            if p_start and p_start.date() == monday:
-                matched_plan = p
-                break
+        sunday = monday + timedelta(days=6)
+        added_task_ids = set()
 
-        if matched_plan and matched_plan.tasks:
-            for t in matched_plan.tasks:
-                if not t.scheduled_date or not t.start_time or not t.end_time:
+        for p in plans:
+            if not p.tasks:
+                continue
+
+            is_plan_ai = p.generated_by_agent is not None
+
+            for t in p.tasks:
+                if t.id in added_task_ids:
                     continue
 
-                t_dt = parse_datetime(t.scheduled_date)
-                date_str = t_dt.strftime("%Y-%m-%d") if t_dt else str(t.scheduled_date).split("T")[0]
-                d_idx = t_dt.weekday() if t_dt else 0
+                t_dt = parse_datetime(t.scheduled_date) if t.scheduled_date else None
+                task_date = t_dt.date() if t_dt else None
+
+                # Check if task falls within requested week [monday, sunday]
+                if task_date:
+                    if not (monday <= task_date <= sunday):
+                        continue
+                else:
+                    # Fallback to plan date check
+                    p_start = parse_datetime(p.week_start_date)
+                    if p_start and not (monday <= p_start.date() <= sunday):
+                        continue
+
+                d_idx = task_date.weekday() if task_date else 0
                 d_name = day_names[d_idx]
+                date_str = task_date.strftime("%Y-%m-%d") if task_date else monday.strftime("%Y-%m-%d")
+
+                start_time_clean = normalize_time_str(t.start_time) or "09:00"
+                end_time_clean = normalize_time_str(t.end_time) or "10:00"
 
                 s_type = (t.source_type or "MANUAL").upper()
-                event_type = "STUDENT_STUDY" if s_type == "MANUAL" else "AI_STUDY"
+                is_ai_task = is_plan_ai or (s_type in ["AI_PLAN", "ASSIGNMENT", "GOAL", "AI"])
+                event_type = "AI_STUDY" if is_ai_task else "STUDENT_STUDY"
 
-                task_dict = t.model_dump() if hasattr(t, "model_dump") else t.__dict__
+                task_dto = serialize_task(t)
+                task_dict = task_dto.model_dump() if hasattr(task_dto, "model_dump") else task_dto.dict()
 
                 events.append({
                     "id": t.id,
                     "type": event_type,
                     "title": t.title,
-                    "description": t.description,
-                    "course_id": t.course_id,
-                    "course_name": t.course_name,
+                    "description": task_dto.description,
+                    "course_id": task_dto.course_id,
+                    "course_name": task_dto.course_name,
                     "course_code": None,
                     "day_of_week": d_name,
                     "scheduled_date": date_str,
-                    "start_time": t.start_time,
-                    "end_time": t.end_time,
-                    "priority": t.priority,
-                    "status": t.status,
+                    "start_time": start_time_clean,
+                    "end_time": end_time_clean,
+                    "priority": str(t.priority.value if hasattr(t.priority, "value") else t.priority),
+                    "status": str(t.status.value if hasattr(t.status, "value") else t.status),
                     "task_data": task_dict,
                 })
+                added_task_ids.add(t.id)
 
         return events

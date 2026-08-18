@@ -194,3 +194,26 @@ export interface PlannerAgentResponseResult {
   skipped_items: { title?: string; reason?: string }[];
   warnings: string[];
 }
+
+export interface PlannerAssignmentContext {
+  id: string;
+  title: string;
+  description?: string | null;
+  course_id?: string | null;
+  course_name?: string | null;
+  due_date?: string | null;
+  priority?: string | null;
+  estimated_hours?: number | null;
+  status?: string | null;
+}
+
+export interface PlannerContext {
+  student: { id: string };
+  planning_period: { week_start: string; week_end: string };
+  goals: any[];
+  assignments: PlannerAssignmentContext[];
+  course_materials: any[];
+  fixed_course_schedules: any[];
+  current_weekly_plan?: WeeklyPlan | null;
+}
+

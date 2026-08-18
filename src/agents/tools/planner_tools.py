@@ -27,7 +27,7 @@ from src.services.planner_context_builder import (
 )
 from src.services.weekly_plan_service import WeeklyPlanService, parse_datetime
 
-VALID_SOURCE_TYPES = {"ASSIGNMENT", "PERSONAL_TASK", "GOAL", "MANUAL"}
+VALID_SOURCE_TYPES = {"ASSIGNMENT", "PERSONAL_TASK", "GOAL", "MANUAL", "AI_PLAN", "AI"}
 
 
 class PlannerTools:

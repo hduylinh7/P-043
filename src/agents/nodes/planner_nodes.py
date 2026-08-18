@@ -513,7 +513,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
                 end_time=eff_end,
                 priority=normalize_priority(task_data.get("priority", "medium")),
                 estimated_duration=task_data.get("estimated_duration"),
-                source_type=task_data.get("source_type", "MANUAL"),
+                source_type=task_data.get("source_type", "AI_PLAN") or "AI_PLAN",
                 source_id=task_data.get("source_id"),
             )
             created_tasks.append(task_res.model_dump())
