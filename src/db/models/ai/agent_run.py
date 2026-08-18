@@ -15,8 +15,8 @@ class AgentRun(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     request_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     agent_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    status: Mapped[AgentRunStatusEnum] = mapped_column(
-        SQLEnum(AgentRunStatusEnum, native_enum=False),
+    status: Mapped[str] = mapped_column(
+        String(50),
         default=AgentRunStatusEnum.RUNNING,
         nullable=False,
     )

@@ -26,8 +26,8 @@ class Enrollment(Base, TimestampMixin):
     course_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    role: Mapped[EnrollmentRoleEnum] = mapped_column(
-        SQLEnum(EnrollmentRoleEnum, native_enum=False),
+    role: Mapped[str] = mapped_column(
+        String(50),
         default=EnrollmentRoleEnum.STUDENT,
         nullable=False,
     )

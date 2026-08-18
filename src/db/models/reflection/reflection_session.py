@@ -23,8 +23,8 @@ class ReflectionSession(Base, TimestampMixin):
     student_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    status: Mapped[ReflectionSessionStatusEnum] = mapped_column(
-        SQLEnum(ReflectionSessionStatusEnum, native_enum=False),
+    status: Mapped[str] = mapped_column(
+        String(50),
         default=ReflectionSessionStatusEnum.IN_PROGRESS,
         nullable=False,
     )

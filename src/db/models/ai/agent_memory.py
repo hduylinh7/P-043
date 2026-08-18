@@ -19,8 +19,8 @@ class AgentMemory(Base, TimestampMixin):
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    memory_type: Mapped[MemoryTypeEnum] = mapped_column(
-        SQLEnum(MemoryTypeEnum, native_enum=False),
+    memory_type: Mapped[str] = mapped_column(
+        String(50),
         default=MemoryTypeEnum.FACT,
         nullable=False,
     )

@@ -36,8 +36,8 @@ class Submission(Base, TimestampMixin):
     object_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     submission_text: Mapped[str | None] = mapped_column(String(5000), nullable=True)
     feedback: Mapped[str | None] = mapped_column(String(5000), nullable=True)
-    status: Mapped[SubmissionStatusEnum] = mapped_column(
-        SQLEnum(SubmissionStatusEnum, native_enum=False),
+    status: Mapped[str] = mapped_column(
+        String(50),
         default=SubmissionStatusEnum.UNSUBMITTED,
         nullable=False,
     )
