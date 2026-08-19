@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     google_api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
     openrouter_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL")
-    embedding_model_name: str = Field(default="models/text-embedding-004", validation_alias="EMBEDDING_MODEL_NAME")
+    embedding_model_name: str = Field(default="models/gemini-embedding-2", validation_alias="EMBEDDING_MODEL_NAME")
     model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
 
 
