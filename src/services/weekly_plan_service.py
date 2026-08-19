@@ -18,6 +18,9 @@ from src.models.weekly_plan import (
     PlanTaskResponse,
     PlanTaskStatusUpdateRequest,
     PlanTaskUpdateRequest,
+    SelfCheckEvalRequest,
+    SelfCheckEvalResponse,
+    StudySessionCompanionResponse,
     WeeklyPlanCreateRequest,
     WeeklyPlanResponse,
     WeeklyPlanUpdateRequest,
@@ -103,11 +106,12 @@ def pack_task_description(
     reflection_data: dict | None = None,
     ai_insight: str | None = None,
     suggested_next_focus: str | None = None,
+    companion_data: dict | None = None,
 ) -> str | None:
     has_meta = any([
         topic, what_to_study, what_to_do, reason, material_id, material_title,
         course_id, course_name, goal_id, goal_title, started_at, completed_at,
-        actual_duration, completed_activities, reflection_data, ai_insight, suggested_next_focus
+        actual_duration, completed_activities, reflection_data, ai_insight, suggested_next_focus, companion_data
     ])
     if not has_meta:
         return description
@@ -131,6 +135,7 @@ def pack_task_description(
         "reflection_data": reflection_data,
         "ai_insight": ai_insight,
         "suggested_next_focus": suggested_next_focus,
+        "companion_data": companion_data,
     }
     return json.dumps(meta, ensure_ascii=False)
 
@@ -149,6 +154,8 @@ def serialize_task(task: Task) -> PlanTaskResponse:
 
     clean_desc = meta.get("description") if meta else task.description
     clean_sched_date = format_iso_date_clean(task.scheduled_date)
+
+    companion_val = meta.get("companion_data")
 
     return PlanTaskResponse(
         id=task.id,
@@ -182,6 +189,7 @@ def serialize_task(task: Task) -> PlanTaskResponse:
         reflection_data=meta.get("reflection_data"),
         ai_insight=meta.get("ai_insight"),
         suggested_next_focus=meta.get("suggested_next_focus"),
+        companion_data=companion_val,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -896,6 +904,336 @@ class WeeklyPlanService:
         await db.commit()
         await db.refresh(task)
         return serialize_task(task)
+
+    @staticmethod
+    async def get_study_session_companion_data(
+        db: AsyncSession,
+        task_id: str,
+        current_user: UserResponse,
+    ) -> StudySessionCompanionResponse:
+        """
+        Generate or fetch cached grounded companion data for a Study Session:
+        - Learning Objectives
+        - AI Study Guide (Key Concepts, Focus Areas, Important Points, Sources)
+        - Source Traceability
+        - Related Assignment Info
+        - Quick Self-Check Questions (Non-graded)
+        """
+        WeeklyPlanService._ensure_student(current_user)
+
+        stmt = select(Task).options(selectinload(Task.weekly_goal)).where(Task.id == task_id)
+        res = await db.execute(stmt)
+        task = res.scalar_one_or_none()
+
+        if not task or not task.weekly_goal or task.weekly_goal.student_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or access denied.",
+            )
+
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        # If companion_data is already generated and saved in metadata, return it
+        cached_comp = existing_meta.get("companion_data")
+        if cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
+            try:
+                return StudySessionCompanionResponse(**cached_comp)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
+
+        # Retrieve course material chunks via RAGService
+        course_id = existing_meta.get("course_id")
+        material_id = existing_meta.get("material_id")
+        assignment_id = task.assignment_id or existing_meta.get("assignment_id")
+        topic = existing_meta.get("topic") or task.title
+        course_name = existing_meta.get("course_name") or "Khóa học"
+        what_to_study = existing_meta.get("what_to_study") or []
+        what_to_do = existing_meta.get("what_to_do") or []
+
+        # RAG Search
+        retrieved_chunks = []
+        try:
+            from src.services.rag_service import RAGService
+            query = f"{topic} {' '.join(what_to_study)}"
+            retrieved_chunks = RAGService.search_course_materials(
+                course_id=course_id,
+                query=query,
+                material_id=material_id,
+                assignment_id=assignment_id,
+                top_k=5,
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"RAG search failed for study session task {task_id}: {e}")
+
+        # Fetch Related Assignment info if assignment_id exists
+        related_assign_dict = None
+        if assignment_id:
+            try:
+                from src.db.models.learning.assignment import Assignment
+                a_stmt = select(Assignment).where(Assignment.id == assignment_id)
+                a_res = await db.execute(a_stmt)
+                assign_obj = a_res.scalar_one_or_none()
+                if assign_obj:
+                    due_str = format_iso_date_clean(assign_obj.due_at)
+                    related_assign_dict = {
+                        "id": assign_obj.id,
+                        "title": assign_obj.title,
+                        "due_date": due_str,
+                        "description": assign_obj.description,
+                        "why_relevant": f"Buổi học này củng cố các kiến thức trọng tâm để chuẩn bị cho bài tập '{assign_obj.title}'.",
+                    }
+            except Exception as a_err:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed fetching assignment details: {a_err}")
+
+        # Build Sources list
+        sources_list = []
+        if material_id and existing_meta.get("material_title"):
+            sources_list.append({
+                "title": existing_meta.get("material_title"),
+                "file_name": existing_meta.get("material_title"),
+                "material_id": material_id,
+                "course_id": course_id,
+            })
+        for chunk in retrieved_chunks:
+            meta = chunk.get("metadata", {})
+            f_name = meta.get("file_name") or meta.get("title")
+            m_id = meta.get("material_id")
+            c_id = meta.get("course_id") or course_id
+            if f_name and not any(s["file_name"] == f_name for s in sources_list):
+                sources_list.append({
+                    "title": meta.get("title") or f_name,
+                    "file_name": f_name,
+                    "material_id": m_id,
+                    "course_id": c_id,
+                })
+
+        context_text = "\n\n".join([
+            f"--- Snippet từ tài liệu '{c.get('metadata', {}).get('file_name', 'Tài liệu')}':\n{c.get('content', '')}"
+            for c in retrieved_chunks
+        ])
+
+        system_instruction = (
+            "You are a Personal Learning Companion AI Assistant. "
+            "Generate grounded Study Guide, Learning Objectives, and Quick Self-Check questions from the provided course materials.\n"
+            "STRICT RULES:\n"
+            "1. Ground all information strictly in provided materials. Do not hallucinate external facts.\n"
+            "2. learning_objectives: 3-4 actionable items in Vietnamese ('Giải thích...', 'Phân biệt...', 'Hiểu rõ...').\n"
+            "3. ai_study_guide:\n"
+            "   - key_concepts: 2-3 concepts (title, short definition in Vietnamese, main characteristics list, examples list).\n"
+            "   - focus_area: 1 sentence highlighted focus in Vietnamese (e.g. ⭐ Trọng tâm cần chú ý là...).\n"
+            "   - important_points: 3-5 key points in Vietnamese.\n"
+            "4. quick_self_check: 2-3 lightweight non-graded self-check questions in Vietnamese with hint and explanation.\n"
+            "5. Return valid JSON strictly matching the specified structure."
+        )
+
+        user_prompt = (
+            f"Study Session Context:\n"
+            f"- Course: {course_name}\n"
+            f"- Topic: {topic}\n"
+            f"- Topics to study: {', '.join(what_to_study)}\n"
+            f"- Activities: {', '.join(what_to_do)}\n\n"
+            f"Retrieved Course Material Snippets:\n"
+            f"{context_text if context_text else 'No detailed snippets retrieved. Generate standard framework based on topic.'}\n\n"
+            f"Return JSON:\n"
+            f'{{\n'
+            f'  "learning_objectives": [\n'
+            f'    {{"id": "1", "text": "Giải thích khái niệm...", "checked": false}}\n'
+            f'  ],\n'
+            f'  "ai_study_guide": {{\n'
+            f'    "key_concepts": [\n'
+            f'      {{"title": "...", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}}\n'
+            f'    ],\n'
+            f'    "focus_area": "⭐ Trọng tâm cần chú ý đặc biệt...",\n'
+            f'    "important_points": ["..."]\n'
+            f'  }},\n'
+            f'  "quick_self_check": [\n'
+            f'    {{"id": "q1", "question": "...", "type": "short_answer", "options": [], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
+            f'  ]\n'
+            f'}}'
+        )
+
+        comp_data_dict = {
+            "learning_objectives": [
+                {"id": "1", "text": f"Giải thích khái niệm cốt lõi về {topic}.", "checked": False},
+                {"id": "2", "text": f"Phân biệt đặc điểm và ứng dụng chính của {topic}.", "checked": False},
+                {"id": "3", "text": "Áp dụng kiến thức vào thực hành giải bài tập môn học.", "checked": False},
+            ],
+            "ai_study_guide": {
+                "key_concepts": [
+                    {
+                        "title": topic,
+                        "definition": f"Khái niệm và nguyên lý cốt lõi thuộc chủ đề {topic} môn {course_name}.",
+                        "main_characteristics": what_to_study or [f"Đặc điểm chính của {topic}"],
+                        "examples": [f"Ví dụ thực tế thuộc môn {course_name}"],
+                    }
+                ],
+                "focus_area": f"⭐ Tập trung hiểu rõ {topic} và ứng dụng của nó trong bài tập môn học.",
+                "important_points": what_to_study or [f"Ôn tập kiến thức {topic}"],
+                "sources": sources_list,
+            },
+            "related_assignment": related_assign_dict,
+            "quick_self_check": [
+                {
+                    "id": "q1",
+                    "question": f"Đâu là khái niệm cốt lõi của {topic}?",
+                    "type": "short_answer",
+                    "options": [],
+                    "hint": "Nắm định nghĩa cơ bản trong tài liệu bài giảng.",
+                    "sample_answer": f"{topic} là...",
+                    "explanation": f"Hiểu đúng khái niệm {topic} giúp sinh viên làm tốt các câu hỏi lý thuyết và bài tập.",
+                },
+                {
+                    "id": "q2",
+                    "question": f"Hãy nêu 1 ví dụ hoặc ứng dụng chính của {topic}?",
+                    "type": "short_answer",
+                    "options": [],
+                    "hint": "Liên hệ với bài học hoặc ví dụ thực tế.",
+                    "sample_answer": "Ứng dụng...",
+                    "explanation": "Khả năng đưa ra ví dụ minh chứng cho mức độ hiểu sâu bài học.",
+                }
+            ],
+            "sources": sources_list,
+        }
+
+        try:
+            from src.services.llm import get_llm
+            from langchain_core.messages import SystemMessage, HumanMessage
+            llm = get_llm(temperature=0.2)
+            res_msg = await llm.ainvoke([
+                SystemMessage(content=system_instruction),
+                HumanMessage(content=user_prompt),
+            ])
+            res_text = str(res_msg.content)
+            if "{" in res_text and "}" in res_text:
+                j_str = res_text[res_text.find("{"):res_text.rfind("}")+1]
+                parsed = json.loads(j_str)
+                if parsed.get("learning_objectives"):
+                    comp_data_dict["learning_objectives"] = parsed["learning_objectives"]
+                if parsed.get("ai_study_guide"):
+                    parsed_guide = parsed["ai_study_guide"]
+                    parsed_guide["sources"] = sources_list
+                    comp_data_dict["ai_study_guide"] = parsed_guide
+                if parsed.get("quick_self_check"):
+                    comp_data_dict["quick_self_check"] = parsed["quick_self_check"]
+        except Exception as llm_err:
+            import logging
+            logging.getLogger(__name__).warning(f"LLM study session companion generation failed: {llm_err}")
+
+        # Save companion_data into task description JSON metadata for instant reload
+        existing_meta["companion_data"] = comp_data_dict
+        task.description = pack_task_description(
+            description=existing_meta.get("description"),
+            topic=existing_meta.get("topic"),
+            what_to_study=existing_meta.get("what_to_study"),
+            what_to_do=existing_meta.get("what_to_do"),
+            reason=existing_meta.get("reason"),
+            material_id=existing_meta.get("material_id"),
+            material_title=existing_meta.get("material_title"),
+            course_id=existing_meta.get("course_id"),
+            course_name=existing_meta.get("course_name"),
+            goal_id=existing_meta.get("goal_id"),
+            goal_title=existing_meta.get("goal_title"),
+            started_at=existing_meta.get("started_at"),
+            completed_at=existing_meta.get("completed_at"),
+            actual_duration=existing_meta.get("actual_duration"),
+            completed_activities=existing_meta.get("completed_activities"),
+            reflection_data=existing_meta.get("reflection_data"),
+            ai_insight=existing_meta.get("ai_insight"),
+            suggested_next_focus=existing_meta.get("suggested_next_focus"),
+            companion_data=comp_data_dict,
+        )
+
+        await db.commit()
+        await db.refresh(task)
+
+        return StudySessionCompanionResponse(**comp_data_dict)
+
+    @staticmethod
+    async def evaluate_self_check_answer(
+        db: AsyncSession,
+        task_id: str,
+        payload: SelfCheckEvalRequest,
+        current_user: UserResponse,
+    ) -> SelfCheckEvalResponse:
+        """
+        Evaluate student's quick self-check answer using AI feedback (non-graded).
+        """
+        WeeklyPlanService._ensure_student(current_user)
+
+        stmt = select(Task).options(selectinload(Task.weekly_goal)).where(Task.id == task_id)
+        res = await db.execute(stmt)
+        task = res.scalar_one_or_none()
+
+        if not task or not task.weekly_goal or task.weekly_goal.student_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or access denied.",
+            )
+
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        topic = existing_meta.get("topic") or task.title
+        course_name = existing_meta.get("course_name") or "Khóa học"
+
+        feedback = "Câu trả lời của bạn đã thể hiện đúng ý chính cốt lõi!"
+        explanation = "Nhớ kết hợp thêm ví dụ cụ thể để nắm vững hơn."
+        is_correct = True
+
+        try:
+            from src.services.llm import get_llm
+            from langchain_core.messages import HumanMessage
+
+            llm = get_llm(temperature=0.3)
+            prompt = (
+                f"Đánh giá câu trả lời tự kiểm tra (Quick Self-Check) của sinh viên trong buổi học:\n"
+                f"- Môn học: {course_name}\n"
+                f"- Chủ đề: {topic}\n"
+                f"- Câu hỏi: {payload.question_text}\n"
+                f"- Câu trả lời của sinh viên: {payload.student_answer}\n\n"
+                f"Hãy đưa ra đánh giá nhẹ nhàng, mang tính hỗ trợ học tập (không chấm điểm gắt gao).\n"
+                f"Trả về đúng định dạng JSON:\n"
+                f'{{\n'
+                f'  "is_correct": true,\n'
+                f'  "feedback": "Nhận xét động viên 1-2 câu",\n'
+                f'  "explanation": "Giải thích chi tiết 1-2 câu",\n'
+                f'  "suggested_review": "Gợi ý điểm cần chú ý thêm"\n'
+                f'}}'
+            )
+
+            res = await llm.ainvoke([HumanMessage(content=prompt)])
+            text = str(res.content)
+            if "{" in text and "}" in text:
+                parsed = json.loads(text[text.find("{"):text.rfind("}")+1])
+                return SelfCheckEvalResponse(
+                    question_id=payload.question_id,
+                    is_correct=parsed.get("is_correct", True),
+                    feedback=parsed.get("feedback", feedback),
+                    explanation=parsed.get("explanation", explanation),
+                    suggested_review=parsed.get("suggested_review"),
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Self check evaluation LLM failed: {e}")
+
+        return SelfCheckEvalResponse(
+            question_id=payload.question_id,
+            is_correct=is_correct,
+            feedback=feedback,
+            explanation=explanation,
+        )
 
     @staticmethod
     async def get_unified_calendar(

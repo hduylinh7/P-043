@@ -212,7 +212,6 @@ class PlannerContextBuilder:
                 select(Assignment)
                 .options(
                     selectinload(Assignment.course),
-                    selectinload(Assignment.questions).selectinload(AssignmentQuestion.options),
                     selectinload(Assignment.checklists),
                 )
                 .where(
@@ -222,23 +221,26 @@ class PlannerContextBuilder:
                 .order_by(Assignment.due_at.asc().nulls_last())
             )
             assign_res = await db.execute(assign_stmt)
-            active_assignments = assign_res.scalars().all()
+            active_assignments = list(assign_res.scalars().all())
+
+            # Fallback: If no active assignments exist in explicit enrollments, fetch all non-closed system assignments
+            if not active_assignments:
+                fallback_assign_stmt = (
+                    select(Assignment)
+                    .options(       
+                        selectinload(Assignment.course),
+                        selectinload(Assignment.checklists),
+                    )
+                    .where(Assignment.status != "CLOSED")
+                    .order_by(Assignment.due_at.asc().nulls_last())
+                )
+                fallback_res = await db.execute(fallback_assign_stmt)
+                active_assignments = list(fallback_res.scalars().all())
 
             for a in active_assignments:
                 if a.id in submitted_assignment_ids:
                     continue  # Exclude completed assignments
                 course_title = a.course.name if a.course else None
-
-                # Extract question information
-                q_dicts = []
-                for q in (a.questions or []):
-                    opts = [{"option_text": opt.option_text} for opt in (q.options or [])]
-                    q_dicts.append({
-                        "question_text": q.question_text,
-                        "points": q.points,
-                        "expected_answer": q.expected_answer,
-                        "options": opts,
-                    })
 
                 # Extract checklist information
                 chk_dicts = []
@@ -248,15 +250,16 @@ class PlannerContextBuilder:
                         "description": c.description,
                     })
 
-                # Search vector store for embedded assignment chunks
+                # Retrieve vector chunks only if this assignment is explicitly targeted for AI generation
                 embedded_chunks = []
-                try:
-                    rag_res = RAGService.search_course_materials(
-                        assignment_id=a.id, query=a.title, top_k=5
-                    )
-                    embedded_chunks = [r["content"] for r in rag_res if r.get("content")]
-                except Exception as rag_err:
-                    logger.debug(f"Could not retrieve embedded vector chunks for assignment {a.id}: {rag_err}")
+                if target_assignment_id and target_assignment_id == a.id:
+                    try:
+                        rag_res = RAGService.search_course_materials(
+                            assignment_id=a.id, query=a.title, top_k=5
+                        )
+                        embedded_chunks = [r["content"] for r in rag_res if r.get("content")]
+                    except Exception as rag_err:
+                        logger.debug(f"Could not retrieve vector chunks for target assignment {a.id}: {rag_err}")
 
                 assignment_dtos.append(
                     AssignmentContextDTO(
@@ -270,7 +273,7 @@ class PlannerContextBuilder:
                         estimated_hours=a.estimated_hours,
                         status=a.status,
                         attachment_file_name=a.attachment_file_name,
-                        questions=q_dicts,
+                        questions=[],
                         checklists=chk_dicts,
                         embedded_chunks=embedded_chunks,
                     )

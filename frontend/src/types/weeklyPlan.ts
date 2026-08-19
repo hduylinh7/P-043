@@ -33,6 +33,67 @@ export interface TaskReflectionData {
   achieved_goal?: 'yes' | 'partially' | 'no' | string;
 }
 
+export interface LearningObjective {
+  id: string;
+  text: string;
+  checked?: boolean;
+}
+
+export interface KeyConcept {
+  title: string;
+  definition: string;
+  main_characteristics?: string[];
+  examples?: string[];
+}
+
+export interface SourceReference {
+  title: string;
+  file_name: string;
+  material_id?: string | null;
+  course_id?: string | null;
+}
+
+export interface AIStudyGuide {
+  key_concepts: KeyConcept[];
+  focus_area?: string | null;
+  important_points: string[];
+  sources?: SourceReference[];
+}
+
+export interface RelatedAssignmentData {
+  id: string;
+  title: string;
+  due_date?: string | null;
+  description?: string | null;
+  why_relevant?: string | null;
+}
+
+export interface QuickSelfCheckQuestion {
+  id: string;
+  question: string;
+  type?: 'short_answer' | 'multiple_choice' | string;
+  options?: string[];
+  hint?: string | null;
+  sample_answer?: string | null;
+  explanation?: string | null;
+}
+
+export interface StudySessionCompanionData {
+  learning_objectives: LearningObjective[];
+  ai_study_guide?: AIStudyGuide | null;
+  related_assignment?: RelatedAssignmentData | null;
+  quick_self_check: QuickSelfCheckQuestion[];
+  sources: SourceReference[];
+}
+
+export interface SelfCheckEvaluationResult {
+  question_id: string;
+  is_correct?: boolean | null;
+  feedback: string;
+  explanation?: string | null;
+  suggested_review?: string | null;
+}
+
 export interface PlanTask {
   id: string;
   weekly_goal_id: string;
@@ -65,6 +126,7 @@ export interface PlanTask {
   reflection_data?: TaskReflectionData | null;
   ai_insight?: string | null;
   suggested_next_focus?: string | null;
+  companion_data?: StudySessionCompanionData | null;
   created_at: string;
   updated_at: string;
 }

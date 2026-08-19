@@ -10,8 +10,8 @@ import {
   Form,
   Input,
   Select,
-  Radio,
   Tabs,
+  Tooltip,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -24,13 +24,16 @@ import {
   SendOutlined,
   UserOutlined,
   TrophyOutlined,
-  DownloadOutlined,
   BulbOutlined,
   QuestionCircleOutlined,
   FilePdfOutlined,
   EyeOutlined,
   ExperimentOutlined,
-  CompassOutlined,
+  AimOutlined,
+  StarOutlined,
+  BookFilled,
+  FormOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
@@ -44,7 +47,12 @@ import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
 import { materialService } from '../services/materialService';
 import { api, ChatMessage, API_BASE_URL } from '../services/api';
-import { PlanTask, TaskReflectionData } from '../types/weeklyPlan';
+import {
+  PlanTask,
+  TaskReflectionData,
+  StudySessionCompanionData,
+  SelfCheckEvaluationResult,
+} from '../types/weeklyPlan';
 
 const { TextArea } = Input;
 
@@ -64,6 +72,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
   const [materialFileName, setMaterialFileName] = useState<string | null>(null);
   const [materialMimeType, setMaterialMimeType] = useState<string | null>(null);
 
+  // Companion Data State (Objectives, Study Guide, Self-Check)
+  const [companionData, setCompanionData] = useState<StudySessionCompanionData | null>(null);
+  const [companionLoading, setCompanionLoading] = useState<boolean>(false);
+  const [checkedObjectives, setCheckedObjectives] = useState<string[]>([]);
+  const [selfCheckAnswers, setSelfCheckAnswers] = useState<Record<string, string>>({});
+  const [selfCheckEvalResults, setSelfCheckEvalResults] = useState<Record<string, SelfCheckEvaluationResult>>({});
+  const [selfCheckLoading, setSelfCheckLoading] = useState<Record<string, boolean>>({});
+
   // Session Timer State
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
 
@@ -79,13 +95,25 @@ export const StudySessionWorkspacePage: React.FC = () => {
   const [chatSessionId, setChatSessionId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Task Details
+  // Fetch Task & Companion Details
   const fetchTaskDetails = async () => {
     if (!taskId) return;
     try {
       setLoading(true);
       const fetchedTask = await weeklyPlanService.getTaskById(taskId);
       setCompletedActivities(fetchedTask.completed_activities || []);
+
+      // Auto start session if status is todo
+      const isTodo = fetchedTask.status === 'todo' || fetchedTask.status === 'TODO';
+      if (isTodo) {
+        try {
+          const startedTask = await weeklyPlanService.startStudySession(taskId);
+          fetchedTask.status = startedTask.status;
+          fetchedTask.started_at = startedTask.started_at;
+        } catch (e) {
+          console.warn('Auto start study session failed:', e);
+        }
+      }
 
       if (fetchedTask.course_id) {
         let matId = fetchedTask.material_id;
@@ -127,10 +155,30 @@ export const StudySessionWorkspacePage: React.FC = () => {
         const seconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
         setElapsedSeconds(seconds);
       }
+
+      // Fetch Companion Data (Objectives, AI Study Guide, Quick Self Check)
+      fetchCompanionData();
+
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tải thông tin buổi học.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompanionData = async () => {
+    if (!taskId) return;
+    try {
+      setCompanionLoading(true);
+      const data = await weeklyPlanService.getStudySessionCompanionData(taskId);
+      setCompanionData(data);
+      if (data?.learning_objectives) {
+        setCheckedObjectives(data.learning_objectives.filter((o) => o.checked).map((o) => o.id));
+      }
+    } catch (err) {
+      console.warn('Failed loading companion data:', err);
+    } finally {
+      setCompanionLoading(false);
     }
   };
 
@@ -172,6 +220,32 @@ export const StudySessionWorkspacePage: React.FC = () => {
       setTask(updatedTask);
     } catch (err) {
       message.error('Không thể lưu trạng thái mục cần làm.');
+    }
+  };
+
+  // Toggle Learning Objective
+  const handleToggleObjective = (objId: string) => {
+    setCheckedObjectives((prev) =>
+      prev.includes(objId) ? prev.filter((id) => id !== objId) : [...prev, objId]
+    );
+  };
+
+  // Evaluate Self Check Answer
+  const handleEvaluateSelfCheck = async (questionId: string, questionText: string) => {
+    const studentAnswer = selfCheckAnswers[questionId]?.trim();
+    if (!studentAnswer || !taskId) {
+      message.warning('Vui lòng nhập câu trả lời trước khi kiểm tra.');
+      return;
+    }
+    setSelfCheckLoading((prev) => ({ ...prev, [questionId]: true }));
+    try {
+      const result = await weeklyPlanService.evaluateSelfCheck(taskId, questionId, questionText, studentAnswer);
+      setSelfCheckEvalResults((prev) => ({ ...prev, [questionId]: result }));
+      message.success('AI đã gửi nhận xét đánh giá!');
+    } catch (err) {
+      message.error('Không thể gửi đánh giá câu hỏi.');
+    } finally {
+      setSelfCheckLoading((prev) => ({ ...prev, [questionId]: false }));
     }
   };
 
@@ -235,6 +309,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
         assignment_id: task.assignment_id,
         goal_title: task.goal_title,
         reason: task.reason,
+        learning_objectives: companionData?.learning_objectives,
+        focus_area: companionData?.ai_study_guide?.focus_area,
+        related_assignment: companionData?.related_assignment,
       };
 
       const res = await api.sendMessage(
@@ -289,7 +366,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 font-sans">
-        <Spin size="large" tip="Đang khởi tạo không gian học tập..." />
+        <Spin size="large" tip="Đang khởi tạo không gian học tập Learning Companion..." />
       </div>
     );
   }
@@ -309,6 +386,12 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
   const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
   const isInProgress = task.status === 'in_progress' || task.status === 'IN_PROGRESS';
+
+  const relatedAssign = companionData?.related_assignment || (task.assignment_id ? {
+    id: task.assignment_id,
+    title: task.title,
+    why_relevant: `Buổi học giúp bạn củng cố các kiến thức quan trọng để thực hiện bài tập liên quan.`,
+  } : null);
 
   return (
     <div className={`flex h-screen font-sans ${isDark ? 'bg-[#0B1117] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
@@ -399,8 +482,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     key: 'plan',
                     label: (
                       <span className="flex items-center gap-2 px-2 py-1">
-                        <FileTextOutlined />
-                        <span>Kế hoạch & Checklist</span>
+                        <AimOutlined className="text-emerald-500" />
+                        <span>Study Session Companion</span>
                       </span>
                     ),
                   },
@@ -488,7 +571,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* COURSE & TOPIC CARD */}
+                  {/* COURSE & TOPIC HEADER CARD */}
                   <div className={`p-5 rounded-2xl border space-y-3 ${
                     isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
                   }`}>
@@ -516,22 +599,241 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* WHAT TO STUDY SECTION */}
-                  {task.what_to_study && task.what_to_study.length > 0 && (
+                  {/* SECTION 1: 🎯 LEARNING OBJECTIVES */}
+                  <div className={`p-5 rounded-2xl border space-y-4 ${
+                    isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="flex items-center justify-between border-b pb-3 border-slate-700/50">
+                      <div className="flex items-center gap-2 text-emerald-500 font-extrabold text-sm uppercase tracking-wider">
+                        <AimOutlined className="text-lg text-emerald-400" />
+                        <span>🎯 Learning Objectives (Mục tiêu bài học)</span>
+                      </div>
+                      {companionLoading && <Spin size="small" />}
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        {checkedObjectives.length} / {(companionData?.learning_objectives || []).length} hoàn thành
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 m-0 italic">
+                      Sau khi hoàn thành buổi học này, bạn nên nắm vững và thực hiện được các mục tiêu sau:
+                    </p>
+
+                    {companionData?.learning_objectives && companionData.learning_objectives.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {companionData.learning_objectives.map((obj) => {
+                          const isChecked = checkedObjectives.includes(obj.id);
+                          return (
+                            <div
+                              key={obj.id}
+                              onClick={() => handleToggleObjective(obj.id)}
+                              className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
+                                isChecked
+                                  ? isDark
+                                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                                    : 'bg-emerald-50 border-emerald-300 text-emerald-800 font-medium'
+                                  : isDark
+                                  ? 'bg-slate-900/80 border-slate-800 text-slate-200 hover:border-slate-700'
+                                  : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onChange={() => handleToggleObjective(obj.id)}
+                                className="shrink-0 scale-110"
+                              />
+                              <span className={`font-semibold text-sm select-none flex-1 ${isChecked ? 'line-through opacity-80' : ''}`}>
+                                {obj.text}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {[
+                          `Giải thích nội dung cốt lõi của bài học ${task.topic || task.title}`,
+                          `Phân biệt các đặc điểm chính và cách áp dụng vào thực hành`,
+                          `Vận dụng kiến thức để giải bài tập thuộc môn ${task.course_name || 'học'}`,
+                        ].map((txt, idx) => (
+                          <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-black/5 dark:bg-white/5 text-sm font-semibold">
+                            <span className="text-emerald-500 font-bold">□</span>
+                            <span>{txt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SECTION 2: 📖 AI STUDY GUIDE */}
+                  <div className={`p-5 rounded-2xl border space-y-4 ${
+                    isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="flex items-center justify-between border-b pb-3 border-slate-700/50">
+                      <div className="flex items-center gap-2 text-amber-500 font-extrabold text-sm uppercase tracking-wider">
+                        <BookFilled className="text-lg text-amber-400" />
+                        <span>📖 AI Study Guide (Hướng dẫn trọng tâm bài học)</span>
+                      </div>
+                      <Tag color="warning" className="font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                        GROUNDED RAG
+                      </Tag>
+                    </div>
+
+                    {/* FOCUS AREA HIGHLIGHT BANNER */}
+                    {companionData?.ai_study_guide?.focus_area && (
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-300 font-bold text-xs flex items-start gap-2.5">
+                        <StarOutlined className="text-amber-400 text-base shrink-0 mt-0.5" />
+                        <div className="leading-relaxed">
+                          <span className="uppercase font-black block text-[10px] tracking-wider text-amber-500">Trọng tâm cần đặc biệt chú ý:</span>
+                          <span>{companionData.ai_study_guide.focus_area}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* KEY CONCEPTS */}
+                    {companionData?.ai_study_guide?.key_concepts && companionData.ai_study_guide.key_concepts.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 m-0">
+                          Khái niệm cốt lõi (Key Concepts):
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {companionData.ai_study_guide.key_concepts.map((kc, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-4 rounded-xl border space-y-2 ${
+                                isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200'
+                              }`}
+                            >
+                              <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-500 text-xs flex items-center justify-center font-bold">
+                                  {idx + 1}
+                                </span>
+                                <span>{kc.title}</span>
+                              </div>
+                              <p className="text-xs text-slate-600 dark:text-slate-300 m-0 leading-relaxed font-medium">
+                                {kc.definition}
+                              </p>
+                              {kc.main_characteristics && kc.main_characteristics.length > 0 && (
+                                <div className="space-y-1 pt-1">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase">Đặc điểm chính:</span>
+                                  <ul className="list-disc list-inside text-xs text-slate-700 dark:text-slate-300 space-y-0.5 font-medium">
+                                    {kc.main_characteristics.map((c, cIdx) => (
+                                      <li key={cIdx}>{c}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {kc.examples && kc.examples.length > 0 && (
+                                <div className="pt-1 text-xs text-purple-400 italic">
+                                  💡 Ví dụ: {kc.examples.join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* IMPORTANT POINTS */}
+                    {companionData?.ai_study_guide?.important_points && companionData.ai_study_guide.important_points.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 m-0">
+                          Các điểm quan trọng cần nhớ:
+                        </h4>
+                        <ul className="list-disc list-inside space-y-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+                          {companionData.ai_study_guide.important_points.map((pt, idx) => (
+                            <li key={idx} className="leading-relaxed">
+                              {pt}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* SECTION 3: 📚 SOURCE TRACEABILITY */}
+                    <div className="pt-3 border-t border-slate-700/40 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">📚 Nguồn tham khảo:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(companionData?.sources && companionData.sources.length > 0) ? (
+                            companionData.sources.map((src, sIdx) => (
+                              <button
+                                key={sIdx}
+                                onClick={() => setActiveTab('material')}
+                                className="px-2.5 py-1 rounded-lg border text-xs font-bold bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5"
+                              >
+                                <FilePdfOutlined />
+                                <span>{src.title || src.file_name}</span>
+                              </button>
+                            ))
+                          ) : task.material_title ? (
+                            <button
+                              onClick={() => setActiveTab('material')}
+                              className="px-2.5 py-1 rounded-lg border text-xs font-bold bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5"
+                            >
+                              <FilePdfOutlined />
+                              <span>📄 {task.material_title}</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Trích xuất từ dữ liệu bài giảng</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {task.course_id && task.material_id && (
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<EyeOutlined />}
+                          onClick={() => setActiveTab('material')}
+                          className="text-amber-500 hover:text-amber-400 font-bold text-xs p-0"
+                        >
+                          Mở Trình Xem Tài Liệu
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SECTION 4: 📝 RELATED ASSIGNMENT */}
+                  {relatedAssign && (
                     <div className={`p-5 rounded-2xl border space-y-3 ${
                       isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
                     }`}>
-                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs uppercase tracking-wider">
-                        <BookOutlined />
-                        <span>Nội dung cần học (What to study):</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-blue-400 font-extrabold text-sm uppercase tracking-wider">
+                          <FormOutlined className="text-lg text-blue-400" />
+                          <span>📝 Related Assignment (Bài tập liên quan)</span>
+                        </div>
+                        {relatedAssign.due_date && (
+                          <Tag color="error" className="font-bold text-xs px-2.5 py-0.5 rounded-full">
+                            Deadline: {dayjs(relatedAssign.due_date).format('DD/MM/YYYY')}
+                          </Tag>
+                        )}
                       </div>
-                      <ul className="list-disc list-inside space-y-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">
-                        {task.what_to_study.map((item, idx) => (
-                          <li key={idx} className="leading-relaxed">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
+
+                      <div className="space-y-1.5">
+                        <h3 className="font-extrabold text-base text-slate-900 dark:text-white m-0">
+                          {relatedAssign.title}
+                        </h3>
+                        {relatedAssign.why_relevant && (
+                          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium m-0 leading-relaxed">
+                            💡 <b>Lý do liên quan:</b> {relatedAssign.why_relevant}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-2 flex justify-start">
+                        <Button
+                          type="primary"
+                          icon={<LinkOutlined />}
+                          onClick={() => {
+                            const cId = task.course_id || 'all';
+                            navigate(`/courses/${cId}?assignment=${relatedAssign.id}`);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-500 font-bold text-xs rounded-xl"
+                        >
+                          View Assignment Details (Mở bài tập)
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -585,79 +887,102 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* RESOURCE CARDS (MATERIAL & ASSIGNMENT) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* COURSE MATERIAL CARD */}
-                    <div className={`p-4 rounded-2xl border space-y-3 ${
-                      isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-                    }`}>
-                      <div className="text-xs uppercase font-extrabold text-amber-500 tracking-wider flex items-center gap-1.5">
-                        <FileTextOutlined />
-                        <span>Tài liệu học tập (Course Material)</span>
+                  {/* SECTION 5: 🧠 QUICK SELF-CHECK */}
+                  <div className={`p-5 rounded-2xl border space-y-4 ${
+                    isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="flex items-center justify-between border-b pb-3 border-slate-700/50">
+                      <div className="flex items-center gap-2 text-purple-400 font-extrabold text-sm uppercase tracking-wider">
+                        <ExperimentOutlined className="text-lg text-purple-400" />
+                        <span>🧠 Quick Self-Check (Tự kiểm tra nhanh)</span>
                       </div>
-                      {task.material_title && task.material_title !== 'No matching course material was found.' ? (
-                        <div className="space-y-2">
-                          <p className="font-bold text-sm truncate text-slate-800 dark:text-slate-100 m-0">
-                            📄 {task.material_title}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<EyeOutlined />}
-                              onClick={() => setActiveTab('material')}
-                              className="bg-amber-600 hover:bg-amber-500 font-bold text-xs"
-                            >
-                              Đọc trong Workspace
-                            </Button>
-                            {task.course_id && task.material_id && (
-                              <Button
-                                type="default"
-                                size="small"
-                                icon={<LinkOutlined />}
-                                onClick={() => navigate(`/courses/${task.course_id}/materials/${task.material_id}`)}
-                                className="font-bold text-xs"
-                              >
-                                Mở Trình xem Chi Tiết
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic m-0">Chưa gắn tài liệu học tập cụ thể.</p>
-                      )}
+                      <Tag color="purple" className="font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                        NON-GRADED STUDY AID
+                      </Tag>
                     </div>
 
-                    {/* RELATED ASSIGNMENT CARD */}
-                    <div className={`p-4 rounded-2xl border space-y-3 ${
-                      isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-                    }`}>
-                      <div className="text-xs uppercase font-extrabold text-blue-400 tracking-wider flex items-center gap-1.5">
-                        <BookOutlined />
-                        <span>Bài tập liên quan (Assignment)</span>
+                    <p className="text-xs text-slate-400 m-0 italic">
+                      Kiểm tra nhanh mức độ hiểu bài của bạn. AI sẽ hỗ trợ nhận xét ngay sau khi bạn trả lời (không tính điểm bài tập chính thức).
+                    </p>
+
+                    {companionData?.quick_self_check && companionData.quick_self_check.length > 0 ? (
+                      <div className="space-y-4">
+                        {companionData.quick_self_check.map((q, idx) => {
+                          const evalRes = selfCheckEvalResults[q.id];
+                          const isEvaluating = selfCheckLoading[q.id];
+                          return (
+                            <div
+                              key={q.id}
+                              className={`p-4 rounded-xl border space-y-3 ${
+                                isDark ? 'bg-slate-900/70 border-slate-800' : 'bg-slate-50 border-slate-200'
+                              }`}
+                            >
+                              <div className="font-bold text-sm text-slate-900 dark:text-white flex items-start gap-2">
+                                <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <span>{q.question}</span>
+                              </div>
+
+                              {q.hint && (
+                                <div className="text-[11px] text-slate-400 italic">
+                                  💡 Gợi ý: {q.hint}
+                                </div>
+                              )}
+
+                              <div className="space-y-2">
+                                <TextArea
+                                  rows={2}
+                                  placeholder="Nhập câu trả lời của bạn..."
+                                  value={selfCheckAnswers[q.id] || ''}
+                                  onChange={(e) =>
+                                    setSelfCheckAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                                  }
+                                  className="rounded-xl border text-xs font-medium p-2.5"
+                                />
+
+                                <div className="flex justify-end">
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    icon={<CheckOutlined />}
+                                    loading={isEvaluating}
+                                    onClick={() => handleEvaluateSelfCheck(q.id, q.question)}
+                                    className="bg-purple-600 hover:bg-purple-500 font-bold text-xs rounded-lg"
+                                  >
+                                    [Check] Kiểm tra với AI
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* AI EVALUATION RESULT DISPLAY */}
+                              {evalRes && (
+                                <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 space-y-1.5 text-xs">
+                                  <div className="font-bold text-purple-400 flex items-center gap-1.5">
+                                    <CheckCircleOutlined className="text-emerald-400" />
+                                    <span>AI Feedback: {evalRes.feedback}</span>
+                                  </div>
+                                  {evalRes.explanation && (
+                                    <p className="text-slate-300 m-0 leading-relaxed font-medium">
+                                      💡 <b>Giải thích chi tiết:</b> {evalRes.explanation}
+                                    </p>
+                                  )}
+                                  {evalRes.suggested_review && (
+                                    <div className="text-[11px] text-amber-400 font-semibold pt-1">
+                                      🔍 Trọng tâm cần đọc lại: {evalRes.suggested_review}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                      {task.assignment_id ? (
-                        <div className="space-y-2">
-                          <p className="font-bold text-sm truncate text-slate-800 dark:text-slate-100 m-0">
-                            📝 {task.title}
-                          </p>
-                          <Button
-                            type="default"
-                            size="small"
-                            icon={<LinkOutlined />}
-                            onClick={() => {
-                              const cId = task.course_id || 'all';
-                              navigate(`/courses/${cId}?assignment=${task.assignment_id}`);
-                            }}
-                            className="font-bold text-xs"
-                          >
-                            Open Assignment
-                          </Button>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic m-0">Không có bài tập đánh giá liên quan.</p>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="p-4 rounded-xl bg-black/5 dark:bg-white/5 text-xs text-slate-400 text-center italic">
+                        Hãy nhấn vào nút Trợ lý AI ở khung bên phải để khởi chạy chế độ kiểm tra câu hỏi tương tác!
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -789,7 +1114,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   {/* QUICK PRESET CHIPS */}
                   <div className="space-y-1.5 w-full text-left pt-2">
                     <button
-                      onClick={() => handleSendChatMessage('Hỏi tôi 1 câu hỏi trắc nghiệm để kiểm tra xem tôi hiểu bài này chưa (dừng lại đợi tôi trả lời trước khi giải thích).')}
+                      onClick={() => handleSendChatMessage('Hỏi tôi 1 câu hỏi trắc nghiệm/tự luận để kiểm tra xem tôi hiểu bài này chưa (dừng lại đợi tôi trả lời trước khi giải thích).')}
                       className="w-full text-left text-xs p-2.5 rounded-xl border bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20 font-bold transition-colors flex items-center gap-2"
                     >
                       <ExperimentOutlined className="text-amber-400" />
@@ -904,7 +1229,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
         </div>
       </main>
 
-      {/* REFLECTION MODAL (5 QUESTIONS STEP BEFORE COMPLETION) */}
+      {/* REFLECTION MODAL (STEP BEFORE COMPLETION) */}
       <Modal
         title={
           <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-extrabold text-base">

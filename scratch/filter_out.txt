@@ -1,0 +1,15 @@
+--- TEST 1: search_course_materials with material_id & course_id ---
+Results count: 9
+ - Content length: 618, score: 0.5145657
+ - Content length: 859, score: 0.50369704
+ - Content length: 967, score: 0.5024578
+ - Content length: 976, score: 0.49878287
+ - Content length: 801, score: 0.49831557
+ - Content length: 631, score: 1.0
+ - Content length: 842, score: 1.0
+ - Content length: 949, score: 1.0
+ - Content length: 864, score: 1.0
+
+--- TEST 2: similarity_search_with_score directly ---
+Filter key='metadata.material_id' count: 5
+Filter combined count: 5

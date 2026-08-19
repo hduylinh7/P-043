@@ -6,6 +6,8 @@ import {
   PlannerAgentRequestPayload,
   PlannerAgentResponseResult,
   PlannerContext,
+  SelfCheckEvaluationResult,
+  StudySessionCompanionData,
   TaskReflectionData,
   TaskStatus,
   UnifiedCalendarEvent,
@@ -92,6 +94,20 @@ export const weeklyPlanService = {
 
   async saveTaskReflection(taskId: string, reflectionData: TaskReflectionData): Promise<PlanTask> {
     const response = await api.post<PlanTask>(`/tasks/${taskId}/reflection`, reflectionData);
+    return response.data;
+  },
+
+  async getStudySessionCompanionData(taskId: string): Promise<StudySessionCompanionData> {
+    const response = await api.get<StudySessionCompanionData>(`/tasks/${taskId}/study-companion`);
+    return response.data;
+  },
+
+  async evaluateSelfCheck(taskId: string, questionId: string, questionText: string, studentAnswer: string): Promise<SelfCheckEvaluationResult> {
+    const response = await api.post<SelfCheckEvaluationResult>(`/tasks/${taskId}/self-check/evaluate`, {
+      question_id: questionId,
+      question_text: questionText,
+      student_answer: studentAnswer,
+    });
     return response.data;
   },
 

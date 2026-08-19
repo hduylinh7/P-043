@@ -1,0 +1,13 @@
+Total Users in DB: 5
+User: hoanglinhdz2k4@gmail.com | ID: 9aa81ebc-978e-49c8-ba53-252aeb329502 | Name: Duy Linh Hoàng
+User: hoanglinhvt2k4@gmail.com | ID: 83359393-33c4-45aa-a65d-6c80e20e4b25 | Name: Linh Hoàng Duy
+User: hduylinh7@gmail.com | ID: 1bdc722a-c31a-4c38-a23b-f4e6a23bfc85 | Name: Duy Linh Hoàng
+User: hoangduylinh2k4@gmail.com | ID: 5c93f032-8c94-4845-a47b-894aedd80eaf | Name: Duy Linh Hoang
+User: student_alpha@example.com | ID: f92bcc70-8288-4ca5-ac27-d050f71a7435 | Name: Student Alpha
+
+Total Assignments in database: 0
+
+Total Enrollments for student (9aa81ebc-978e-49c8-ba53-252aeb329502): 1
+ - Enrolled Course ID: a6315168-eddf-4645-8f08-556f53b9e1b1, Role: student
+
+PlannerContext Assignments count: 0

@@ -622,18 +622,23 @@ class RAGService:
         settings = get_settings()
         k = top_k if top_k is not None else settings.rag_top_k
 
-        if assignment_id:
-            search_filter = models.Filter(
-                must=[models.FieldCondition(key="metadata.assignment_id", match=models.MatchValue(value=assignment_id))]
+        must_conditions = []
+        if material_id:
+            must_conditions.append(
+                models.FieldCondition(key="metadata.material_id", match=models.MatchValue(value=material_id))
             )
-        elif material_id:
-            search_filter = models.Filter(
-                must=[models.FieldCondition(key="metadata.material_id", match=models.MatchValue(value=material_id))]
+        elif assignment_id:
+            must_conditions.append(
+                models.FieldCondition(key="metadata.assignment_id", match=models.MatchValue(value=assignment_id))
             )
-        elif course_id:
-            search_filter = models.Filter(
-                must=[models.FieldCondition(key="metadata.course_id", match=models.MatchValue(value=course_id))]
+
+        if course_id:
+            must_conditions.append(
+                models.FieldCondition(key="metadata.course_id", match=models.MatchValue(value=course_id))
             )
+
+        if must_conditions:
+            search_filter = models.Filter(must=must_conditions)
         else:
             search_filter = None
 

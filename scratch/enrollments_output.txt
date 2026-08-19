@@ -1,0 +1,44 @@
+--- DATABASE SUMMARY ---
+Total Users: 5
+Total Courses: 1
+Total Assignments: 3
+  Assignment: id=b55de17f-2472-4e0b-8bf9-7d6acd39e6e8, title='Assignment 1: Linear Regression & Supervised Learning', course_id=a6315168-eddf-4645-8f08-556f53b9e1b1, status=PUBLISHED
+  Assignment: id=684c67f8-c174-4597-b923-7f88da330b7b, title='Assignment 2: Classification with Support Vector Machines & Decision Trees', course_id=a6315168-eddf-4645-8f08-556f53b9e1b1, status=PUBLISHED
+  Assignment: id=a5fc295a-f8bf-4ffb-9f2f-35cd08f14f4e, title='Mini Project: Deep Neural Network Image Classification', course_id=a6315168-eddf-4645-8f08-556f53b9e1b1, status=PUBLISHED
+
+--- USER ENROLLMENTS & CONTEXT ---
+
+User: hoanglinhdz2k4@gmail.com (ID: 9aa81ebc-978e-49c8-ba53-252aeb329502)
+  Enrollments (1): ['a6315168-eddf-4645-8f08-556f53b9e1b1']
+  PlannerContext Assignments returned: 3
+    -> b55de17f-2472-4e0b-8bf9-7d6acd39e6e8 | 'Assignment 1: Linear Regression & Supervised Learning' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> 684c67f8-c174-4597-b923-7f88da330b7b | 'Assignment 2: Classification with Support Vector Machines & Decision Trees' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> a5fc295a-f8bf-4ffb-9f2f-35cd08f14f4e | 'Mini Project: Deep Neural Network Image Classification' | Course: 'Kỹ nghệ tri thức và học máy'
+
+User: hoanglinhvt2k4@gmail.com (ID: 83359393-33c4-45aa-a65d-6c80e20e4b25)
+  Enrollments (0): []
+  PlannerContext Assignments returned: 3
+    -> b55de17f-2472-4e0b-8bf9-7d6acd39e6e8 | 'Assignment 1: Linear Regression & Supervised Learning' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> 684c67f8-c174-4597-b923-7f88da330b7b | 'Assignment 2: Classification with Support Vector Machines & Decision Trees' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> a5fc295a-f8bf-4ffb-9f2f-35cd08f14f4e | 'Mini Project: Deep Neural Network Image Classification' | Course: 'Kỹ nghệ tri thức và học máy'
+
+User: hduylinh7@gmail.com (ID: 1bdc722a-c31a-4c38-a23b-f4e6a23bfc85)
+  Enrollments (0): []
+  PlannerContext Assignments returned: 3
+    -> b55de17f-2472-4e0b-8bf9-7d6acd39e6e8 | 'Assignment 1: Linear Regression & Supervised Learning' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> 684c67f8-c174-4597-b923-7f88da330b7b | 'Assignment 2: Classification with Support Vector Machines & Decision Trees' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> a5fc295a-f8bf-4ffb-9f2f-35cd08f14f4e | 'Mini Project: Deep Neural Network Image Classification' | Course: 'Kỹ nghệ tri thức và học máy'
+
+User: hoangduylinh2k4@gmail.com (ID: 5c93f032-8c94-4845-a47b-894aedd80eaf)
+  Enrollments (1): ['a6315168-eddf-4645-8f08-556f53b9e1b1']
+  PlannerContext Assignments returned: 3
+    -> b55de17f-2472-4e0b-8bf9-7d6acd39e6e8 | 'Assignment 1: Linear Regression & Supervised Learning' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> 684c67f8-c174-4597-b923-7f88da330b7b | 'Assignment 2: Classification with Support Vector Machines & Decision Trees' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> a5fc295a-f8bf-4ffb-9f2f-35cd08f14f4e | 'Mini Project: Deep Neural Network Image Classification' | Course: 'Kỹ nghệ tri thức và học máy'
+
+User: student_alpha@example.com (ID: f92bcc70-8288-4ca5-ac27-d050f71a7435)
+  Enrollments (1): ['a6315168-eddf-4645-8f08-556f53b9e1b1']
+  PlannerContext Assignments returned: 3
+    -> b55de17f-2472-4e0b-8bf9-7d6acd39e6e8 | 'Assignment 1: Linear Regression & Supervised Learning' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> 684c67f8-c174-4597-b923-7f88da330b7b | 'Assignment 2: Classification with Support Vector Machines & Decision Trees' | Course: 'Kỹ nghệ tri thức và học máy'
+    -> a5fc295a-f8bf-4ffb-9f2f-35cd08f14f4e | 'Mini Project: Deep Neural Network Image Classification' | Course: 'Kỹ nghệ tri thức và học máy'

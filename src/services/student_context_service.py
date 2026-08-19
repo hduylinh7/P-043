@@ -265,7 +265,36 @@ class StudentLearningContextService:
                 }
                 break
 
-        # 6. Progress & Academic Summary Metrics
+        # 6. Extract Recent Study Session Reflections for Future Planning
+        recent_reflections = []
+        for p in user_plans:
+            for t in (p.tasks or []):
+                if t.description and t.description.startswith("{") and t.description.endswith("}"):
+                    try:
+                        import json
+                        meta = json.loads(t.description)
+                        ref_data = meta.get("reflection_data")
+                        if ref_data:
+                            recent_reflections.append({
+                                "task_id": t.id,
+                                "topic": meta.get("topic") or t.title,
+                                "course_name": meta.get("course_name"),
+                                "what_learned": ref_data.get("what_learned"),
+                                "understood_well": ref_data.get("understood_well"),
+                                "struggling_with": ref_data.get("struggling_with"),
+                                "understanding_level": ref_data.get("understanding_level"),
+                                "achieved_goal": ref_data.get("achieved_goal"),
+                                "ai_insight": meta.get("ai_insight"),
+                                "suggested_next_focus": meta.get("suggested_next_focus"),
+                                "completed_at": meta.get("completed_at"),
+                            })
+                    except Exception:
+                        pass
+
+        # Sort by completed_at desc
+        recent_reflections.sort(key=lambda x: x.get("completed_at") or "", reverse=True)
+
+        # 7. Progress & Academic Summary Metrics
         total_assignments = len(assignments_list)
         submitted_assignments = [a for a in assignments_list if a["is_submitted"]]
         unsubmitted_assignments = [a for a in assignments_list if not a["is_submitted"]]
@@ -296,5 +325,6 @@ class StudentLearningContextService:
             "courses": courses_list,
             "assignments": assignments_list,
             "weekly_plan": current_weekly_plan,
+            "recent_reflections": recent_reflections[:10],
             "learning_progress": learning_progress,
         }
