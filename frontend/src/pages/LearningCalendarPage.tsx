@@ -328,7 +328,9 @@ export const LearningCalendarPage: React.FC = () => {
     }
   };
 
-  // AI Plan Generation Handler
+  const [applyingAI, setApplyingAI] = useState<boolean>(false);
+
+  // AI Plan Generation Handler (Preview)
   const handleGenerateAIPlan = async () => {
     setGeneratingAI(true);
     setAiResult(null);
@@ -340,13 +342,41 @@ export const LearningCalendarPage: React.FC = () => {
         assignment_id: selectedAssignmentId,
       });
       setAiResult(res);
-      message.success('AI đã tạo kế hoạch học tập tối ưu thành công!');
-      fetchCalendarData();
+      message.success('AI đã lập xong dự thảo kế hoạch! Vui lòng đọc kiểm tra và bấm "Chấp nhận" để lưu.');
     } catch (err: any) {
       console.error('AI plan error:', err);
       message.error(err.response?.data?.detail || 'Lỗi khi gọi AI Planner Agent.');
     } finally {
       setGeneratingAI(false);
+    }
+  };
+
+  // Accept and save AI Plan from Calendar Page
+  const handleAcceptAIPlan = async () => {
+    if (!aiResult) return;
+    const tasksToApply = aiResult.proposed_tasks || (aiResult.created_tasks as any) || [];
+    if (tasksToApply.length === 0) {
+      message.warning('Danh sách nhiệm vụ đề xuất trống.');
+      return;
+    }
+    setApplyingAI(true);
+    try {
+      const applyPayload = {
+        week_start: aiResult.week_start || currentMonday.format('YYYY-MM-DD'),
+        week_end: aiResult.week_end,
+        plan_title: aiResult.plan_title || `Kế hoạch học tập ${currentMonday.format('YYYY-MM-DD')}`,
+        summary: aiResult.summary,
+        tasks: tasksToApply,
+      };
+      await weeklyPlanService.applyAIPlan(applyPayload);
+      message.success('Đã chấp nhận và lưu kế hoạch vào lịch thành công!');
+      setIsAIModalOpen(false);
+      setAiResult(null);
+      await fetchCalendarData();
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Không thể lưu Kế hoạch AI.');
+    } finally {
+      setApplyingAI(false);
     }
   };
 
@@ -1183,28 +1213,28 @@ export const LearningCalendarPage: React.FC = () => {
             </button>
           </div>
 
-          {/* AI Created Schedule Results Preview */}
+          {/* AI Draft Schedule Results Preview */}
           {aiResult && (
             <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-3 mt-4">
               <div className="flex items-center justify-between">
                 <div className="font-extrabold text-indigo-700 dark:text-indigo-300 text-sm flex items-center gap-2">
-                  <RocketOutlined /> Kế hoạch AI vừa khởi tạo thành công!
+                  <RocketOutlined /> Dự thảo Kế hoạch AI đề xuất (Chưa lưu)
                 </div>
-                <Tag color="indigo" className="rounded-lg font-bold">
-                  {aiResult.created_tasks?.length || 0} Buổi học
+                <Tag color="gold" className="rounded-lg font-bold">
+                  {(aiResult.proposed_tasks || (aiResult.created_tasks as any) || []).length} Buổi học
                 </Tag>
               </div>
 
-              <p className="text-slate-700 dark:text-slate-300 m-0 leading-relaxed font-medium">
+              <p className="text-slate-700 dark:text-slate-300 m-0 leading-relaxed font-medium text-xs">
                 {aiResult.summary}
               </p>
 
-              {aiResult.created_tasks && aiResult.created_tasks.length > 0 && (
+              {((aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[]).length > 0 && (
                 <div className="space-y-2 pt-1 max-h-60 overflow-y-auto pr-1">
                   <div className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
                     📋 Danh sách các buổi học AI xếp lịch:
                   </div>
-                  {aiResult.created_tasks.map((t, idx) => (
+                  {((aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[]).map((t, idx) => (
                     <div
                       key={t.id || idx}
                       className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-500/20 flex items-center justify-between text-xs"
@@ -1223,14 +1253,22 @@ export const LearningCalendarPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex items-center justify-between border-t border-indigo-500/20">
                 <Button
-                  type="primary"
-                  onClick={() => setIsAIModalOpen(false)}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold"
+                  onClick={() => setAiResult(null)}
+                  disabled={applyingAI}
+                  className="rounded-xl border-slate-300"
                 >
-                  Xem Trên Lịch Học 📅
+                  Bỏ qua
                 </Button>
+                <button
+                  disabled={applyingAI}
+                  onClick={handleAcceptAIPlan}
+                  className="btn-voxel-green text-xs px-5 py-2 rounded-xl font-bold flex items-center gap-2"
+                >
+                  {applyingAI ? <Spin size="small" /> : <CheckCircleOutlined />}
+                  <span>{applyingAI ? 'Đang lưu...' : 'Chấp Nhận & Áp Dụng Kế Hoạch 📅'}</span>
+                </button>
               </div>
             </div>
           )}

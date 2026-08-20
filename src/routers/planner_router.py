@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.database import get_db
 from src.models.auth import UserResponse
-from src.models.planner_agent import PlannerAgentRequest, PlannerAgentResponse
+from src.models.planner_agent import (
+    PlannerAgentRequest,
+    PlannerAgentResponse,
+    PlannerApplyRequest,
+)
 from src.models.planner_context import PlannerContext
 from src.routers.auth_router import get_current_user
 from src.services.planner_agent_service import PlannerAgentService
@@ -41,7 +45,20 @@ async def generate_weekly_plan(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Execute AI Planner Agent to automatically generate/update the student's Weekly Plan.
+    Execute AI Planner Agent to generate a draft Weekly Plan preview (or auto_apply if requested).
     """
     return await PlannerAgentService.generate_plan(db, current_user, payload)
+
+
+@router.post("/apply", response_model=PlannerAgentResponse)
+async def apply_weekly_plan(
+    payload: PlannerApplyRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Accept and persist the approved AI Weekly Plan tasks into the database.
+    """
+    return await PlannerAgentService.apply_plan(db, current_user, payload)
+
 

@@ -5,6 +5,7 @@ import {
   PlanTask,
   PlannerAgentRequestPayload,
   PlannerAgentResponseResult,
+  PlannerApplyPayload,
   PlannerContext,
   SelfCheckEvaluationResult,
   StudySessionCompanionData,
@@ -113,6 +114,11 @@ export const weeklyPlanService = {
 
   async generateAIPlan(payload: PlannerAgentRequestPayload): Promise<PlannerAgentResponseResult> {
     const response = await api.post<PlannerAgentResponseResult>('/planner/generate', payload);
+    return response.data;
+  },
+
+  async applyAIPlan(payload: PlannerApplyPayload): Promise<PlannerAgentResponseResult> {
+    const response = await api.post<PlannerAgentResponseResult>('/planner/apply', payload);
     return response.data;
   },
 

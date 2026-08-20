@@ -348,7 +348,12 @@ class WeeklyPlanService:
             plan.status = payload.status
 
         await db.commit()
-        await db.refresh(plan)
+        res = await db.execute(
+            select(WeeklyGoal)
+            .options(selectinload(WeeklyGoal.tasks))
+            .where(WeeklyGoal.id == plan_id)
+        )
+        plan = res.scalar_one()
         return serialize_weekly_plan(plan)
 
     @staticmethod

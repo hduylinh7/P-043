@@ -556,6 +556,123 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
     }
 
 
+async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[str, Any]:
+    """
+    Format and resolve date/time conflicts for proposed plan tasks WITHOUT saving to DB.
+    Used for draft preview mode so the user can review before accepting.
+    """
+    if state.get("error"):
+        return {}
+
+    db = state.get("db")
+    current_user = state.get("current_user")
+    week_start = state.get("week_start")
+    decision = state.get("plan_decision", {})
+
+    proposed_tasks = []
+    skipped_items = list(decision.get("skipped_items", []))
+    warnings = list(decision.get("warnings", []))
+    existing_tasks: list[dict[str, Any]] = []
+
+    if db and current_user and week_start:
+        try:
+            # Check existing plan tasks
+            plan = await PlannerTools.get_current_weekly_plan(db, current_user, week_start=week_start)
+            if plan:
+                plan_tasks = await PlannerTools.get_weekly_plan_tasks(db, current_user, plan.id)
+                for pt in plan_tasks:
+                    date_str = str(pt.scheduled_date).split("T")[0] if pt.scheduled_date else None
+                    existing_tasks.append({
+                        "title": pt.title,
+                        "scheduled_date": date_str,
+                        "start_time": pt.start_time,
+                        "end_time": pt.end_time,
+                    })
+
+            # Check fixed course schedules
+            context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+            start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
+            day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            for idx in range(7):
+                d_curr = start_d + timedelta(days=idx)
+                d_str = d_curr.strftime("%Y-%m-%d")
+                d_day_name = day_names[idx]
+                for fs in (context.fixed_course_schedules or []):
+                    if fs.day_of_week.strip().lower() == d_day_name.lower():
+                        existing_tasks.append({
+                            "title": f"Lịch học cố định: {fs.course_name}",
+                            "scheduled_date": d_str,
+                            "start_time": fs.start_time,
+                            "end_time": fs.end_time,
+                        })
+        except Exception as e:
+            logger.warning(f"Could not load existing schedule for preview conflict checking: {e}")
+
+    for task_data in decision.get("tasks", []):
+        raw_date = task_data.get("scheduled_date")
+        raw_start = task_data.get("start_time")
+        raw_end = task_data.get("end_time")
+
+        p_date, p_start, p_end = parse_task_datetime_from_text(
+            task_data.get("title"), task_data.get("description"), week_start
+        )
+        if p_date:
+            raw_date = p_date
+        if p_start and p_end:
+            raw_start = p_start
+            raw_end = p_end
+
+        eff_start, eff_end, conflict_warn = resolve_task_time_conflict(
+            scheduled_date=raw_date,
+            start_time=raw_start,
+            end_time=raw_end,
+            existing_tasks=existing_tasks,
+        )
+
+        if conflict_warn:
+            warnings.append(conflict_warn)
+
+        proposed = {
+            "title": task_data.get("title", "Buổi học tập"),
+            "description": task_data.get("description"),
+            "topic": task_data.get("topic"),
+            "what_to_study": task_data.get("what_to_study"),
+            "what_to_do": task_data.get("what_to_do"),
+            "reason": task_data.get("reason"),
+            "material_id": task_data.get("material_id"),
+            "material_title": task_data.get("material_title"),
+            "course_id": task_data.get("course_id"),
+            "course_name": task_data.get("course_name"),
+            "goal_id": task_data.get("goal_id"),
+            "goal_title": task_data.get("goal_title"),
+            "scheduled_date": raw_date,
+            "start_time": eff_start,
+            "end_time": eff_end,
+            "priority": normalize_priority(task_data.get("priority", "medium")),
+            "estimated_duration": task_data.get("estimated_duration") or 90,
+            "source_type": task_data.get("source_type", "AI_PLAN") or "AI_PLAN",
+            "source_id": task_data.get("source_id"),
+        }
+        proposed_tasks.append(proposed)
+        existing_tasks.append({
+            "title": proposed["title"],
+            "scheduled_date": raw_date,
+            "start_time": eff_start,
+            "end_time": eff_end,
+        })
+
+    return {
+        "weekly_plan_id": None,
+        "plan_title": decision.get("plan_title", f"Kế hoạch học tập {week_start}"),
+        "summary": decision.get("summary", "Đã tạo xong dự thảo kế hoạch học tập tối ưu."),
+        "proposed_tasks": proposed_tasks,
+        "skipped_items": skipped_items,
+        "warnings": warnings,
+        "is_preview": True,
+    }
+
+
 async def generate_summary_node(state: PlannerAgentState) -> dict[str, Any]:
     """Node 4: Consolidate final PlannerAgent result state."""
     return {}
+

@@ -53,36 +53,37 @@ def make_student(user_id: str = "s1") -> UserResponse:
 
 @pytest.mark.asyncio
 async def test_planner_agent_load_context(async_session: AsyncSession):
-    """1. Test that Planner Agent loads student Planner Context."""
+    """1. Test that Planner Agent loads student Planner Context in preview mode."""
     user = User(id="s1", email="s1@test.com", full_name="Student 1")
     goal = Goal(id="g1", student_id="s1", title="Master Python", status="ACTIVE")
     async_session.add_all([user, goal])
     await async_session.commit()
 
     user_ctx = make_student("s1")
-    req = PlannerAgentRequest(week_start="2026-08-10", request="Plan my week")
+    req = PlannerAgentRequest(week_start="2026-08-10", request="Plan my week", auto_apply=False)
 
     with patch("src.agents.nodes.planner_nodes.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = AsyncMock(
             content='{"plan_title":"Weekly Plan","summary":"Ok","tasks":[]}'
         )
-        mock_get_llm.return_value = mock_llm
+        mock_get_llm.return_value = mock_get_llm
 
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
         assert res.week_start == "2026-08-10"
-        assert res.weekly_plan_id is not None
+        assert res.is_preview is True
+        assert res.weekly_plan_id is None
 
 
 @pytest.mark.asyncio
 async def test_planner_agent_creates_weekly_plan_and_tasks(async_session: AsyncSession):
-    """2 & 3. Test that Planner Agent creates a Weekly Plan and creates tasks."""
+    """2 & 3. Test that Planner Agent creates a Weekly Plan and creates tasks when auto_apply=True."""
     user = User(id="s2", email="s2@test.com", full_name="Student 2")
     async_session.add(user)
     await async_session.commit()
 
     user_ctx = make_student("s2")
-    req = PlannerAgentRequest(week_start="2026-08-10", request="Build my plan")
+    req = PlannerAgentRequest(week_start="2026-08-10", request="Build my plan", auto_apply=True)
 
     llm_json = """{
         "plan_title": "Plan Aug 10-16",
@@ -125,7 +126,7 @@ async def test_planner_agent_respects_deadlines(async_session: AsyncSession):
     await async_session.commit()
 
     user_ctx = make_student("s4")
-    req = PlannerAgentRequest(week_start="2026-08-10", request="Plan assignments")
+    req = PlannerAgentRequest(week_start="2026-08-10", request="Plan assignments", auto_apply=True)
 
     # Mock decision schedules task on 2026-08-13 (before due date 2026-08-14)
     llm_json = """{
@@ -163,7 +164,7 @@ async def test_duplicate_weekly_plan_prevention(async_session: AsyncSession):
     await async_session.commit()
 
     user_ctx = make_student("s5")
-    req = PlannerAgentRequest(week_start="2026-08-10", request="Update my plan")
+    req = PlannerAgentRequest(week_start="2026-08-10", request="Update my plan", auto_apply=True)
 
     llm_json = """{
         "plan_title": "Updated Plan",
@@ -196,7 +197,7 @@ async def test_planner_agent_no_goals(async_session: AsyncSession):
     await async_session.commit()
 
     user_ctx = make_student("s8")
-    req = PlannerAgentRequest(week_start="2026-08-10")
+    req = PlannerAgentRequest(week_start="2026-08-10", auto_apply=False)
 
     with patch("src.agents.nodes.planner_nodes.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
@@ -204,7 +205,7 @@ async def test_planner_agent_no_goals(async_session: AsyncSession):
         mock_get_llm.return_value = mock_llm
 
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
-        assert res.weekly_plan_id is not None
+        assert res.is_preview is True
 
 
 @pytest.mark.asyncio
@@ -215,7 +216,7 @@ async def test_planner_agent_no_assignments(async_session: AsyncSession):
     await async_session.commit()
 
     user_ctx = make_student("s9")
-    req = PlannerAgentRequest(week_start="2026-08-10")
+    req = PlannerAgentRequest(week_start="2026-08-10", auto_apply=False)
 
     with patch("src.agents.nodes.planner_nodes.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
@@ -223,7 +224,7 @@ async def test_planner_agent_no_assignments(async_session: AsyncSession):
         mock_get_llm.return_value = mock_llm
 
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
-        assert res.weekly_plan_id is not None
+        assert res.is_preview is True
 
 
 @pytest.mark.asyncio
@@ -234,7 +235,7 @@ async def test_planner_agent_no_personal_tasks(async_session: AsyncSession):
     await async_session.commit()
 
     user_ctx = make_student("s10")
-    req = PlannerAgentRequest(week_start="2026-08-10")
+    req = PlannerAgentRequest(week_start="2026-08-10", auto_apply=False)
 
     with patch("src.agents.nodes.planner_nodes.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
@@ -242,18 +243,18 @@ async def test_planner_agent_no_personal_tasks(async_session: AsyncSession):
         mock_get_llm.return_value = mock_llm
 
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
-        assert res.weekly_plan_id is not None
+        assert res.is_preview is True
 
 
 @pytest.mark.asyncio
 async def test_tool_failure_handling(async_session: AsyncSession):
-    """11. Test that Planner Agent handles partial tool failures gracefully."""
+    """11. Test that Planner Agent handles partial tool failures gracefully in auto_apply mode."""
     user = User(id="s11", email="s11@test.com", full_name="Student 11")
     async_session.add(user)
     await async_session.commit()
 
     user_ctx = make_student("s11")
-    req = PlannerAgentRequest(week_start="2026-08-10")
+    req = PlannerAgentRequest(week_start="2026-08-10", auto_apply=True)
 
     # One valid task and one invalid scheduled_date (out of range)
     llm_json = """{
@@ -267,10 +268,10 @@ async def test_tool_failure_handling(async_session: AsyncSession):
                 "end_time": "11:00"
             },
             {
-                "title": "Out of Range Task",
-                "scheduled_date": "2026-08-30",
-                "start_time": "10:00",
-                "end_time": "11:00"
+                "title": "Invalid Time Task",
+                "scheduled_date": "2026-08-12",
+                "start_time": "12:00",
+                "end_time": "10:00"
             }
         ]
     }"""
@@ -284,7 +285,7 @@ async def test_tool_failure_handling(async_session: AsyncSession):
         assert len(res.created_tasks) == 1
         assert res.created_tasks[0].title == "Good Task"
         assert len(res.skipped_items) == 1
-        assert res.skipped_items[0]["title"] == "Out of Range Task"
+        assert res.skipped_items[0]["title"] == "Invalid Time Task"
 
 
 @pytest.mark.asyncio
@@ -315,7 +316,7 @@ async def test_academic_integrity_behavior(async_session: AsyncSession):
 
     user_ctx = make_student("s14")
     # Prompt asks AI to write code/do assignment
-    req = PlannerAgentRequest(week_start="2026-08-10", request="Do my programming assignment for me")
+    req = PlannerAgentRequest(week_start="2026-08-10", request="Do my programming assignment for me", auto_apply=True)
 
     llm_json = """{
         "plan_title": "Academic Integrity Plan",

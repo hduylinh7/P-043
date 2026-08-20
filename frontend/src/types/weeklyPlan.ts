@@ -233,17 +233,61 @@ export interface PlannerAgentRequestPayload {
   assignment_id?: string;
   request?: string;
   user_message?: string;
+  auto_apply?: boolean;
+}
+
+export interface ProposedTask {
+  id?: string;
+  title: string;
+  description?: string | null;
+  topic?: string | null;
+  what_to_study?: string[] | null;
+  what_to_do?: string[] | null;
+  reason?: string | null;
+  scheduled_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  priority: TaskPriority | string;
+  estimated_duration?: number | null;
+  source_type: TaskSourceType | string;
+  source_id?: string | null;
+  course_id?: string | null;
+  course_name?: string | null;
+  material_id?: string | null;
+  material_title?: string | null;
+  goal_id?: string | null;
+  goal_title?: string | null;
 }
 
 export interface PlannerAgentTaskResult {
-  id: string;
+  id?: string;
   title: string;
+  description?: string | null;
+  topic?: string | null;
+  what_to_study?: string[] | null;
+  what_to_do?: string[] | null;
+  reason?: string | null;
   scheduled_date?: string | null;
   start_time?: string | null;
   end_time?: string | null;
   priority: string;
+  estimated_duration?: number | null;
   source_type: string;
   source_id?: string | null;
+  course_id?: string | null;
+  course_name?: string | null;
+  material_id?: string | null;
+  material_title?: string | null;
+  goal_id?: string | null;
+  goal_title?: string | null;
+}
+
+export interface PlannerApplyPayload {
+  week_start: string;
+  week_end?: string;
+  plan_title?: string;
+  summary?: string;
+  tasks: ProposedTask[];
 }
 
 export interface PlannerAgentResponseResult {
@@ -251,8 +295,11 @@ export interface PlannerAgentResponseResult {
   week_start: string;
   week_end: string;
   summary: string;
+  plan_title?: string | null;
+  is_preview?: boolean;
   created_tasks: PlannerAgentTaskResult[];
   updated_tasks: PlannerAgentTaskResult[];
+  proposed_tasks?: ProposedTask[];
   skipped_items: { title?: string; reason?: string }[];
   warnings: string[];
 }
