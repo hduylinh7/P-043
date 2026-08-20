@@ -31,13 +31,15 @@ def parse_task_datetime_from_text(
     title: str | None,
     description: str | None,
     week_start_str: str,
+    user_request: str | None = None,
 ) -> tuple[str | None, str | None, str | None]:
     """
-    Parse task title and description for explicit/relative weekday and start/end time hints.
+    Parse task title, description, and optional user_request for explicit/relative weekday and start/end time hints.
     Returns (scheduled_date, start_time, end_time).
     """
     text = f"{title or ''} {description or ''}".lower()
-    if not text.strip():
+    req_text = (user_request or "").lower()
+    if not text.strip() and not req_text.strip():
         return None, None, None
 
     try:
@@ -49,20 +51,30 @@ def parse_task_datetime_from_text(
     target_start_time = None
     target_end_time = None
 
-    # 1. Match Weekday (e.g. "thứ 6", "thứ sáu", "cuối tuần", "weekend")
+    # 1. Match Weekday (e.g. "thứ 6", "thứ sáu", "cuối tuần", "weekend") in task title/description first
     for pattern, day_idx in WEEKDAY_MAP.items():
         if re.search(r'(?:\b|_)' + re.escape(pattern) + r'(?:\b|_)', text):
             target_day = start_date + timedelta(days=day_idx)
             target_date_str = target_day.strftime("%Y-%m-%d")
             break
 
+    # If no explicit weekday in task text, check user_request!
+    if not target_date_str and req_text:
+        for pattern, day_idx in WEEKDAY_MAP.items():
+            if re.search(r'(?:\b|_)' + re.escape(pattern) + r'(?:\b|_)', req_text):
+                target_day = start_date + timedelta(days=day_idx)
+                target_date_str = target_day.strftime("%Y-%m-%d")
+                break
+
+    combined_text = f"{text} {req_text}"
+
     # 2. Match Explicit Start Time (e.g. "20h", "20:00", "20h30", "8h tối", "8pm", "8h")
-    explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', text)
+    explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', text) or re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', req_text)
     if explicit_time:
         try:
             h_val = int(explicit_time.group(1))
             m_val = int(explicit_time.group(2)) if explicit_time.group(2) else 0
-            if ("tối" in text or "pm" in text) and h_val < 12:
+            if ("tối" in combined_text or "pm" in combined_text) and h_val < 12:
                 h_val += 12
             if 0 <= h_val <= 23:
                 target_start_time = f"{h_val:02d}:{m_val:02d}"
@@ -76,16 +88,16 @@ def parse_task_datetime_from_text(
 
     # 3. Fallback to Period of Day if no explicit digits were found (e.g. "buổi tối", "tối", "chiều", "sáng", "trưa")
     if target_start_time is None:
-        if re.search(r'\b(?:buổi\s*)?tối\b', text) or "evening" in text or "night" in text:
+        if re.search(r'\b(?:buổi\s*)?tối\b', combined_text) or "evening" in combined_text or "night" in combined_text:
             target_start_time = "20:00"
             target_end_time = "21:30"
-        elif re.search(r'\b(?:buổi\s*)?chiều\b', text) or "afternoon" in text:
+        elif re.search(r'\b(?:buổi\s*)?chiều\b', combined_text) or "afternoon" in combined_text:
             target_start_time = "14:00"
             target_end_time = "15:30"
-        elif re.search(r'\b(?:buổi\s*)?trưa\b', text) or "noon" in text or "lunch" in text:
+        elif re.search(r'\b(?:buổi\s*)?trưa\b', combined_text) or "noon" in combined_text or "lunch" in combined_text:
             target_start_time = "12:00"
             target_end_time = "13:00"
-        elif re.search(r'\b(?:buổi\s*)?sáng\b', text) or "morning" in text:
+        elif re.search(r'\b(?:buổi\s*)?sáng\b', combined_text) or "morning" in combined_text:
             target_start_time = "09:00"
             target_end_time = "10:30"
 
@@ -96,14 +108,29 @@ PLANNER_SYSTEM_PROMPT = """
 You are an expert AI Student Study Planner for the Learning Companion.
 
 YOUR OBJECTIVE:
-Analyze the student's personal goals, enrolled courses, upcoming assignments, available course materials, and schedule, then generate a realistic, structured Study Plan.
+You are an intelligent agent that creates custom, realistic Study Plans. Follow this 3-step reasoning workflow for EVERY request:
 
-CRITICAL COURSE MATERIAL & ASSIGNMENT GROUNDING & NO-HALLUCINATION RULES:
-1. When recommending a study topic, inspect the provided `assignments` and `course_materials` list in the context.
-2. Each assignment contains real questions, checklists, and embedded specification chunks from uploaded files. Study sessions generated for an assignment MUST be strictly grounded in these real assignment questions, checklists, and embedded specification chunks.
-3. If a matching real course material exists for the topic, include its exact `material_id` and `material_title`.
-4. If NO matching course material can be found in `course_materials`, set `material_id: null` and `material_title: "No matching course material was found."`.
-5. NEVER invent or hallucinate fake lecture titles, book chapters, resource URLs, assignment requirements, or course materials that do not exist in the context!
+STEP 1: UNDERSTAND STUDENT INTENT & CONSTRAINTS (HIGHEST PRIORITY)
+Read the `STUDENT REQUEST` carefully to extract the student's exact goal and constraints:
+1. Target Course / Subject Focus: Did the student ask for specific courses or subjects? (e.g., "Machine Learning", "Kỹ nghệ tri thức").
+2. Session Count & Workload: Did the student specify a limited number of study sessions? (e.g., "chỉ 1 buổi", "chỉ tạo 1 buổi học", "ko cần tạo buổi nào khác").
+3. Target Dates & Days: Did the student specify target days or times? (e.g., "thứ 7 tuần này", "cuối tuần").
+
+STEP 2: MATCH DATABASE CONTEXT WITH STUDENT INTENT
+Inspect the provided `assignments`, `courses`, and `course_materials` in `PLANNER CONTEXT`:
+- Match the student's requested subject/course with the corresponding real course and assignment in the context.
+- If the student requested a single session or focused plan, SELECT ONLY the relevant assignment(s) matching their requested subject. DO NOT include unrelated courses or assignments!
+
+STEP 3: GENERATE THE TAILORED STUDY PLAN
+- Create tasks that satisfy the student's request.
+- If the student requested 1 session (e.g. "chỉ 1 buổi", "ko cần tạo buổi nào khác"), output EXACTLY 1 task in the `tasks` JSON array.
+- Schedule the task on the student's requested date (e.g., Saturday of the planning week using the Weekday Date Mapping below).
+- Ground the study session details (`what_to_study`, `what_to_do`, `material_title`) in the real course materials and assignment specs provided in context.
+
+CRITICAL GROUNDING & NO-HALLUCINATION RULES:
+1. Each assignment contains real questions, checklists, and embedded specification chunks. Ground study tasks strictly in real context.
+2. Include exact `material_id` and `material_title` if a matching material exists. Otherwise set `material_id: null` and `material_title: "No matching course material was found."`.
+3. NEVER invent fake courses, materials, or assignment titles not present in context.
 
 STUDY SESSION DETAIL REQUIREMENTS:
 For EACH study session, provide:
@@ -111,57 +138,55 @@ For EACH study session, provide:
 - `topic`: Topic name (e.g., "Random Forest")
 - `what_to_study`: List of specific concepts/items to review
 - `what_to_do`: Step-by-step actionable activities
-- `reason`: Clear explanation of why this session is recommended (e.g., upcoming deadline, supporting personal goal)
+- `reason`: Clear explanation of why this session is recommended
 - `course_id`: Real course ID from context
 - `course_name`: Course name
 - `material_id`: Matching material ID or null
 - `material_title`: Matching material title or "No matching course material was found."
 - `assignment_id`: Related assignment ID or null
 - `assignment_title`: Related assignment title or null
-- `goal_id`: Related Personal Goal ID or null
-- `goal_title`: Related Personal Goal title or null
+- `scheduled_date`: YYYY-MM-DD (must match student requested day if specified)
+- `start_time`, `end_time`: e.g., "19:00" to "20:30"
+- `priority`: "low", "medium", "high", or "urgent"
+- `estimated_duration`: duration in minutes (e.g. 90)
 
 ACADEMIC INTEGRITY RULES:
 1. You are a PLANNING assistant only. You MUST NOT complete, write, or solve graded assignments directly.
-2. If the user asks to "do my assignment", convert it into study and preparation sessions (e.g. "Review requirements", "Study lecture material", "Draft solution", "Self-test").
+2. If the user asks to "do my assignment", convert it into study and preparation sessions.
 
 DATE & TIME CONSTRAINTS:
 1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER generate or schedule an AI Study Session during hours occupied by a fixed university class lecture! Choose free open hours (e.g. evening 19:00 - 20:30).
-2. ASSIGNMENT DUE DATES: When scheduling study sessions for an assignment, set `scheduled_date` to its exact due date (`due_date`) or 1 day BEFORE its due date. Do NOT schedule sessions AFTER the due date!
-3. Respect Course start_date and end_date. Do NOT create study sessions before a course starts or after it ends.
-4. Check explicit day/time preferences in student request or assignment deadlines.
-5. Weekday Date Mapping ({week_start} to {week_end}):
+2. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
-6. priority MUST be strictly one of: "low", "medium", "high", "urgent".
-7. Ensure start_time < end_time (e.g. "19:00" to "20:30").
-8. Do NOT overlap sessions on the same day.
+3. priority MUST be strictly one of: "low", "medium", "high", "urgent".
+4. Ensure start_time < end_time (e.g. "19:00" to "20:30").
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
 {{
   "plan_title": "Kế hoạch học tập ({week_start} đến {week_end})",
-  "summary": "Tóm tắt ngắn gọn mục tiêu và định hướng kế hoạch...",
+  "summary": "Tóm tắt ngắn gọn mục tiêu và định hướng kế hoạch theo yêu cầu học sinh...",
   "warnings": ["Cảnh báo hoặc lưu ý..."],
   "skipped_items": [{{"title": "Mục hoãn", "reason": "Lý do..."}}],
   "tasks": [
     {{
-      "title": "Random Forest Fundamentals",
-      "topic": "Random Forest",
-      "what_to_study": ["Decision Tree fundamentals", "Random Forest concept", "Ensemble learning"],
+      "title": "Machine Learning Fundamentals",
+      "topic": "Machine Learning",
+      "what_to_study": ["Supervised Learning concepts", "Linear Regression fundamentals"],
       "what_to_do": [
         "1. Ôn lại bài giảng liên quan",
         "2. Xem các ví dụ minh họa",
-        "3. Tóm tắt sự khác biệt giữa Decision Tree và Random Forest"
+        "3. Tóm tắt các công thức cốt lõi"
       ],
-      "reason": "Bài tập 'Classification Model' sắp tới hạn (19 Aug) và yêu cầu hiểu rõ Random Forest. Hỗ trợ mục tiêu 'Nâng cao Machine Learning'.",
+      "reason": "Theo yêu cầu ôn tập môn Machine Learning vào Thứ 7.",
       "course_id": "course_uuid",
       "course_name": "Machine Learning",
       "material_id": "material_uuid_or_null",
-      "material_title": "Lecture 05 — Random Forest",
+      "material_title": "Lecture 01 — Fundamentals",
       "assignment_id": "assignment_uuid_or_null",
-      "assignment_title": "Classification Model",
-      "goal_id": "goal_uuid_or_null",
-      "goal_title": "Nâng cao Machine Learning",
+      "assignment_title": "Assignment 1",
+      "goal_id": null,
+      "goal_title": null,
       "scheduled_date": "YYYY-MM-DD",
       "start_time": "19:00",
       "end_time": "20:30",
@@ -233,7 +258,13 @@ async def analyze_and_decide_node(state: PlannerAgentState) -> dict[str, Any]:
 
     user_msg_content = f"""
 STUDENT REQUEST:
-{user_request}
+"{user_request}"
+
+IMPORTANT AGENT DIRECTIVE:
+Process the STUDENT REQUEST above step-by-step:
+1. Parse the student's intent, requested courses/subjects, requested date/day, and requested session count.
+2. Filter the PLANNER CONTEXT below to ONLY include assignments and materials relevant to the student's requested course/subject.
+3. If the student asks for 1 session (e.g. "chỉ cần bạn tạo một buổi đó thôi, ko cần tạo buổi nào khác"), output EXACTLY 1 task in the `tasks` JSON array!
 
 PLANNER CONTEXT (Real database context - Assignments, Courses, Goals, Materials):
 {json.dumps(context_dict, indent=2, ensure_ascii=False)}
@@ -259,7 +290,7 @@ PLANNER CONTEXT (Real database context - Assignments, Courses, Goals, Materials)
         decision = json.loads(clean_content)
         return {"plan_decision": decision}
     except Exception as e:
-        logger.warning(f"LLM JSON parsing fallback: {e}")
+        logger.error(f"LLM call or JSON parsing error in analyze_and_decide_node: {e}", exc_info=True)
         # Fallback decision if LLM call fails or returns non-JSON
         fallback_decision = create_fallback_decision(context_dict, week_start, user_request)
         return {"plan_decision": fallback_decision}
@@ -272,16 +303,23 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
 
     curr_date = datetime.strptime(week_start, "%Y-%m-%d").date()
     materials = context_dict.get("course_materials", [])
+    p_date, p_start, p_end = parse_task_datetime_from_text(None, None, week_start, user_request)
 
     for idx, ass in enumerate(context_dict.get("assignments", [])):
-        due_str = ass.get("due_date")
-        if due_str:
+        if p_date:
             try:
-                target_day = datetime.strptime(due_str.split("T")[0], "%Y-%m-%d").date()
+                target_day = datetime.strptime(p_date, "%Y-%m-%d").date()
             except Exception:
-                target_day = curr_date + timedelta(days=idx % 5)
+                target_day = curr_date
         else:
-            target_day = curr_date + timedelta(days=idx % 5)
+            due_str = ass.get("due_date")
+            if due_str:
+                try:
+                    target_day = datetime.strptime(due_str.split("T")[0], "%Y-%m-%d").date()
+                except Exception:
+                    target_day = curr_date + timedelta(days=idx % 5)
+            else:
+                target_day = curr_date + timedelta(days=idx % 5)
 
         matched_mat = next((m for m in materials if m.get("course_id") == ass.get("course_id")), None)
         mat_id = matched_mat.get("id") if matched_mat else None
@@ -300,8 +338,8 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
             "assignment_id": ass.get("id"),
             "assignment_title": ass.get("title"),
             "scheduled_date": target_day.strftime("%Y-%m-%d"),
-            "start_time": "19:00",
-            "end_time": "20:30",
+            "start_time": p_start or "19:00",
+            "end_time": p_end or "20:30",
             "priority": normalize_priority(ass.get("priority", "high")),
             "estimated_duration": 90,
             "source_type": "ASSIGNMENT",
@@ -476,18 +514,19 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
     except Exception as e:
         logger.warning(f"Could not load existing tasks/fixed schedules for conflict checking: {e}")
 
+    user_request = state.get("user_request")
     for task_data in decision.get("tasks", []):
         raw_date = task_data.get("scheduled_date")
         raw_start = task_data.get("start_time")
         raw_end = task_data.get("end_time")
 
-        # Check if title/description contains explicit weekday or start_time
+        # Check if title/description or user_request contains explicit weekday or start_time
         p_date, p_start, p_end = parse_task_datetime_from_text(
-            task_data.get("title"), task_data.get("description"), week_start
+            task_data.get("title"), task_data.get("description"), week_start, user_request
         )
-        if p_date:
+        if not raw_date and p_date:
             raw_date = p_date
-        if p_start and p_end:
+        if (not raw_start or not raw_end) and p_start and p_end:
             raw_start = p_start
             raw_end = p_end
 
@@ -608,17 +647,18 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
         except Exception as e:
             logger.warning(f"Could not load existing schedule for preview conflict checking: {e}")
 
+    user_request = state.get("user_request")
     for task_data in decision.get("tasks", []):
         raw_date = task_data.get("scheduled_date")
         raw_start = task_data.get("start_time")
         raw_end = task_data.get("end_time")
 
         p_date, p_start, p_end = parse_task_datetime_from_text(
-            task_data.get("title"), task_data.get("description"), week_start
+            task_data.get("title"), task_data.get("description"), week_start, user_request
         )
-        if p_date:
+        if not raw_date and p_date:
             raw_date = p_date
-        if p_start and p_end:
+        if (not raw_start or not raw_end) and p_start and p_end:
             raw_start = p_start
             raw_end = p_end
 

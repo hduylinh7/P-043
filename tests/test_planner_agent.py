@@ -372,3 +372,17 @@ def test_parse_explicit_task_datetime():
     assert date_str2 == "2026-08-15"
     assert start_time2 == "20:00"
     assert end_time2 == "21:30"
+
+
+def test_parse_user_request_weekday_constraint():
+    """16. Test parse_task_datetime_from_text with explicit user_request for Saturday."""
+    from src.agents.nodes.planner_nodes import parse_task_datetime_from_text
+
+    date_str, start_time, end_time = parse_task_datetime_from_text(
+        "Ôn tập Kỹ nghệ tri thức & Học máy",
+        None,
+        "2026-08-17",
+        user_request="tạo cho tôi một buổi học machine leaning vào thứ 7 tuần này, chỉ cần bạn tạo một buổi đó thôi, ko cần tạo buổi nào khác"
+    )
+    assert date_str == "2026-08-22"
+
