@@ -507,9 +507,9 @@ export const MaterialViewerPage: React.FC = () => {
                     </div>
                     <div className="flex flex-col gap-1 max-w-[80%]">
                       <div
-                        className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
+                        className={`p-3 rounded-2xl text-xs leading-normal ${
                           msg.sender === 'user'
-                            ? 'bg-minecraft-grass text-white rounded-tr-none'
+                            ? 'bg-minecraft-grass text-white rounded-tr-none font-medium'
                             : isDark
                             ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
                             : 'bg-slate-100 text-slate-800 rounded-tl-none'

@@ -419,22 +419,22 @@ export const AIChatPage: React.FC = () => {
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-voxel-sm border-2 ${
+                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border ${
                           isUser
-                            ? 'bg-minecraft-grass text-white border-minecraft-grassBorder font-extrabold'
-                            : 'bg-minecraft-gold text-slate-900 border-minecraft-goldBorder font-bold text-lg'
+                            ? 'bg-emerald-600 text-white border-emerald-700 font-extrabold'
+                            : 'bg-amber-500 text-white border-amber-600 font-bold'
                         }`}
                       >
                         {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined />}
                       </div>
 
                       {/* Content Bubble */}
-                      <div className={`space-y-3 max-w-[82%]`}>
+                      <div className="space-y-2 max-w-[82%]">
                         <div
                           className={
                             isUser
-                              ? 'p-5 rounded-2xl text-sm leading-relaxed border-2 border-minecraft-grassBorder bg-minecraft-grass text-white font-bold shadow-voxel-sm shadow-minecraft-grassBorder/40 rounded-tr-none'
-                              : 'card-voxel-3d p-5 rounded-2xl text-sm leading-relaxed rounded-tl-none font-sans'
+                              ? 'p-3.5 rounded-2xl text-sm leading-snug bg-minecraft-grass text-white font-medium shadow-sm rounded-tr-none'
+                              : 'p-3.5 rounded-2xl text-sm leading-snug bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-tl-none font-sans'
                           }
                         >
                           <MarkdownRenderer content={msg.content} isUser={isUser} entityContext={entityContext} />
@@ -442,32 +442,26 @@ export const AIChatPage: React.FC = () => {
 
                         {/* RAG Citations Cards (AI Messages only) */}
                         {!isUser && msg.citations && msg.citations.length > 0 && (
-                          <div className="card-voxel-3d p-4 space-y-3 text-xs">
-                            <div className="flex items-center gap-1.5 font-extrabold text-emerald-600 dark:text-emerald-400">
-                              <FileTextOutlined />
+                          <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3.5 rounded-2xl space-y-2.5 text-xs">
+                            <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                              <FileTextOutlined className="text-blue-600 dark:text-blue-400" />
                               <span>Trích dẫn từ tài liệu RAG ({msg.citations.length})</span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-1 gap-1.5">
                               {msg.citations.map((cite, cIdx) => (
                                 <div
                                   key={cIdx}
-                                  className={`p-3 rounded-xl border-2 transition-all ${
-                                    isDark
-                                      ? 'bg-slate-900/80 border-minecraft-obsidianBorder hover:border-emerald-500/40'
-                                      : 'bg-slate-50 border-slate-200 hover:border-emerald-300'
-                                  }`}
+                                  className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between"
                                 >
-                                  <div className="flex items-center justify-between font-bold">
-                                    <span className="text-emerald-700 dark:text-emerald-300 truncate max-w-[240px]">
-                                      📄 {cite.file_name || 'Tài liệu môn học'}
+                                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[280px]">
+                                    📄 {cite.file_name || 'Tài liệu môn học'}
+                                  </span>
+                                  {cite.score !== undefined && (
+                                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 py-0.5 px-2 rounded-md">
+                                      Độ khớp: {Math.round(cite.score * 100)}%
                                     </span>
-                                    {cite.score !== undefined && (
-                                      <span className="badge-voxel-green text-[10px] py-0.5 px-2">
-                                        Độ khớp: {Math.round(cite.score * 100)}%
-                                      </span>
-                                    )}
-                                  </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -477,13 +471,13 @@ export const AIChatPage: React.FC = () => {
                         {/* RAG Sources Tags */}
                         {!isUser && msg.sources && msg.sources.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <span className="text-[11px] font-bold text-slate-400">
+                            <span className="text-[11px] font-medium text-slate-500">
                               Nguồn tham khảo:
                             </span>
                             {msg.sources.map((src, sIdx) => (
                               <span
                                 key={sIdx}
-                                className="badge-voxel-green text-[11px] py-0.5 px-2.5"
+                                className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
                               >
                                 {src}
                               </span>

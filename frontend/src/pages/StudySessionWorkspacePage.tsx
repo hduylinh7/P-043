@@ -1152,15 +1152,15 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                     <div className="max-w-[85%] space-y-1">
                       <div
-                        className={`p-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${
+                        className={`p-3 rounded-2xl leading-normal text-xs ${
                           msg.role === 'user'
-                            ? 'bg-emerald-600 text-white rounded-tr-none font-medium'
+                            ? 'bg-minecraft-grass text-white rounded-tr-none font-medium'
                             : isDark
                             ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
                             : 'bg-slate-100 text-slate-800 rounded-tl-none'
                         }`}
                       >
-                        {msg.content}
+                        <MarkdownRenderer content={msg.content} isUser={msg.role === 'user'} />
                       </div>
 
                       {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (

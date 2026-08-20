@@ -88,16 +88,89 @@ const DAY_LABELS: Record<string, string> = {
   Sunday: 'Chủ Nhật (Sun)',
 };
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  urgent: { label: 'Khẩn cấp', color: 'red' },
-  URGENT: { label: 'Khẩn cấp', color: 'red' },
-  critical: { label: 'Khẩn cấp', color: 'red' },
-  high: { label: 'Cao', color: 'orange' },
-  HIGH: { label: 'Cao', color: 'orange' },
-  medium: { label: 'Trung bình', color: 'blue' },
-  MEDIUM: { label: 'Trung bình', color: 'blue' },
-  low: { label: 'Thấp', color: 'green' },
-  LOW: { label: 'Thấp', color: 'green' },
+const PRIORITY_CONFIG: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    icon: string;
+    badgeBg: string;
+    borderLeft: string;
+  }
+> = {
+  urgent: {
+    label: 'Khẩn cấp',
+    color: 'red',
+    icon: '⚡',
+    badgeBg: 'bg-red-500 text-white',
+    borderLeft: 'border-l-4 border-l-red-500',
+  },
+  URGENT: {
+    label: 'Khẩn cấp',
+    color: 'red',
+    icon: '⚡',
+    badgeBg: 'bg-red-500 text-white',
+    borderLeft: 'border-l-4 border-l-red-500',
+  },
+  critical: {
+    label: 'Khẩn cấp',
+    color: 'red',
+    icon: '⚡',
+    badgeBg: 'bg-red-500 text-white',
+    borderLeft: 'border-l-4 border-l-red-500',
+  },
+  high: {
+    label: 'Cao',
+    color: 'orange',
+    icon: '🔥',
+    badgeBg: 'bg-orange-500 text-white',
+    borderLeft: 'border-l-4 border-l-orange-500',
+  },
+  HIGH: {
+    label: 'Cao',
+    color: 'orange',
+    icon: '🔥',
+    badgeBg: 'bg-orange-500 text-white',
+    borderLeft: 'border-l-4 border-l-orange-500',
+  },
+  medium: {
+    label: 'Trung bình',
+    color: 'blue',
+    icon: '🔹',
+    badgeBg: 'bg-blue-500 text-white',
+    borderLeft: 'border-l-4 border-l-blue-500',
+  },
+  MEDIUM: {
+    label: 'Trung bình',
+    color: 'blue',
+    icon: '🔹',
+    badgeBg: 'bg-blue-500 text-white',
+    borderLeft: 'border-l-4 border-l-blue-500',
+  },
+  low: {
+    label: 'Thấp',
+    color: 'green',
+    icon: '🟢',
+    badgeBg: 'bg-slate-400 text-white',
+    borderLeft: 'border-l-4 border-l-slate-400',
+  },
+  LOW: {
+    label: 'Thấp',
+    color: 'green',
+    icon: '🟢',
+    badgeBg: 'bg-slate-400 text-white',
+    borderLeft: 'border-l-4 border-l-slate-400',
+  },
+};
+
+const getPriorityConfig = (priority?: string | null, isFixed?: boolean) => {
+  if (priority && PRIORITY_CONFIG[priority]) {
+    return PRIORITY_CONFIG[priority];
+  }
+  if (isFixed) {
+    return PRIORITY_CONFIG['high'];
+  }
+  return PRIORITY_CONFIG['medium'];
 };
 
 export const LearningCalendarPage: React.FC = () => {
@@ -109,14 +182,18 @@ export const LearningCalendarPage: React.FC = () => {
   // Navigation Date (default current date)
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(() => dayjs());
 
+  // Real-time Clock for Current Time Line Indicator
+  const [currentTime, setCurrentTime] = useState<dayjs.Dayjs>(() => dayjs());
+
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week');
   const [loading, setLoading] = useState<boolean>(true);
   const [events, setEvents] = useState<UnifiedCalendarEvent[]>([]);
 
-  // Legend Filter Toggles
+  // Legend & Priority Filter Toggles
   const [showFixedClass, setShowFixedClass] = useState<boolean>(true);
   const [showAIPlan, setShowAIPlan] = useState<boolean>(true);
   const [showStudentPlan, setShowStudentPlan] = useState<boolean>(true);
+  const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
   // Selected Task Drawer State
   const [selectedTask, setSelectedTask] = useState<PlanTask | null>(null);
@@ -179,15 +256,54 @@ export const LearningCalendarPage: React.FC = () => {
     }
   }, [isAIModalOpen, currentMonday]);
 
+  // Live timer interval to update current time line every 30s
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(dayjs());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Calculate position of Current Time Line Indicator
+  const currentTimePos = useMemo(() => {
+    const hour = currentTime.hour();
+    const minute = currentTime.minute();
+    // Timeline grid starts at 07:00 and ends at 22:00 (15 hours = 900 minutes)
+    const totalMinutesFromStart = (hour - 7) * 60 + minute;
+    const totalGridMinutes = 15 * 60; // 900 minutes
+    if (totalMinutesFromStart < 0 || totalMinutesFromStart > totalGridMinutes) {
+      return null;
+    }
+    const percentage = (totalMinutesFromStart / totalGridMinutes) * 100;
+    const dayOfWeek = currentTime.day(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const todayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to Mon=0..Sun=6
+
+    return {
+      percentage,
+      timeStr: currentTime.format('HH:mm'),
+      todayIdx,
+      isCurrentWeek: currentMonday.isSame(currentTime.startOf('isoWeek'), 'day'),
+      isTodaySelected: selectedDate.isSame(currentTime, 'day'),
+    };
+  }, [currentTime, currentMonday, selectedDate]);
+
   // Filtered Events
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => {
       if (ev.type === 'FIXED_CLASS' && !showFixedClass) return false;
       if (ev.type === 'AI_STUDY' && !showAIPlan) return false;
       if (ev.type === 'STUDENT_STUDY' && !showStudentPlan) return false;
+
+      if (priorityFilter !== 'ALL') {
+        const p = (ev.priority || '').toLowerCase();
+        if (priorityFilter === 'urgent' && !['urgent', 'critical'].includes(p)) return false;
+        if (priorityFilter === 'high' && p !== 'high') return false;
+        if (priorityFilter === 'medium' && p !== 'medium') return false;
+        if (priorityFilter === 'low' && p !== 'low') return false;
+      }
       return true;
     });
-  }, [events, showFixedClass, showAIPlan, showStudentPlan]);
+  }, [events, showFixedClass, showAIPlan, showStudentPlan, priorityFilter]);
 
   // Map events by date (YYYY-MM-DD) and hour slot (HH:00)
   const eventMap = useMemo(() => {
@@ -506,25 +622,77 @@ export const LearningCalendarPage: React.FC = () => {
             </div>
 
             {/* Legend & Filter Toggles Area */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-4 flex-wrap text-xs">
-              <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <FilterOutlined /> Chú thích & Lọc:
-              </span>
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap text-xs">
+              {/* Event Type Toggles */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <FilterOutlined /> Loại lịch:
+                </span>
 
-              <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                <Checkbox checked={showFixedClass} onChange={(e) => setShowFixedClass(e.target.checked)} />
-                <span>🏫 Fixed Class (Giảng đường cố định)</span>
-              </label>
+                <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  <Checkbox checked={showFixedClass} onChange={(e) => setShowFixedClass(e.target.checked)} />
+                  <span>🏫 Fixed Class</span>
+                </label>
 
-              <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
-                <Checkbox checked={showAIPlan} onChange={(e) => setShowAIPlan(e.target.checked)} />
-                <span>🤖 AI Planned (Kế hoạch AI đề xuất)</span>
-              </label>
+                <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                  <Checkbox checked={showAIPlan} onChange={(e) => setShowAIPlan(e.target.checked)} />
+                  <span>🤖 AI Planned</span>
+                </label>
 
-              <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                <Checkbox checked={showStudentPlan} onChange={(e) => setShowStudentPlan(e.target.checked)} />
-                <span>👤 My Plan (Kế hoạch cá nhân tự xếp)</span>
-              </label>
+                <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  <Checkbox checked={showStudentPlan} onChange={(e) => setShowStudentPlan(e.target.checked)} />
+                  <span>👤 My Plan</span>
+                </label>
+              </div>
+
+              {/* Priority Toggles & Legend */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <FlagOutlined /> Độ ưu tiên:
+                </span>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                  <button
+                    onClick={() => setPriorityFilter('ALL')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                      priorityFilter === 'ALL' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setPriorityFilter('urgent')}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      priorityFilter === 'urgent' ? 'bg-red-500 text-white shadow-sm' : 'text-red-600 dark:text-red-400 hover:bg-red-500/10'
+                    }`}
+                  >
+                    ⚡ Khẩn cấp
+                  </button>
+                  <button
+                    onClick={() => setPriorityFilter('high')}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      priorityFilter === 'high' ? 'bg-orange-500 text-white shadow-sm' : 'text-orange-600 dark:text-orange-400 hover:bg-orange-500/10'
+                    }`}
+                  >
+                    🔥 Cao
+                  </button>
+                  <button
+                    onClick={() => setPriorityFilter('medium')}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      priorityFilter === 'medium' ? 'bg-blue-500 text-white shadow-sm' : 'text-blue-600 dark:text-blue-400 hover:bg-blue-500/10'
+                    }`}
+                  >
+                    🔹 Vừa
+                  </button>
+                  <button
+                    onClick={() => setPriorityFilter('low')}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      priorityFilter === 'low' ? 'bg-slate-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-500/10'
+                    }`}
+                  >
+                    🟢 Thấp
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -562,7 +730,31 @@ export const LearningCalendarPage: React.FC = () => {
                 </div>
 
                 {/* Time Slot Rows */}
-                <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/60 relative">
+                  {/* Real-time Current Time Line Indicator */}
+                  {currentTimePos && currentTimePos.isCurrentWeek && (
+                    <div
+                      className="absolute left-0 right-0 z-20 pointer-events-none flex items-center transition-all duration-500"
+                      style={{ top: `${currentTimePos.percentage}%` }}
+                    >
+                      {/* Time Axis Pill */}
+                      <div className="w-[12.5%] pr-2 text-right flex justify-end items-center">
+                        <span className="bg-red-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse flex items-center gap-1 border border-red-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          {currentTimePos.timeStr}
+                        </span>
+                      </div>
+                      {/* Red Line Spanning Day Grid */}
+                      <div className="w-[87.5%] h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] relative">
+                        {/* Red Dot on Today Column */}
+                        <div
+                          className="absolute -top-1 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-white dark:border-slate-900 shadow-md ring-2 ring-red-400/60"
+                          style={{ left: `calc(${(currentTimePos.todayIdx / 7) * 100}% + 6px)` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {TIME_SLOTS.map((slot) => (
                     <div key={slot} className="grid grid-cols-8 min-h-[90px]">
                       {/* Time Column */}
@@ -584,6 +776,7 @@ export const LearningCalendarPage: React.FC = () => {
                             {cellEvents.map((ev) => {
                               const isFixed = ev.type === 'FIXED_CLASS';
                               const isAI = ev.type === 'AI_STUDY';
+                              const prio = getPriorityConfig(ev.priority, isFixed);
 
                               return (
                                 <motion.div
@@ -591,7 +784,7 @@ export const LearningCalendarPage: React.FC = () => {
                                   initial={{ opacity: 0, scale: 0.95 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   onClick={() => handleEventClick(ev)}
-                                  className={`p-2.5 rounded-2xl border text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] ${
+                                  className={`p-2.5 rounded-2xl border text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] ${prio.borderLeft} ${
                                     isFixed
                                       ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200 hover:border-emerald-500'
                                       : isAI
@@ -600,7 +793,7 @@ export const LearningCalendarPage: React.FC = () => {
                                   }`}
                                 >
                                   {/* Badge Header */}
-                                  <div className="flex items-center justify-between gap-1 mb-1 font-bold text-[10px]">
+                                  <div className="flex items-center justify-between gap-1 mb-1.5 font-bold text-[10px]">
                                     <span
                                       className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider ${
                                         isFixed
@@ -612,23 +805,27 @@ export const LearningCalendarPage: React.FC = () => {
                                     >
                                       {isFixed ? '🏫 Fixed Class' : isAI ? '🤖 AI Planned' : '👤 My Plan'}
                                     </span>
-                                    {isFixed && (
-                                      <Tooltip title="Lịch học cố định giảng đường (Hard constraint - Không thể sửa/kéo)">
-                                        <LockOutlined className="text-emerald-600 dark:text-emerald-400" />
-                                      </Tooltip>
-                                    )}
+                                    
+                                    {/* Priority Badge */}
+                                    <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase flex items-center gap-0.5 shadow-2xs ${prio.badgeBg}`}>
+                                      <span>{prio.icon}</span>
+                                      <span>{prio.label}</span>
+                                    </span>
                                   </div>
 
                                   <div className="font-extrabold line-clamp-2 text-slate-900 dark:text-white leading-tight">
                                     {ev.title}
                                   </div>
 
-                                  <div className="mt-1 flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-300">
-                                    <span>{ev.start_time} – {ev.end_time}</span>
-                                    {ev.priority && (
-                                      <span className="font-bold text-[10px] uppercase">
-                                        {PRIORITY_CONFIG[ev.priority]?.label || ev.priority}
-                                      </span>
+                                  <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-300 border-t border-slate-200/50 dark:border-slate-700/50 pt-1">
+                                    <span className="flex items-center gap-1">
+                                      <ClockCircleOutlined className="text-[10px]" />
+                                      {ev.start_time} – {ev.end_time}
+                                    </span>
+                                    {isFixed && (
+                                      <Tooltip title="Lịch học cố định giảng đường (Hard constraint - Không thể sửa/kéo)">
+                                        <LockOutlined className="text-emerald-600 dark:text-emerald-400" />
+                                      </Tooltip>
                                     )}
                                   </div>
                                 </motion.div>
@@ -659,7 +856,25 @@ export const LearningCalendarPage: React.FC = () => {
                 </Tag>
               </div>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 space-y-3">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 space-y-3 relative">
+                {/* Real-time Current Time Line Indicator in Day View */}
+                {currentTimePos && currentTimePos.isTodaySelected && (
+                  <div
+                    className="absolute left-0 right-0 z-20 pointer-events-none flex items-center transition-all duration-500"
+                    style={{ top: `${currentTimePos.percentage}%` }}
+                  >
+                    <div className="w-20 pr-2 text-right flex justify-end items-center">
+                      <span className="bg-red-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse flex items-center gap-1 border border-red-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                        {currentTimePos.timeStr}
+                      </span>
+                    </div>
+                    <div className="flex-1 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] relative">
+                      <div className="absolute -top-1 left-0 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-white dark:border-slate-900 shadow-md ring-2 ring-red-400/60" />
+                    </div>
+                  </div>
+                )}
+
                 {TIME_SLOTS.map((slot) => {
                   const dayDateStr = selectedDate.format('YYYY-MM-DD');
                   const cellKey = `${dayDateStr}_${slot}`;
@@ -680,6 +895,7 @@ export const LearningCalendarPage: React.FC = () => {
                           slotEvents.map((ev) => {
                             const isFixed = ev.type === 'FIXED_CLASS';
                             const isAI = ev.type === 'AI_STUDY';
+                            const prio = getPriorityConfig(ev.priority, isFixed);
 
                             return (
                               <motion.div
@@ -687,7 +903,7 @@ export const LearningCalendarPage: React.FC = () => {
                                 initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 onClick={() => handleEventClick(ev)}
-                                className={`p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${
+                                className={`p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${prio.borderLeft} ${
                                   isFixed
                                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
                                     : isAI
@@ -696,7 +912,7 @@ export const LearningCalendarPage: React.FC = () => {
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span
                                       className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
                                         isFixed
@@ -708,12 +924,16 @@ export const LearningCalendarPage: React.FC = () => {
                                     >
                                       {isFixed ? '🏫 Fixed Class' : isAI ? '🤖 AI Planned' : '👤 My Plan'}
                                     </span>
-                                    <h4 className="font-extrabold text-sm m-0 text-slate-900 dark:text-white">
+                                    <span className={`px-2 py-0.5 rounded-md text-xs font-extrabold uppercase flex items-center gap-1 shadow-2xs ${prio.badgeBg}`}>
+                                      <span>{prio.icon}</span>
+                                      <span>Ưu tiên {prio.label}</span>
+                                    </span>
+                                    <h4 className="font-extrabold text-sm m-0 text-slate-900 dark:text-white ml-1">
                                       {ev.title}
                                     </h4>
                                   </div>
 
-                                  <span className="font-mono text-xs font-bold text-slate-500">
+                                  <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
                                     <ClockCircleOutlined className="mr-1" />
                                     {ev.start_time} – {ev.end_time}
                                   </span>
