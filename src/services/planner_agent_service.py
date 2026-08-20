@@ -57,7 +57,7 @@ class PlannerAgentService:
             "start_date": payload.start_date or week_start_str,
             "end_date": payload.end_date,
             "assignment_id": payload.assignment_id,
-            "user_request": payload.request or "Tự động lập kế hoạch học tập tối ưu.",
+            "user_request": payload.user_message or payload.request or "Tự động lập kế hoạch học tập tối ưu.",
         }
 
         # If auto_apply is True, execute full graph (including DB tool execution)

@@ -179,6 +179,48 @@ export const LearningCalendarPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isDark = themeMode === 'dark';
 
+  // Calculate dynamic card height & top offset based on time duration (e.g., 08:00 - 10:45 = 2.75 hours = ~239.5px)
+  const getEventSpanStyles = (startTimeStr?: string, endTimeStr?: string) => {
+    if (!startTimeStr || !endTimeStr) {
+      return { isSpanned: false, style: {} };
+    }
+
+    try {
+      const [sh, sm] = startTimeStr.split(':').map(Number);
+      const [eh, em] = endTimeStr.split(':').map(Number);
+
+      if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) {
+        return { isSpanned: false, style: {} };
+      }
+
+      const startMins = sh * 60 + sm;
+      const endMins = eh * 60 + em;
+      const durationMins = endMins - startMins;
+
+      if (durationMins <= 0) {
+        return { isSpanned: false, style: {} };
+      }
+
+      const minuteOffsetInHour = sm;
+      const topPx = (minuteOffsetInHour / 60) * 90 + 4;
+      const heightPx = Math.max(75, (durationMins / 60) * 90 - 8);
+
+      return {
+        isSpanned: true,
+        style: {
+          position: 'absolute' as const,
+          top: `${topPx}px`,
+          height: `${heightPx}px`,
+          left: '6px',
+          right: '6px',
+          zIndex: 10,
+        },
+      };
+    } catch (e) {
+      return { isSpanned: false, style: {} };
+    }
+  };
+
   // Navigation Date (default current date)
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(() => dayjs());
 
@@ -444,6 +486,44 @@ export const LearningCalendarPage: React.FC = () => {
     }
   };
 
+  // Open Create Task Modal pre-filled for selected slot
+  const handleOpenCreateTaskForSlot = (dateStr: string, slotTime: string) => {
+    const scheduledDay = dayjs(dateStr);
+    let endHourStr = '20:30';
+    try {
+      const [h, m] = slotTime.split(':').map(Number);
+      const endH = h + 1 <= 23 ? h + 1 : 23;
+      endHourStr = `${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    } catch (e) {
+      endHourStr = slotTime;
+    }
+
+    createTaskForm.setFieldsValue({
+      title: '',
+      description: '',
+      topic: '',
+      scheduled_date: scheduledDay,
+      start_time: slotTime,
+      end_time: endHourStr,
+      priority: 'medium',
+      estimated_duration: 90,
+    });
+    setIsCreateTaskModalOpen(true);
+  };
+
+  // Delete Task Handler (AI Plan & MyPlan from DB)
+  const handleDeleteTask = async (e: React.MouseEvent | undefined, taskId: string) => {
+    if (e) e.stopPropagation();
+    try {
+      await weeklyPlanService.deleteTask(taskId);
+      message.success('Đã xóa nhiệm vụ thành công khỏi cơ sở dữ liệu!');
+      fetchCalendarData();
+    } catch (err: any) {
+      console.error('Delete task error:', err);
+      message.error(err.response?.data?.detail || 'Không thể xóa nhiệm vụ.');
+    }
+  };
+
   const [applyingAI, setApplyingAI] = useState<boolean>(false);
 
   // AI Plan Generation Handler (Preview)
@@ -452,8 +532,10 @@ export const LearningCalendarPage: React.FC = () => {
     setAiResult(null);
     try {
       const weekStartStr = currentMonday.format('YYYY-MM-DD');
+      const promptText = aiPromptText.trim() || 'Lên kế hoạch học tập tự động cho tuần này.';
       const res = await weeklyPlanService.generateAIPlan({
-        user_message: aiPromptText.trim() || 'Lên kế hoạch học tập tự động cho tuần này.',
+        request: promptText,
+        user_message: promptText,
         week_start: weekStartStr,
         assignment_id: selectedAssignmentId,
       });
@@ -771,20 +853,28 @@ export const LearningCalendarPage: React.FC = () => {
                         return (
                           <div
                             key={dayName}
-                            className="p-1.5 border-r border-slate-200 dark:border-slate-800 last:border-r-0 space-y-1.5 relative group hover:bg-slate-500/5 transition-colors"
+                            onClick={() => handleOpenCreateTaskForSlot(dayDateStr, slot)}
+                            className="p-1.5 border-r border-slate-200 dark:border-slate-800 last:border-r-0 space-y-1.5 relative group hover:bg-indigo-500/5 transition-colors cursor-pointer"
                           >
                             {cellEvents.map((ev) => {
                               const isFixed = ev.type === 'FIXED_CLASS';
                               const isAI = ev.type === 'AI_STUDY';
                               const prio = getPriorityConfig(ev.priority, isFixed);
+                              const spanInfo = getEventSpanStyles(ev.start_time, ev.end_time);
 
                               return (
                                 <motion.div
                                   key={ev.id}
                                   initial={{ opacity: 0, scale: 0.95 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  onClick={() => handleEventClick(ev)}
-                                  className={`p-2.5 rounded-2xl border text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] ${prio.borderLeft} ${
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEventClick(ev);
+                                  }}
+                                  style={spanInfo.isSpanned ? spanInfo.style : undefined}
+                                  className={`p-2 rounded-2xl border text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between ${
+                                    spanInfo.isSpanned ? 'z-10' : 'min-h-[76px]'
+                                  } ${prio.borderLeft} ${
                                     isFixed
                                       ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200 hover:border-emerald-500'
                                       : isAI
@@ -792,39 +882,43 @@ export const LearningCalendarPage: React.FC = () => {
                                       : 'bg-amber-500/15 border-amber-500/40 text-amber-900 dark:text-amber-200 hover:border-amber-500'
                                   }`}
                                 >
-                                  {/* Badge Header */}
-                                  <div className="flex items-center justify-between gap-1 mb-1.5 font-bold text-[10px]">
-                                    <span
-                                      className={`px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider ${
-                                        isFixed
-                                          ? 'bg-emerald-500 text-white border-transparent'
-                                          : isAI
-                                          ? 'bg-indigo-600 text-white border-transparent'
-                                          : 'bg-amber-500 text-white border-transparent'
-                                      }`}
-                                    >
-                                      {isFixed ? '🏫 Fixed Class' : isAI ? '🤖 AI Planned' : '👤 My Plan'}
-                                    </span>
-                                    
-                                    {/* Priority Badge */}
-                                    <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase flex items-center gap-0.5 shadow-2xs ${prio.badgeBg}`}>
-                                      <span>{prio.icon}</span>
-                                      <span>{prio.label}</span>
-                                    </span>
+                                  <div className="overflow-hidden min-w-0">
+                                    {/* Badge Header */}
+                                    <div className="flex items-center justify-between gap-1 mb-1 font-bold text-[10px] min-w-0">
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[9px] truncate shrink-0 max-w-[65%] ${
+                                          isFixed
+                                            ? 'bg-emerald-500 text-white border-transparent'
+                                            : isAI
+                                            ? 'bg-indigo-600 text-white border-transparent'
+                                            : 'bg-amber-500 text-white border-transparent'
+                                        }`}
+                                      >
+                                        {isFixed ? '🏫 Class' : isAI ? '🤖 AI Plan' : '👤 My Plan'}
+                                      </span>
+
+                                      {/* Compact Priority Badge */}
+                                      <Tooltip title={`Độ ưu tiên: ${prio.label}`}>
+                                        <span className={`px-1 py-0.5 rounded-md text-[9px] font-extrabold uppercase flex items-center gap-0.5 shrink-0 ${prio.badgeBg}`}>
+                                          <span>{prio.icon}</span>
+                                          <span className="hidden xl:inline">{prio.label}</span>
+                                        </span>
+                                      </Tooltip>
+                                    </div>
+
+                                    <div className={`font-extrabold ${spanInfo.isSpanned ? 'line-clamp-2' : 'line-clamp-1'} text-slate-900 dark:text-white leading-tight`}>
+                                      {ev.title}
+                                    </div>
                                   </div>
 
-                                  <div className="font-extrabold line-clamp-2 text-slate-900 dark:text-white leading-tight">
-                                    {ev.title}
-                                  </div>
-
-                                  <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-300 border-t border-slate-200/50 dark:border-slate-700/50 pt-1">
-                                    <span className="flex items-center gap-1">
-                                      <ClockCircleOutlined className="text-[10px]" />
+                                  <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-slate-600 dark:text-slate-300 border-t border-slate-200/50 dark:border-slate-700/50 pt-0.5 shrink-0 min-w-0">
+                                    <span className="flex items-center gap-1 truncate">
+                                      <ClockCircleOutlined className="text-[9px] shrink-0" />
                                       {ev.start_time} – {ev.end_time}
                                     </span>
                                     {isFixed && (
-                                      <Tooltip title="Lịch học cố định giảng đường (Hard constraint - Không thể sửa/kéo)">
-                                        <LockOutlined className="text-emerald-600 dark:text-emerald-400" />
+                                      <Tooltip title="Lịch học cố định giảng đường">
+                                        <LockOutlined className="text-emerald-600 dark:text-emerald-400 shrink-0 text-[9px]" />
                                       </Tooltip>
                                     )}
                                   </div>
@@ -881,15 +975,22 @@ export const LearningCalendarPage: React.FC = () => {
                   const slotEvents = eventMap[cellKey] || [];
 
                   return (
-                    <div key={slot} className="flex gap-4 pt-3 min-h-[70px]">
+                    <div
+                      key={slot}
+                      onClick={() => handleOpenCreateTaskForSlot(selectedDate.format('YYYY-MM-DD'), slot)}
+                      className="flex gap-4 pt-3 min-h-[70px] cursor-pointer hover:bg-indigo-500/5 p-2 rounded-2xl transition-colors group"
+                    >
                       <div className="w-20 text-xs font-mono font-bold text-slate-400 pt-1 shrink-0">
                         {slot}
                       </div>
 
                       <div className="flex-1 space-y-2">
                         {slotEvents.length === 0 ? (
-                          <div className="text-xs text-slate-300 dark:text-slate-700 italic pt-1">
-                            — Trống —
+                          <div className="text-xs text-slate-400 dark:text-slate-600 italic pt-1 flex items-center gap-2 font-medium">
+                            <span>— Trống —</span>
+                            <span className="opacity-0 group-hover:opacity-100 text-indigo-600 dark:text-indigo-400 transition-opacity font-bold not-italic text-[11px]">
+                              + Bấm để tạo nhiệm vụ MyPlan ({slot})
+                            </span>
                           </div>
                         ) : (
                           slotEvents.map((ev) => {
@@ -902,14 +1003,11 @@ export const LearningCalendarPage: React.FC = () => {
                                 key={ev.id}
                                 initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                onClick={() => handleEventClick(ev)}
-                                className={`p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md ${prio.borderLeft} ${
-                                  isFixed
-                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                                    : isAI
-                                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-900 dark:text-indigo-200'
-                                    : 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
-                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEventClick(ev);
+                                }}
+                                className="p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md"
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -933,10 +1031,12 @@ export const LearningCalendarPage: React.FC = () => {
                                     </h4>
                                   </div>
 
-                                  <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
-                                    <ClockCircleOutlined className="mr-1" />
-                                    {ev.start_time} – {ev.end_time}
-                                  </span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="font-mono text-xs font-bold text-slate-500">
+                                      <ClockCircleOutlined className="mr-1" />
+                                      {ev.start_time} – {ev.end_time}
+                                    </span>
+                                  </div>
                                 </div>
 
                                 {ev.description && (
@@ -1207,14 +1307,38 @@ export const LearningCalendarPage: React.FC = () => {
 
             {/* Quick Actions Bar */}
             <div className="pt-2 flex items-center justify-between gap-3 flex-wrap border-t border-slate-200 dark:border-slate-800">
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={() => handleStartSession(selectedTask.id)}
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold px-4 h-10 flex items-center gap-1"
-              >
-                Vào Bài Học (Workspace) 🚀
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => handleStartSession(selectedTask.id)}
+                  className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold px-4 h-10 flex items-center gap-1"
+                >
+                  Vào Bài Học (Workspace) 🚀
+                </Button>
+
+                {(selectedTask.source_type as string) !== 'FIXED_CLASS' && (
+                  <Popconfirm
+                    title="Xóa nhiệm vụ này?"
+                    description="Nhiệm vụ này sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu vĩnh viễn."
+                    onConfirm={async () => {
+                      await handleDeleteTask(undefined, selectedTask.id);
+                      setIsTaskDrawerOpen(false);
+                    }}
+                    okText="Xóa vĩnh viễn"
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      className="rounded-xl font-bold h-10"
+                    >
+                      Xóa nhiệm vụ
+                    </Button>
+                  </Popconfirm>
+                )}
+              </div>
 
               {selectedTask.status !== 'completed' && selectedTask.status !== 'COMPLETED' ? (
                 <Button

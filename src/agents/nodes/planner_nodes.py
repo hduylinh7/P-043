@@ -104,6 +104,80 @@ def parse_task_datetime_from_text(
     return target_date_str, target_start_time, target_end_time
 
 
+def parse_user_time_and_days(
+    user_request: str | None,
+    week_start_str: str,
+) -> tuple[list[str], str | None, str | None]:
+    """
+    Extract requested days of week and time of day (sáng/chiều/tối/giờ cụ thể) from user prompt.
+    Returns (target_dates_list, target_start_time, target_end_time).
+    """
+    if not user_request or not user_request.strip():
+        return [], None, None
+
+    req_text = user_request.lower()
+    try:
+        start_date = datetime.strptime(week_start_str, "%Y-%m-%d").date()
+    except Exception:
+        return [], None, None
+
+    target_dates: list[str] = []
+
+    # Map days of the week in planning week
+    day_matches = [
+        (["thứ 2", "thứ hai", "t2", "monday", "mon"], 0),
+        (["thứ 3", "thứ ba", "t3", "tuesday", "tue"], 1),
+        (["thứ 4", "thứ tư", "t4", "wednesday", "wed"], 2),
+        (["thứ 5", "thứ năm", "t5", "thursday", "thu"], 3),
+        (["thứ 6", "thứ sáu", "t6", "friday", "fri"], 4),
+        (["thứ 7", "thứ bảy", "t7", "saturday", "sat"], 5),
+        (["chủ nhật", "cn", "sunday", "sun"], 6),
+    ]
+
+    for patterns, day_idx in day_matches:
+        for p in patterns:
+            if re.search(r'(?:\b|_)' + re.escape(p) + r'(?:\b|_)', req_text):
+                d_str = (start_date + timedelta(days=day_idx)).strftime("%Y-%m-%d")
+                if d_str not in target_dates:
+                    target_dates.append(d_str)
+                break
+
+    if ("cuối tuần" in req_text or "weekend" in req_text) and not target_dates:
+        target_dates.append((start_date + timedelta(days=5)).strftime("%Y-%m-%d"))
+        target_dates.append((start_date + timedelta(days=6)).strftime("%Y-%m-%d"))
+
+    # Time of day detection
+    target_start = None
+    target_end = None
+
+    explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', req_text)
+    if explicit_time:
+        try:
+            h_val = int(explicit_time.group(1))
+            m_val = int(explicit_time.group(2)) if explicit_time.group(2) else 0
+            if ("tối" in req_text or "pm" in req_text) and h_val < 12:
+                h_val += 12
+            if 0 <= h_val <= 23:
+                target_start = f"{h_val:02d}:{m_val:02d}"
+                end_h = h_val + 1 if h_val < 23 else 23
+                target_end = f"{end_h:02d}:{m_val:02d}"
+        except Exception:
+            pass
+
+    if target_start is None:
+        if re.search(r'\b(?:buổi\s*)?sáng\b', req_text) or "morning" in req_text:
+            target_start = "09:00"
+            target_end = "10:30"
+        elif re.search(r'\b(?:buổi\s*)?chiều\b', req_text) or "afternoon" in req_text:
+            target_start = "14:00"
+            target_end = "15:30"
+        elif re.search(r'\b(?:buổi\s*)?tối\b', req_text) or "evening" in req_text or "night" in req_text:
+            target_start = "20:00"
+            target_end = "21:30"
+
+    return target_dates, target_start, target_end
+
+
 PLANNER_SYSTEM_PROMPT = """
 You are an expert AI Student Study Planner for the Learning Companion.
 
@@ -515,20 +589,32 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
         logger.warning(f"Could not load existing tasks/fixed schedules for conflict checking: {e}")
 
     user_request = state.get("user_request")
-    for task_data in decision.get("tasks", []):
+    req_dates, req_start, req_end = parse_user_time_and_days(user_request, week_start)
+
+    for task_idx, task_data in enumerate(decision.get("tasks", [])):
         raw_date = task_data.get("scheduled_date")
         raw_start = task_data.get("start_time")
         raw_end = task_data.get("end_time")
 
-        # Check if title/description or user_request contains explicit weekday or start_time
-        p_date, p_start, p_end = parse_task_datetime_from_text(
-            task_data.get("title"), task_data.get("description"), week_start, user_request
-        )
-        if not raw_date and p_date:
-            raw_date = p_date
-        if (not raw_start or not raw_end) and p_start and p_end:
-            raw_start = p_start
-            raw_end = p_end
+        if req_dates:
+            raw_date = req_dates[task_idx % len(req_dates)]
+        elif not raw_date:
+            p_date, _, _ = parse_task_datetime_from_text(
+                task_data.get("title"), task_data.get("description"), week_start, user_request
+            )
+            if p_date:
+                raw_date = p_date
+
+        if req_start and req_end:
+            raw_start = req_start
+            raw_end = req_end
+        elif not raw_start or not raw_end:
+            _, p_start, p_end = parse_task_datetime_from_text(
+                task_data.get("title"), task_data.get("description"), week_start, user_request
+            )
+            if p_start and p_end:
+                raw_start = p_start
+                raw_end = p_end
 
         eff_start, eff_end, conflict_warn = resolve_task_time_conflict(
             scheduled_date=raw_date,
@@ -648,19 +734,32 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
             logger.warning(f"Could not load existing schedule for preview conflict checking: {e}")
 
     user_request = state.get("user_request")
-    for task_data in decision.get("tasks", []):
+    req_dates, req_start, req_end = parse_user_time_and_days(user_request, week_start)
+
+    for task_idx, task_data in enumerate(decision.get("tasks", [])):
         raw_date = task_data.get("scheduled_date")
         raw_start = task_data.get("start_time")
         raw_end = task_data.get("end_time")
 
-        p_date, p_start, p_end = parse_task_datetime_from_text(
-            task_data.get("title"), task_data.get("description"), week_start, user_request
-        )
-        if not raw_date and p_date:
-            raw_date = p_date
-        if (not raw_start or not raw_end) and p_start and p_end:
-            raw_start = p_start
-            raw_end = p_end
+        if req_dates:
+            raw_date = req_dates[task_idx % len(req_dates)]
+        elif not raw_date:
+            p_date, _, _ = parse_task_datetime_from_text(
+                task_data.get("title"), task_data.get("description"), week_start, user_request
+            )
+            if p_date:
+                raw_date = p_date
+
+        if req_start and req_end:
+            raw_start = req_start
+            raw_end = req_end
+        elif not raw_start or not raw_end:
+            _, p_start, p_end = parse_task_datetime_from_text(
+                task_data.get("title"), task_data.get("description"), week_start, user_request
+            )
+            if p_start and p_end:
+                raw_start = p_start
+                raw_end = p_end
 
         eff_start, eff_end, conflict_warn = resolve_task_time_conflict(
             scheduled_date=raw_date,

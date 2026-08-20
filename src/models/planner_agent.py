@@ -27,15 +27,19 @@ class PlannerAgentRequest(BaseModel):
         description="Optional list of target assignment IDs to include in planning.",
     )
     request: str | None = Field(
-        default="Tự động lập kế hoạch học tập tối ưu.",
+        default=None,
         description="Student prompt, goals, or instructions for the Planner Agent.",
+    )
+    user_message: str | None = Field(
+        default=None,
+        description="Student prompt, goals, or instructions for the Planner Agent (alias for request).",
     )
     auto_apply: bool = Field(
         default=False,
         description="If True, automatically save generated tasks to DB. If False (default), return as preview/draft.",
     )
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class PlannerTaskResult(BaseModel):

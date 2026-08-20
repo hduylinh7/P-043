@@ -10,6 +10,7 @@ import {
   message,
   Collapse,
   Badge,
+  Popconfirm,
 } from 'antd';
 import {
   SendOutlined,
@@ -30,7 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
-import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { MarkdownRenderer, cleanErrorMessage } from '../components/MarkdownRenderer';
 import { api, ChatSession, ChatMessage, Citation } from '../services/api';
 import { courseService } from '../services/courseService';
 import { assignmentService } from '../services/assignmentService';
@@ -217,16 +218,34 @@ export const AIChatPage: React.FC = () => {
       setMessages((prev) => [...prev, newAssistantMsg]);
     } catch (err: any) {
       console.error('Failed to send RAG chat message:', err);
-      message.error('Không thể kết nối tới Trợ Lý AI. Vui lòng thử lại.');
+      const rawErrMsg = err?.response?.data?.detail || err?.message || '';
+      const friendlyErrMsg = cleanErrorMessage(rawErrMsg) || '⚠️ Không thể kết nối tới Trợ Lý AI. Vui lòng thử lại sau giây lát.';
+      message.error(friendlyErrMsg);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: '⚠️ Đã xảy ra lỗi khi truy vấn dữ liệu học tập. Vui lòng thử lại sau giây lát.',
+          content: friendlyErrMsg,
         },
       ]);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent | undefined, sId: string) => {
+    if (e) e.stopPropagation();
+    try {
+      await api.deleteSession(sId);
+      message.success('Đã xóa đoạn chat thành công!');
+      setSessions((prev) => prev.filter((s) => s.id !== sId));
+      if (activeSessionId === sId) {
+        setActiveSessionId(null);
+        setMessages([]);
+      }
+    } catch (err: any) {
+      console.error('Failed to delete session:', err);
+      message.error(err.response?.data?.detail || 'Không thể xóa đoạn chat.');
     }
   };
 
@@ -304,25 +323,28 @@ export const AIChatPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Course Context Selector */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:inline">
-              Phạm vi tra cứu:
-            </span>
-            <Select
-              value={selectedCourseId || 'all'}
-              onChange={(val) => setSelectedCourseId(val === 'all' ? undefined : val)}
-              className="w-56"
-              size="middle"
-              options={[
-                { value: 'all', label: '📚 Tất cả môn học' },
-                ...courses.map((c) => ({
-                  value: c.id,
-                  label: `${c.code} - ${c.name}`,
-                })),
-              ]}
-            />
-          </div>
+          {/* Header Action: Delete Active Session */}
+          {activeSessionId && (
+            <div className="flex items-center gap-3">
+              <Popconfirm
+                title="Xóa đoạn chat này?"
+                description="Lịch sử đoạn chat hiện tại sẽ bị xóa khỏi hệ thống."
+                onConfirm={(e) => handleDeleteSession(e as any, activeSessionId)}
+                okText="Xóa phiên"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  size="middle"
+                  className="rounded-xl font-medium"
+                >
+                  Xóa đoạn chat
+                </Button>
+              </Popconfirm>
+            </div>
+          )}
         </header>
 
         {/* Workspace Body: Split View (Sessions Sidebar + Chat View) */}
@@ -373,21 +395,48 @@ export const AIChatPage: React.FC = () => {
                 filteredSessions.map((session) => {
                   const isActive = activeSessionId === session.id;
                   return (
-                    <motion.button
+                    <div
                       key={session.id}
-                      whileHover={{ x: 2 }}
                       onClick={() => handleSelectSession(session.id)}
-                      className={
+                      className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all border text-xs font-medium ${
                         isActive
-                          ? 'tab-voxel-active text-xs w-full text-left justify-start'
-                          : 'tab-voxel-inactive text-xs w-full text-left justify-start'
-                      }
+                          ? isDark
+                            ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300 shadow-sm'
+                            : 'bg-emerald-100/90 border-emerald-500/60 text-emerald-900 shadow-sm'
+                          : isDark
+                          ? 'bg-slate-900/40 border-slate-800/80 hover:bg-slate-800/60 text-slate-300'
+                          : 'bg-white border-slate-200/80 hover:bg-slate-50 text-slate-700'
+                      }`}
                     >
-                      <MessageOutlined
-                        className={`text-sm shrink-0 ${isActive ? 'text-emerald-700 dark:text-emerald-300' : 'text-emerald-500'}`}
-                      />
-                      <span className="truncate flex-1">{session.title || 'Trò chuyện RAG'}</span>
-                    </motion.button>
+                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+                        <MessageOutlined
+                          className={`text-sm shrink-0 ${
+                            isActive ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'
+                          }`}
+                        />
+                        <span className="truncate">{session.title || 'Trò chuyện RAG'}</span>
+                      </div>
+
+                      <Popconfirm
+                        title="Xóa đoạn chat?"
+                        description="Bạn có chắc chắn muốn xóa phiên trò chuyện này không?"
+                        onConfirm={(e) => handleDeleteSession(e as any, session.id)}
+                        onCancel={(e) => e?.stopPropagation()}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ danger: true, size: 'small' }}
+                        cancelButtonProps={{ size: 'small' }}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded shrink-0"
+                          title="Xóa đoạn chat"
+                        >
+                          <DeleteOutlined className="text-xs" />
+                        </button>
+                      </Popconfirm>
+                    </div>
                   );
                 })
               )}

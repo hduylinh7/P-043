@@ -33,9 +33,47 @@ interface MarkdownRendererProps {
   entityContext?: EntityContext;
 }
 
+export const cleanErrorMessage = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  // Only intercept if the text matches explicit backend error wrapper signatures or exception dumps
+  const isBackendErrorWrapper =
+    text.startsWith('Xin lỗi, tôi gặp sự cố khi xử lý câu hỏi:') ||
+    text.includes('Error code: 429') ||
+    text.includes('rate_limit_exceeded') ||
+    text.includes("{'error':") ||
+    text.includes('{"error":');
+
+  // If it's a normal chat message (e.g. asking about exercise 429 or quota), return completely unchanged!
+  if (!isBackendErrorWrapper) {
+    return text;
+  }
+
+  // 1. Quota / Rate limit error (HTTP 429)
+  if (text.includes('429') || text.includes('rate_limit_exceeded') || text.includes('TPD') || text.includes('tokens')) {
+    const timeMatch = text.match(/try again in ([0-9]+[m|s|h|\.|\s]+[0-9]*[s]?)/i);
+    if (timeMatch) {
+      let timeStr = timeMatch[1].trim();
+      timeStr = timeStr.replace(/([0-9]+)m/g, '$1 phút ').replace(/([0-9]+(?:\.[0-9]+)?)s/g, '$1 giây');
+      return `⚠️ Trợ lý AI đang xử lý quá nhiều câu hỏi cùng lúc.\n\n⏱️ Vui lòng quay lại đặt câu hỏi sau khoảng **${timeStr}** bạn nhé!`;
+    }
+    return '⚠️ Trợ lý AI hiện đang tạm thời quá tải lượt phản hồi trong ngày. Vui lòng quay lại đặt câu hỏi sau ít phút bạn nhé!';
+  }
+
+  // 2. System configuration / Authentication failure
+  if (text.includes('invalid_api_key') || text.includes('GROQ_API_KEY') || text.includes('401')) {
+    return '⚠️ Trợ lý AI hiện chưa thể kết nối. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên!';
+  }
+
+  // 3. General backend exception dump
+  return '⚠️ Trợ lý AI gặp sự cố gián đoạn tạm thời. Vui lòng gửi lại câu hỏi sau giây lát bạn nhé!';
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isUser, entityContext }) => {
+  const displayContent = cleanErrorMessage(content || '');
+
   if (isUser) {
-    return <p className="m-0 font-sans leading-normal text-white">{content}</p>;
+    return <p className="m-0 font-sans leading-normal text-white">{displayContent}</p>;
   }
 
   // Lookup helper to match entity name against authenticated student's data
@@ -185,7 +223,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
           ),
         }}
       >
-        {content}
+        {displayContent}
       </ReactMarkdown>
     </div>
   );

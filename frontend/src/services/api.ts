@@ -41,6 +41,7 @@ export interface ApiClientInstance extends AxiosInstance {
   checkStatus: () => Promise<SystemStatus>;
   getSessions: (userId?: string, agentName?: string, courseId?: string) => Promise<ChatSession[]>;
   getMessages: (sessionId: string) => Promise<ChatMessage[]>;
+  deleteSession: (sessionId: string) => Promise<{ message: string }>;
   sendMessage: (
     message: string,
     sessionId?: string,
@@ -170,6 +171,11 @@ api.getSessions = async (userId = 'default_user', agentName?: string, courseId?:
 
 api.getMessages = async (sessionId: string) => {
   const res = await api.get<ChatMessage[]>(`/sessions/${sessionId}/messages`);
+  return res.data;
+};
+
+api.deleteSession = async (sessionId: string) => {
+  const res = await api.delete<{ message: string }>(`/sessions/${sessionId}`);
   return res.data;
 };
 
