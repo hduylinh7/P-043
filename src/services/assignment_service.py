@@ -707,7 +707,15 @@ class AssignmentService:
             await db.commit()
 
         due_dt = assignment.due_at
-        is_late = bool(due_dt and submission.submitted_at and submission.submitted_at > due_dt)
+        sub_at = submission.submitted_at
+        if due_dt and sub_at:
+            if due_dt.tzinfo is None and sub_at.tzinfo is not None:
+                due_dt = due_dt.replace(tzinfo=timezone.utc)
+            elif due_dt.tzinfo is not None and sub_at.tzinfo is None:
+                sub_at = sub_at.replace(tzinfo=timezone.utc)
+            is_late = sub_at > due_dt
+        else:
+            is_late = False
 
         return SubmissionResponse(
             id=submission.id,
