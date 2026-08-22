@@ -46,6 +46,7 @@ import {
   PlusOutlined,
   ThunderboltOutlined,
   DeleteOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
@@ -184,6 +185,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
   const [knowledgeRevealedHints, setKnowledgeRevealedHints] = useState<Record<string, boolean>>({});
 
   // Floating Knowledge Review AI Chat State (Images 2, 3, 4)
+  const [knowledgeTab, setKnowledgeTab] = useState<'guide' | 'material'>('guide');
   const [isKnowledgeChatOpen, setIsKnowledgeChatOpen] = useState<boolean>(false);
   const [knowledgeChatMessages, setKnowledgeChatMessages] = useState<ChatMessage[]>([]);
   const [knowledgeChatInput, setKnowledgeChatInput] = useState<string>('');
@@ -772,33 +774,63 @@ export const StudySessionWorkspacePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/calendar')}
-                className="px-3.5 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-2"
+                className="px-3.5 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
               >
                 Quay lại Calendar
               </button>
               <div className="h-5 w-px bg-slate-300 dark:bg-slate-700" />
-              <h1 className="font-black text-base truncate m-0 flex items-center gap-2">
-                <span>Kiến Thức Trọng Tâm</span>
-                <span className="text-slate-400 font-semibold text-sm hidden md:inline">— {task.title}</span>
+              <h1 className="font-black text-base truncate m-0 text-slate-900 dark:text-white">
+                <span>{knowledgeTab === 'guide' ? 'Kiến Thức Trọng Tâm' : 'Tài Liệu Bài Giảng'}</span>
+                <span className="text-slate-400 font-semibold text-sm ml-2 hidden md:inline">— {task.title}</span>
               </h1>
             </div>
-            <span className="badge-voxel-green text-xs font-black uppercase tracking-wider hidden sm:inline-flex">
-              Chế độ ôn tập
-            </span>
+
+            {/* Segmented View Switcher */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setKnowledgeTab('guide')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    knowledgeTab === 'guide'
+                      ? 'bg-white dark:bg-minecraft-obsidianCard border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 shadow-voxel-sm shadow-minecraft-grassBorder/40'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
+                  }`}
+                >
+                  Kiến Thức Trọng Tâm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKnowledgeTab('material')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    knowledgeTab === 'material'
+                      ? 'bg-white dark:bg-minecraft-obsidianCard border-2 border-sky-500 text-sky-800 dark:text-sky-300 shadow-voxel-sm shadow-sky-500/40'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
+                  }`}
+                >
+                  Đọc Tài Liệu Bài Giảng
+                </button>
+              </div>
+
+              <span className="badge-voxel-green text-xs font-black uppercase tracking-wider hidden lg:inline-flex">
+                Chế độ ôn tập
+              </span>
+            </div>
           </header>
 
           {/* Main Body: Split View (Left Content + Right Docked Chat Panel) */}
           <div className="flex-1 flex overflow-hidden relative min-w-0">
-            {/* Left Scrollable Content Area */}
+            {/* Left Area: Either Guide or Material Reader */}
+            {knowledgeTab === 'guide' ? (
             <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col items-center min-w-0">
-              <div className="w-full max-w-4xl space-y-6 pb-6">
+              <div className="w-full max-w-4xl space-y-6 pb-28">
 
                 {/* Related Assignment Alert */}
                 {relatedAssign && (
                   <div className="p-5 rounded-2xl border-2 border-minecraft-grassBorder/40 bg-emerald-50/50 dark:bg-minecraft-obsidianCard shadow-voxel-sm shadow-minecraft-grassBorder/30 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="badge-voxel-green text-[10px] font-black uppercase tracking-wider">
-                        LIÊN QUAN ĐẾN BÀI TẬP ĐANG CHỜ
+                        BÀI TẬP LIÊN QUAN
                       </span>
                       {relatedAssign.due_date && (
                         <span className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
@@ -819,7 +851,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 {companionLoading && (
                   <div className="flex flex-col items-center justify-center py-16 gap-4">
                     <Spin size="large" />
-                    <p className="text-slate-400 font-medium text-sm">AI đang phân tích tài liệu và tổng hợp kiến thức trọng tâm...</p>
+                    <p className="text-slate-400 font-medium text-sm">Đang tổng hợp kiến thức trọng tâm bài học...</p>
                   </div>
                 )}
 
@@ -832,15 +864,15 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       <div className="p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-minecraft-obsidianCard shadow-sm space-y-5">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-black text-xs uppercase tracking-wider">
-                            <span>AI STUDY GUIDE (HƯỚNG DẪN TRỌNG TÂM BÀI HỌC)</span>
-                          </div>
+                          <h2 className="font-black text-xs uppercase tracking-wider text-emerald-800 dark:text-emerald-300 m-0">
+                            Hướng Dẫn Trọng Tâm Bài Học
+                          </h2>
                           <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            <span className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                               Còn {conceptChatQuota}/3 câu hỏi nhanh
                             </span>
                             <span className="badge-voxel-green text-[10px]">
-                              GROUNDED RAG
+                              TÀI LIỆU RAG
                             </span>
                           </div>
                         </div>
@@ -860,9 +892,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
                         {/* KEY CONCEPTS */}
                         {companionData.ai_study_guide.key_concepts && companionData.ai_study_guide.key_concepts.length > 0 && (
                           <div className="space-y-3">
-                            <h4 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 m-0">
-                              Khái niệm cốt lõi (Key Concepts):
-                            </h4>
+                            <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 m-0">
+                              Khái niệm cốt lõi:
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                               {companionData.ai_study_guide.key_concepts.map((kc, idx) => {
                                 const isChatActive = activeConceptChatIdx === idx;
@@ -902,7 +934,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                                       )}
                                     </div>
 
-                                    {/* CHAT A: Inline Quick Q&A */}
+                                    {/* Inline Quick Q&A */}
                                     <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">
                                       {chatRecord ? (
                                         <div className="p-3 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/20 space-y-2 text-xs">
@@ -912,15 +944,6 @@ export const StudySessionWorkspacePage: React.FC = () => {
                                           <p className="m-0 text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
                                             "{chatRecord.answer}"
                                           </p>
-                                          <div className="pt-1 flex items-center justify-end">
-                                            <button
-                                              type="button"
-                                              onClick={() => navigate(`/study-session/${taskId}`)}
-                                              className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-                                            >
-                                              <span>Vào Workspace để làm bài tập</span>
-                                            </button>
-                                          </div>
                                         </div>
                                       ) : isChatActive ? (
                                         <div className="space-y-2 pt-1">
@@ -967,7 +990,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                                             setActiveConceptChatIdx(idx);
                                             setConceptChatInput('');
                                           }}
-                                          className="btn-voxel-sky text-xs w-full py-2 rounded-xl font-bold shadow-voxel-sky active:translate-y-0.5 transition-all cursor-pointer"
+                                          className="btn-voxel-sky text-xs w-full py-2.5 rounded-xl font-bold shadow-voxel-sky active:translate-y-0.5 transition-all cursor-pointer"
                                         >
                                           Hỏi nhanh về khái niệm này
                                         </button>
@@ -983,9 +1006,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
                         {/* IMPORTANT POINTS */}
                         {companionData.ai_study_guide.important_points && companionData.ai_study_guide.important_points.length > 0 && (
                           <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <h4 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 m-0">
+                            <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 m-0">
                               Các điểm quan trọng cần nhớ:
-                            </h4>
+                            </h3>
                             <ul className="list-disc list-inside space-y-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
                               {companionData.ai_study_guide.important_points.map((pt, idx) => (
                                 <li key={idx} className="leading-relaxed">
@@ -995,33 +1018,6 @@ export const StudySessionWorkspacePage: React.FC = () => {
                             </ul>
                           </div>
                         )}
-
-                        {/* SOURCE TRACEABILITY */}
-                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Nguồn tham khảo:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {(companionData?.sources && companionData.sources.length > 0) ? (
-                                companionData.sources.map((src, sIdx) => (
-                                  <span
-                                    key={sIdx}
-                                    className="px-2.5 py-1 rounded-lg border-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                                  >
-                                    {src.title || src.file_name}
-                                  </span>
-                                ))
-                              ) : task.material_title ? (
-                                <span
-                                  className="px-2.5 py-1 rounded-lg border-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                                >
-                                  {task.material_title}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-400 italic">Trích xuất từ dữ liệu bài giảng</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
                       </div>
                     )}
 
@@ -1053,6 +1049,25 @@ export const StudySessionWorkspacePage: React.FC = () => {
                             </span>
                           </div>
 
+                          {/* Course Material Quick Access Banner */}
+                          <div className="p-4 rounded-xl border-2 border-blue-500/30 bg-blue-50/70 dark:bg-blue-950/30 flex items-center justify-between flex-wrap gap-3">
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white m-0 truncate">
+                                {task.material_title || `Tài liệu bài giảng môn học ${task.course_name || ''}`}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 truncate">
+                                {task.material_id ? 'Đọc toàn văn slide / giáo trình gốc và tra cứu cùng Trợ lý AI' : 'Mở kho bài giảng môn học để xem toàn bộ tài liệu liên quan'}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setKnowledgeTab('material')}
+                              className="btn-voxel-sky text-xs px-4 py-2 rounded-xl font-bold shadow-voxel-sky active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+                            >
+                              Đọc Toàn Văn Bài Giảng
+                            </button>
+                          </div>
+
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                             {/* Cột 1: Cần đọc kỹ */}
                             <div className="p-4 rounded-xl border-2 border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 shadow-voxel-sm shadow-rose-900/20 space-y-2.5">
@@ -1070,7 +1085,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                               <ul className="space-y-1.5 m-0 pl-0 list-none">
                                 {focusList.map((item, idx) => (
                                   <li key={idx} className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-start gap-1.5 leading-relaxed">
-                                    <span className="text-rose-500 font-bold shrink-0">●</span>
+                                    <span className="text-rose-500 font-bold shrink-0">•</span>
                                     <span>{item}</span>
                                   </li>
                                 ))}
@@ -1093,7 +1108,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                               <ul className="space-y-1.5 m-0 pl-0 list-none">
                                 {skimList.map((item, idx) => (
                                   <li key={idx} className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-start gap-1.5 leading-relaxed">
-                                    <span className="text-amber-500 font-bold shrink-0">●</span>
+                                    <span className="text-amber-500 font-bold shrink-0">•</span>
                                     <span>{item}</span>
                                   </li>
                                 ))}
@@ -1116,7 +1131,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                               <ul className="space-y-1.5 m-0 pl-0 list-none">
                                 {skipList.map((item, idx) => (
                                   <li key={idx} className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-start gap-1.5 leading-relaxed">
-                                    <span className="text-slate-400 font-bold shrink-0">●</span>
+                                    <span className="text-slate-400 font-bold shrink-0">•</span>
                                     <span>{item}</span>
                                   </li>
                                 ))}
@@ -1141,7 +1156,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                               Checklist Tự Đánh Giá "Nắm Được Chưa?"
                             </h3>
                             <span className="badge-voxel-green text-xs font-mono font-black">
-                              {confidentCount} / {questions.length} câu đã tự tin
+                              {confidentCount} / {questions.length} câu đã nắm vững
                             </span>
                           </div>
 
@@ -1193,9 +1208,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
                                               [q.id]: !prev[q.id],
                                             }));
                                           }}
-                                          className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-500 cursor-pointer shrink-0"
+                                          className="px-3 py-1 rounded-xl border-2 border-amber-500/30 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 font-bold text-[11px] cursor-pointer transition-all active:translate-y-0.5 shrink-0"
                                         >
-                                          <span>{isHintRevealed ? 'Ẩn gợi ý' : 'Xem gợi ý'}</span>
+                                          {isHintRevealed ? 'Ẩn gợi ý' : 'Xem gợi ý'}
                                         </button>
                                       </div>
 
@@ -1230,39 +1245,163 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   </>
                 )}
 
-                {/* Empty state when no companion data */}
-                {!companionLoading && !companionData?.ai_study_guide && (
-                  <div className="p-8 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center space-y-2">
-                    <p className="font-bold text-slate-600 dark:text-slate-300 text-sm m-0">AI chưa tạo được nội dung ôn tập cho buổi học này.</p>
-                    <p className="text-xs text-slate-500 m-0">Bạn có thể vào Workspace để làm bài tập trực tiếp.</p>
+                {/* ─── CTA: Enter Workspace (Placed at the very bottom of the content) ─── */}
+                <div className="p-6 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 dark:from-emerald-950/40 dark:to-teal-950/40 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-200 m-0">
+                      Đã nắm được các kiến thức trọng tâm?
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 m-0 mt-1">
+                      Bước tiếp theo: chuyển sang Workspace để bắt đầu thực hành và làm bài tập trực tiếp.
+                    </p>
                   </div>
-                )}
-
-                {/* ─── CTA: Enter Workspace ─── */}
-                <div className={`sticky bottom-0 py-4 -mx-6 px-6 ${
-                  isDark ? 'bg-[#0B1117]/95 backdrop-blur border-t border-slate-800' : 'bg-slate-50/95 backdrop-blur border-t border-slate-200'
-                }`}>
-                  <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 m-0">
-                        Đã nắm được các kiến thức trọng tâm?
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
-                        Bước tiếp theo: thực hành và kiểm tra trong Workspace.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/study-session/${taskId}`)}
-                      className="btn-voxel-green text-sm px-8 py-3 rounded-2xl font-black shadow-voxel active:translate-y-1 transition-all cursor-pointer whitespace-nowrap"
-                    >
-                      <span>Tôi đã sẵn sàng — Bắt đầu học</span>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/study-session/${taskId}`)}
+                    className="btn-voxel-green text-sm px-8 py-3.5 rounded-2xl font-black shadow-voxel active:translate-y-1 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    Tôi đã sẵn sàng — Bắt đầu học
+                  </button>
                 </div>
 
               </div>
             </div>
+            ) : (
+              /* ─── FULL DOCUMENT / MATERIAL READER TAB ─── */
+              <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-900/40 relative">
+                {/* Material Subheader */}
+                <div className={`px-6 py-3 border-b flex items-center justify-between z-10 shrink-0 ${
+                  isDark ? 'bg-[#151F30] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                }`}>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-black m-0 truncate text-slate-900 dark:text-white">
+                      {materialFileName || task.material_title || 'Tài liệu bài giảng môn học'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                      {task.course_name || 'Khóa học'} • Đọc trực tiếp trong buổi học
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {task.course_id && task.material_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          materialService.downloadMaterial(
+                            task.course_id!,
+                            task.material_id!,
+                            materialFileName || task.material_title || 'tai_lieu.pdf'
+                          );
+                          message.success('Đang tải xuống tài liệu...');
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs active:translate-y-0.5 cursor-pointer shadow-xs transition-all"
+                      >
+                        Tải Xuống
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setKnowledgeTab('guide')}
+                      className="px-3.5 py-1.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer transition-all active:translate-y-0.5"
+                    >
+                      ← Xem Kiến Thức Trọng Tâm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/study-session/${taskId}`)}
+                      className="btn-voxel-green text-xs px-5 py-2 rounded-xl font-black shadow-voxel active:translate-y-0.5 transition-all cursor-pointer"
+                    >
+                      Vào Workspace làm bài tập
+                    </button>
+                  </div>
+                </div>
+
+                {/* Document Canvas */}
+                <div className="flex-1 overflow-hidden relative">
+                  {task.course_id && task.material_id ? (
+                    (() => {
+                      const token = localStorage.getItem('access_token');
+                      const ext = (materialFileName || task.material_title || '').split('.').pop()?.toLowerCase() || '';
+                      const isPdf = ext === 'pdf' || !ext;
+                      const streamUrl = `${API_BASE_URL}/courses/${task.course_id}/materials/${task.material_id}/download?inline=true&token=${token}`;
+
+                      if (isPdf) {
+                        return (
+                          <iframe
+                            src={streamUrl}
+                            title={task.material_title || 'Tài liệu bài giảng'}
+                            className="w-full h-full border-0 bg-slate-900"
+                          />
+                        );
+                      } else if (extractedTextContent) {
+                        return (
+                          <div className="w-full h-full p-8 overflow-y-auto font-sans leading-relaxed">
+                            <div className={`p-8 rounded-2xl border shadow-sm max-w-4xl mx-auto space-y-4 ${
+                              isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+                            }`}>
+                              <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+                                <MarkdownRenderer content={extractedTextContent} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center h-full">
+                            <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                              {task.material_title || 'Tài liệu bài giảng'}
+                            </h3>
+                            <p className="text-xs text-slate-400 max-w-md mb-6">
+                              Tập tin hỗ trợ tải về hoặc đọc trực tiếp. Bạn cũng có thể mở Trợ lý AI ở góc phải để tra cứu nội dung.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                materialService.downloadMaterial(
+                                  task.course_id!,
+                                  task.material_id!,
+                                  materialFileName || task.material_title || 'tai_lieu.pdf'
+                                );
+                                message.success('Đang tải xuống tài liệu...');
+                              }}
+                              className="btn-voxel-sky text-xs px-6 py-2.5 rounded-xl font-bold cursor-pointer"
+                            >
+                              Tải Về Máy
+                            </button>
+                          </div>
+                        );
+                      }
+                    })()
+                  ) : extractedTextContent ? (
+                    <div className="w-full h-full p-8 overflow-y-auto font-sans leading-relaxed">
+                      <div className={`p-8 rounded-2xl border shadow-sm max-w-4xl mx-auto space-y-4 ${
+                        isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+                      }`}>
+                        <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+                          <MarkdownRenderer content={extractedTextContent} />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-8 text-center h-full space-y-4">
+                      <h3 className="text-base font-bold text-slate-700 dark:text-slate-300 m-0">
+                        Chưa tìm thấy tập tin bài giảng đính kèm cho bài học này
+                      </h3>
+                      <p className="text-xs text-slate-500 max-w-md m-0">
+                        Bạn có thể chuyển sang tab Kiến thức trọng tâm để xem tóm tắt của AI hoặc vào thẳng Workspace để làm bài tập.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setKnowledgeTab('guide')}
+                        className="btn-voxel-sky text-xs px-4 py-2 rounded-xl font-bold cursor-pointer"
+                      >
+                        Quay lại Kiến Thức Trọng Tâm
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ─── FLOATING AI ASSISTANT TRIGGER BUTTON (When Closed) ─── */}
             {!isKnowledgeChatOpen && (
@@ -1408,7 +1547,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                                   key={sIdx}
                                   className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
                                 >
-                                  📄 {src}
+                                  {src}
                                 </span>
                               ))}
                             </div>
