@@ -78,9 +78,16 @@ export interface QuickSelfCheckQuestion {
   explanation?: string | null;
 }
 
+export interface ReadingRoadmap {
+  focus_sections: string[];
+  skim_sections: string[];
+  skip_sections?: string[];
+}
+
 export interface StudySessionCompanionData {
   learning_objectives: LearningObjective[];
   ai_study_guide?: AIStudyGuide | null;
+  reading_roadmap?: ReadingRoadmap | null;
   related_assignment?: RelatedAssignmentData | null;
   quick_self_check: QuickSelfCheckQuestion[];
   sources: SourceReference[];

@@ -137,7 +137,7 @@ class CourseRepository:
                 selectinload(Course.instructor),
                 selectinload(Course.schedules),
             )
-            .outerjoin(Enrollment, (Enrollment.course_id == Course.id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT))
+            .outerjoin(Enrollment, (Enrollment.course_id == Course.id) & (func.lower(Enrollment.role) == "student"))
             .where(Course.instructor_id == instructor_id)
             .group_by(Course.id)
             .order_by(Course.created_at.desc())
@@ -159,7 +159,7 @@ class CourseRepository:
                 Enrollment.course_id,
                 func.count(Enrollment.id).label("student_count")
             )
-            .where(Enrollment.role == EnrollmentRoleEnum.STUDENT)
+            .where(func.lower(Enrollment.role) == "student")
             .group_by(Enrollment.course_id)
             .subquery()
         )
@@ -185,7 +185,7 @@ class CourseRepository:
         enrolled_course_ids = set()
         if student_id:
             enroll_stmt = select(Enrollment.course_id).where(
-                (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.user_id == student_id) & (func.lower(Enrollment.role) == "student")
             )
             enroll_res = await db.execute(enroll_stmt)
             enrolled_course_ids = set(enroll_res.scalars().all())
@@ -215,7 +215,7 @@ class CourseRepository:
             )
             .join(Enrollment, (Enrollment.course_id == Course.id) & (Enrollment.user_id == student_id))
             .outerjoin(User, Course.instructor_id == User.id)
-            .where(Enrollment.role == EnrollmentRoleEnum.STUDENT)
+            .where(func.lower(Enrollment.role) == "student")
             .order_by(Enrollment.created_at.desc())
         )
         result = await db.execute(stmt)
@@ -224,7 +224,7 @@ class CourseRepository:
         items = []
         for course, instructor, _ in rows:
             count_stmt = select(func.count(Enrollment.id)).where(
-                (Enrollment.course_id == course.id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.course_id == course.id) & (func.lower(Enrollment.role) == "student")
             )
             cnt_res = await db.execute(count_stmt)
             student_count = cnt_res.scalar() or 0
@@ -252,7 +252,7 @@ class CourseRepository:
         enrollment = Enrollment(
             user_id=student_id,
             course_id=course_id,
-            role=EnrollmentRoleEnum.STUDENT,
+            role="student",
             status="active",
         )
         db.add(enrollment)
@@ -281,7 +281,7 @@ class CourseRepository:
             select(User, Enrollment)
             .join(Enrollment, User.id == Enrollment.user_id)
             .where(
-                (Enrollment.course_id == course_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.course_id == course_id) & (func.lower(Enrollment.role) == "student")
             )
             .order_by(Enrollment.created_at.desc())
         )

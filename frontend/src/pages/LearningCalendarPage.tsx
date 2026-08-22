@@ -93,73 +93,73 @@ const PRIORITY_CONFIG: Record<
   {
     label: string;
     color: string;
-    icon: string;
     badgeBg: string;
     borderLeft: string;
+    dotColor: string;
   }
 > = {
   urgent: {
     label: 'Khẩn cấp',
     color: 'red',
-    icon: '⚡',
-    badgeBg: 'bg-red-500 text-white',
-    borderLeft: 'border-l-4 border-l-red-500',
+    badgeBg: 'bg-rose-500 text-white',
+    borderLeft: 'border-l-4 border-l-rose-500',
+    dotColor: 'bg-rose-500',
   },
   URGENT: {
     label: 'Khẩn cấp',
     color: 'red',
-    icon: '⚡',
-    badgeBg: 'bg-red-500 text-white',
-    borderLeft: 'border-l-4 border-l-red-500',
+    badgeBg: 'bg-rose-500 text-white',
+    borderLeft: 'border-l-4 border-l-rose-500',
+    dotColor: 'bg-rose-500',
   },
   critical: {
     label: 'Khẩn cấp',
     color: 'red',
-    icon: '⚡',
-    badgeBg: 'bg-red-500 text-white',
-    borderLeft: 'border-l-4 border-l-red-500',
+    badgeBg: 'bg-rose-500 text-white',
+    borderLeft: 'border-l-4 border-l-rose-500',
+    dotColor: 'bg-rose-500',
   },
   high: {
     label: 'Cao',
     color: 'orange',
-    icon: '🔥',
-    badgeBg: 'bg-orange-500 text-white',
-    borderLeft: 'border-l-4 border-l-orange-500',
+    badgeBg: 'bg-amber-500 text-slate-950 font-bold',
+    borderLeft: 'border-l-4 border-l-amber-500',
+    dotColor: 'bg-amber-500',
   },
   HIGH: {
     label: 'Cao',
     color: 'orange',
-    icon: '🔥',
-    badgeBg: 'bg-orange-500 text-white',
-    borderLeft: 'border-l-4 border-l-orange-500',
+    badgeBg: 'bg-amber-500 text-slate-950 font-bold',
+    borderLeft: 'border-l-4 border-l-amber-500',
+    dotColor: 'bg-amber-500',
   },
   medium: {
     label: 'Trung bình',
     color: 'blue',
-    icon: '🔹',
-    badgeBg: 'bg-blue-500 text-white',
-    borderLeft: 'border-l-4 border-l-blue-500',
+    badgeBg: 'bg-sky-500 text-white',
+    borderLeft: 'border-l-4 border-l-sky-500',
+    dotColor: 'bg-sky-500',
   },
   MEDIUM: {
     label: 'Trung bình',
     color: 'blue',
-    icon: '🔹',
-    badgeBg: 'bg-blue-500 text-white',
-    borderLeft: 'border-l-4 border-l-blue-500',
+    badgeBg: 'bg-sky-500 text-white',
+    borderLeft: 'border-l-4 border-l-sky-500',
+    dotColor: 'bg-sky-500',
   },
   low: {
     label: 'Thấp',
     color: 'green',
-    icon: '🟢',
-    badgeBg: 'bg-slate-400 text-white',
-    borderLeft: 'border-l-4 border-l-slate-400',
+    badgeBg: 'bg-emerald-600 text-white',
+    borderLeft: 'border-l-4 border-l-emerald-500',
+    dotColor: 'bg-emerald-500',
   },
   LOW: {
     label: 'Thấp',
     color: 'green',
-    icon: '🟢',
-    badgeBg: 'bg-slate-400 text-white',
-    borderLeft: 'border-l-4 border-l-slate-400',
+    badgeBg: 'bg-emerald-600 text-white',
+    borderLeft: 'border-l-4 border-l-emerald-500',
+    dotColor: 'bg-emerald-500',
   },
 };
 
@@ -241,8 +241,6 @@ export const LearningCalendarPage: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<PlanTask | null>(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState<boolean>(false);
   const [activeChecklist, setActiveChecklist] = useState<string[]>([]);
-  const [reflectionForm] = Form.useForm();
-  const [submittingReflection, setSubmittingReflection] = useState<boolean>(false);
 
   // Create Task Modal State
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState<boolean>(false);
@@ -424,21 +422,6 @@ export const LearningCalendarPage: React.FC = () => {
     }
   };
 
-  // Submit Session Reflection
-  const handleSaveReflection = async (values: any) => {
-    if (!selectedTask) return;
-    setSubmittingReflection(true);
-    try {
-      const updated = await weeklyPlanService.saveTaskReflection(selectedTask.id, values);
-      setSelectedTask(updated);
-      message.success('Đã hoàn thành và lưu phản hồi buổi học!');
-      fetchCalendarData();
-    } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể lưu phản hồi.');
-    } finally {
-      setSubmittingReflection(false);
-    }
-  };
 
   // Create Task Handler
   const handleCreateTask = async (values: any) => {
@@ -636,20 +619,19 @@ export const LearningCalendarPage: React.FC = () => {
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={() => setIsAIModalOpen(true)}
-                className="btn-voxel-green text-xs px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm"
+                className="btn-voxel-green text-xs px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
               >
-                <RobotOutlined />
+                <RobotOutlined className="text-sm" />
                 <span>Tạo Kế Hoạch AI</span>
               </button>
 
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
+              <button
                 onClick={() => setIsCreateTaskModalOpen(true)}
-                className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold h-9"
+                className="btn-voxel-gold text-xs px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel-gold active:translate-y-1 transition-all cursor-pointer"
               >
-                Thêm Nhiệm Vụ
-              </Button>
+                <PlusOutlined className="text-sm font-bold" />
+                <span>Thêm Nhiệm Vụ</span>
+              </button>
             </div>
           </div>
         </header>
@@ -657,45 +639,63 @@ export const LearningCalendarPage: React.FC = () => {
         {/* Main Content Container */}
         <main className="p-6 max-w-7xl w-full mx-auto space-y-6 flex-1">
           {/* Controls & Legend Bar */}
-          <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'}`}>
+          <div className={`p-4 rounded-2xl border-2 shadow-sm space-y-4 ${isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               {/* Navigation Controls */}
               <div className="flex items-center gap-2">
-                <Button icon={<LeftOutlined />} onClick={handlePrev} size="small" className="rounded-lg" />
+                <button
+                  onClick={handlePrev}
+                  className="p-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 active:translate-y-0.5 shadow-voxel-sm shadow-slate-300/40 dark:shadow-slate-950 font-bold text-xs flex items-center justify-center transition-all cursor-pointer"
+                  title="Trước"
+                >
+                  <LeftOutlined />
+                </button>
                 <button
                   onClick={handleToday}
-                  className="px-3 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                  className="px-3.5 py-1.5 text-xs font-extrabold rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 active:translate-y-0.5 shadow-voxel-sm shadow-slate-300/40 dark:shadow-slate-950 transition-all cursor-pointer"
                 >
                   Hôm nay
                 </button>
-                <Button icon={<RightOutlined />} onClick={handleNext} size="small" className="rounded-lg" />
+                <button
+                  onClick={handleNext}
+                  className="p-2 rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 active:translate-y-0.5 shadow-voxel-sm shadow-slate-300/40 dark:shadow-slate-950 font-bold text-xs flex items-center justify-center transition-all cursor-pointer"
+                  title="Sau"
+                >
+                  <RightOutlined />
+                </button>
                 <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 ml-2 font-mono">
                   {headerDateText}
                 </span>
               </div>
 
               {/* View Switcher */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-950/80 p-1.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
                 <button
                   onClick={() => setViewMode('day')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'day' ? 'bg-white dark:bg-slate-900 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                    viewMode === 'day'
+                      ? 'bg-white dark:bg-slate-800 border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 font-extrabold shadow-voxel-sm shadow-minecraft-grassBorder/40'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
                   }`}
                 >
                   Ngày
                 </button>
                 <button
                   onClick={() => setViewMode('week')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'week' ? 'bg-white dark:bg-slate-900 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                    viewMode === 'week'
+                      ? 'bg-white dark:bg-slate-800 border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 font-extrabold shadow-voxel-sm shadow-minecraft-grassBorder/40'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
                   }`}
                 >
                   Tuần
                 </button>
                 <button
                   onClick={() => setViewMode('month')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    viewMode === 'month' ? 'bg-white dark:bg-slate-900 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                    viewMode === 'month'
+                      ? 'bg-white dark:bg-slate-800 border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 font-extrabold shadow-voxel-sm shadow-minecraft-grassBorder/40'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
                   }`}
                 >
                   Tháng
@@ -706,72 +706,108 @@ export const LearningCalendarPage: React.FC = () => {
             {/* Legend & Filter Toggles Area */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap text-xs">
               {/* Event Type Toggles */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <FilterOutlined /> Loại lịch:
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
+                  Loại lịch:
                 </span>
 
-                <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                  <Checkbox checked={showFixedClass} onChange={(e) => setShowFixedClass(e.target.checked)} />
-                  <span>🏫 Fixed Class</span>
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowFixedClass(!showFixedClass)}
+                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${
+                    showFixedClass
+                      ? 'border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 shadow-voxel-sm shadow-minecraft-grassBorder/40 font-extrabold'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 text-slate-400 opacity-60'
+                  }`}
+                >
+                  Fixed Class
+                </button>
 
-                <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
-                  <Checkbox checked={showAIPlan} onChange={(e) => setShowAIPlan(e.target.checked)} />
-                  <span>🤖 AI Planned</span>
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAIPlan(!showAIPlan)}
+                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${
+                    showAIPlan
+                      ? 'border-minecraft-skyBorder bg-minecraft-sky/15 text-sky-800 dark:text-sky-300 shadow-voxel-sm shadow-minecraft-skyBorder/40 font-extrabold'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 text-slate-400 opacity-60'
+                  }`}
+                >
+                  AI Planned
+                </button>
 
-                <label className="flex items-center gap-2 cursor-pointer font-bold select-none px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                  <Checkbox checked={showStudentPlan} onChange={(e) => setShowStudentPlan(e.target.checked)} />
-                  <span>👤 My Plan</span>
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowStudentPlan(!showStudentPlan)}
+                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${
+                    showStudentPlan
+                      ? 'border-minecraft-goldBorder bg-minecraft-gold/15 text-amber-800 dark:text-amber-300 shadow-voxel-sm shadow-minecraft-goldBorder/40 font-extrabold'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 text-slate-400 opacity-60'
+                  }`}
+                >
+                  My Plan
+                </button>
               </div>
 
               {/* Priority Toggles & Legend */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <FlagOutlined /> Độ ưu tiên:
+                <span className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
+                  Độ ưu tiên:
                 </span>
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-slate-950/80 p-1.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
                   <button
+                    type="button"
                     onClick={() => setPriorityFilter('ALL')}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                      priorityFilter === 'ALL' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      priorityFilter === 'ALL'
+                        ? 'bg-white dark:bg-slate-800 shadow-voxel-sm border-2 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
                     }`}
                   >
                     Tất cả
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPriorityFilter('urgent')}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
-                      priorityFilter === 'urgent' ? 'bg-red-500 text-white shadow-sm' : 'text-red-600 dark:text-red-400 hover:bg-red-500/10'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      priorityFilter === 'urgent'
+                        ? 'bg-rose-500 text-white shadow-voxel-sm border-2 border-rose-700 shadow-rose-900/40'
+                        : 'text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border-2 border-transparent'
                     }`}
                   >
-                    ⚡ Khẩn cấp
+                    Khẩn cấp
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPriorityFilter('high')}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
-                      priorityFilter === 'high' ? 'bg-orange-500 text-white shadow-sm' : 'text-orange-600 dark:text-orange-400 hover:bg-orange-500/10'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      priorityFilter === 'high'
+                        ? 'bg-amber-500 text-slate-950 shadow-voxel-sm border-2 border-amber-700 shadow-amber-900/40'
+                        : 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 border-2 border-transparent'
                     }`}
                   >
-                    🔥 Cao
+                    Cao
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPriorityFilter('medium')}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
-                      priorityFilter === 'medium' ? 'bg-blue-500 text-white shadow-sm' : 'text-blue-600 dark:text-blue-400 hover:bg-blue-500/10'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      priorityFilter === 'medium'
+                        ? 'bg-sky-500 text-white shadow-voxel-sm border-2 border-sky-700 shadow-sky-900/40'
+                        : 'text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 border-2 border-transparent'
                     }`}
                   >
-                    🔹 Vừa
+                    Trung bình
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPriorityFilter('low')}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
-                      priorityFilter === 'low' ? 'bg-slate-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-500/10'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      priorityFilter === 'low'
+                        ? 'bg-emerald-600 text-white shadow-voxel-sm border-2 border-emerald-800 shadow-emerald-900/40'
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-500/10 border-2 border-transparent'
                     }`}
                   >
-                    🟢 Thấp
+                    Thấp
                   </button>
                 </div>
               </div>
@@ -820,18 +856,18 @@ export const LearningCalendarPage: React.FC = () => {
                       style={{ top: `${currentTimePos.percentage}%` }}
                     >
                       {/* Time Axis Pill */}
-                      <div className="w-[12.5%] pr-2 text-right flex justify-end items-center">
-                        <span className="bg-red-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse flex items-center gap-1 border border-red-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                      <div className="w-[12.5%] pr-3 text-right flex justify-end items-center">
+                        <span className="bg-emerald-600 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-xs border border-emerald-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                           {currentTimePos.timeStr}
                         </span>
                       </div>
-                      {/* Red Line Spanning Day Grid */}
-                      <div className="w-[87.5%] h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] relative">
-                        {/* Red Dot on Today Column */}
+                      {/* Sleek Line Spanning Day Grid */}
+                      <div className="w-[87.5%] h-[2px] bg-emerald-500/50 shadow-[0_0_4px_rgba(16,185,129,0.25)] relative">
+                        {/* Concentric Modern Dot on Today Column */}
                         <div
-                          className="absolute -top-1 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-white dark:border-slate-900 shadow-md ring-2 ring-red-400/60"
-                          style={{ left: `calc(${(currentTimePos.todayIdx / 7) * 100}% + 6px)` }}
+                          className="absolute -top-[4px] w-2.5 h-2.5 rounded-full bg-emerald-600 border-2 border-white dark:border-slate-900 shadow-xs ring-4 ring-emerald-500/20"
+                          style={{ left: `calc(${(currentTimePos.todayIdx / 7) * 100}%)` }}
                         />
                       </div>
                     </div>
@@ -872,7 +908,7 @@ export const LearningCalendarPage: React.FC = () => {
                                     handleEventClick(ev);
                                   }}
                                   style={spanInfo.isSpanned ? spanInfo.style : undefined}
-                                  className={`p-2 rounded-2xl border text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between ${
+                                  className={`p-2 rounded-2xl border-2 text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between ${
                                     spanInfo.isSpanned ? 'z-10' : 'min-h-[76px]'
                                   } ${prio.borderLeft} ${
                                     isFixed
@@ -888,20 +924,19 @@ export const LearningCalendarPage: React.FC = () => {
                                       <span
                                         className={`px-1.5 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[9px] truncate shrink-0 max-w-[65%] ${
                                           isFixed
-                                            ? 'bg-emerald-500 text-white border-transparent'
+                                            ? 'bg-emerald-600 text-white border-emerald-700'
                                             : isAI
-                                            ? 'bg-indigo-600 text-white border-transparent'
-                                            : 'bg-amber-500 text-white border-transparent'
+                                            ? 'bg-indigo-600 text-white border-indigo-700'
+                                            : 'bg-amber-500 text-slate-950 border-amber-600'
                                         }`}
                                       >
-                                        {isFixed ? '🏫 Class' : isAI ? '🤖 AI Plan' : '👤 My Plan'}
+                                        {isFixed ? 'Fixed Class' : isAI ? 'AI Plan' : 'My Plan'}
                                       </span>
 
                                       {/* Compact Priority Badge */}
                                       <Tooltip title={`Độ ưu tiên: ${prio.label}`}>
-                                        <span className={`px-1 py-0.5 rounded-md text-[9px] font-extrabold uppercase flex items-center gap-0.5 shrink-0 ${prio.badgeBg}`}>
-                                          <span>{prio.icon}</span>
-                                          <span className="hidden xl:inline">{prio.label}</span>
+                                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase shrink-0 ${prio.badgeBg}`}>
+                                          {prio.label}
                                         </span>
                                       </Tooltip>
                                     </div>
@@ -957,14 +992,14 @@ export const LearningCalendarPage: React.FC = () => {
                     className="absolute left-0 right-0 z-20 pointer-events-none flex items-center transition-all duration-500"
                     style={{ top: `${currentTimePos.percentage}%` }}
                   >
-                    <div className="w-20 pr-2 text-right flex justify-end items-center">
-                      <span className="bg-red-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse flex items-center gap-1 border border-red-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    <div className="w-20 pr-3 text-right flex justify-end items-center">
+                      <span className="bg-emerald-600 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-xs border border-emerald-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                         {currentTimePos.timeStr}
                       </span>
                     </div>
-                    <div className="flex-1 h-[2px] bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] relative">
-                      <div className="absolute -top-1 left-0 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-white dark:border-slate-900 shadow-md ring-2 ring-red-400/60" />
+                    <div className="flex-1 h-[2px] bg-emerald-500/50 shadow-[0_0_4px_rgba(16,185,129,0.25)] relative">
+                      <div className="absolute -top-[4px] left-0 w-2.5 h-2.5 rounded-full bg-emerald-600 border-2 border-white dark:border-slate-900 shadow-xs ring-4 ring-emerald-500/20" />
                     </div>
                   </div>
                 )}
@@ -1007,24 +1042,23 @@ export const LearningCalendarPage: React.FC = () => {
                                   e.stopPropagation();
                                   handleEventClick(ev);
                                 }}
-                                className="p-4 rounded-2xl border cursor-pointer transition-all hover:shadow-md"
+                                className="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md"
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span
                                       className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
                                         isFixed
-                                          ? 'bg-emerald-500 text-white'
+                                          ? 'bg-emerald-600 text-white'
                                           : isAI
                                           ? 'bg-indigo-600 text-white'
-                                          : 'bg-amber-500 text-white'
+                                          : 'bg-amber-500 text-slate-950'
                                       }`}
                                     >
-                                      {isFixed ? '🏫 Fixed Class' : isAI ? '🤖 AI Planned' : '👤 My Plan'}
+                                      {isFixed ? 'Fixed Class' : isAI ? 'AI Planned' : 'My Plan'}
                                     </span>
-                                    <span className={`px-2 py-0.5 rounded-md text-xs font-extrabold uppercase flex items-center gap-1 shadow-2xs ${prio.badgeBg}`}>
-                                      <span>{prio.icon}</span>
-                                      <span>Ưu tiên {prio.label}</span>
+                                    <span className={`px-2 py-0.5 rounded-md text-xs font-extrabold uppercase shadow-2xs ${prio.badgeBg}`}>
+                                      Ưu tiên {prio.label}
                                     </span>
                                     <h4 className="font-extrabold text-sm m-0 text-slate-900 dark:text-white ml-1">
                                       {ev.title}
@@ -1117,17 +1151,17 @@ export const LearningCalendarPage: React.FC = () => {
                       <div className="space-y-1 mt-1">
                         {fixedCount > 0 && (
                           <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 font-bold truncate">
-                            🏫 {fixedCount} Lịch cố định
+                            {fixedCount} Lịch cố định
                           </div>
                         )}
                         {aiCount > 0 && (
                           <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-800 dark:text-indigo-200 font-bold truncate">
-                            🤖 {aiCount} Kế hoạch AI
+                            {aiCount} Kế hoạch AI
                           </div>
                         )}
                         {studentCount > 0 && (
                           <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-200 font-bold truncate">
-                            👤 {studentCount} Tự học
+                            {studentCount} Tự học
                           </div>
                         )}
                       </div>
@@ -1145,258 +1179,216 @@ export const LearningCalendarPage: React.FC = () => {
         open={isTaskDrawerOpen}
         onCancel={() => setIsTaskDrawerOpen(false)}
         footer={null}
-        width={650}
+        width={620}
         centered
         title={
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-            <BookOutlined className="text-xl" />
+          <div className="flex items-center gap-2.5 text-slate-900 dark:text-white">
+            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <BookOutlined className="text-lg" />
+            </span>
             <span className="font-extrabold text-base">Chi Tiết Buổi Học & Thực Hành</span>
           </div>
         }
         className="rounded-3xl overflow-hidden"
       >
-        {selectedTask && (
-          <div className="space-y-5 pt-2 text-xs">
-            {/* Header info card */}
-            <div className="p-4 rounded-2xl bg-indigo-500/5 dark:bg-slate-900 border border-indigo-500/20 space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Tag color={selectedTask.source_type === 'MANUAL' ? 'gold' : 'indigo'} className="rounded-lg font-bold">
-                    {selectedTask.source_type === 'MANUAL' ? '👤 My Plan' : '🤖 AI Planned'}
-                  </Tag>
-                  {selectedTask.priority && (
-                    <Tag color={PRIORITY_CONFIG[selectedTask.priority]?.color || 'blue'} className="rounded-lg font-bold uppercase">
-                      {PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
-                    </Tag>
-                  )}
-                </div>
+        {selectedTask && (() => {
+          let desc = selectedTask.description || '';
+          let topic = selectedTask.topic || selectedTask.title;
+          let whatToStudy: string[] = selectedTask.what_to_study || [];
+          let whatToDo: string[] = selectedTask.what_to_do || [];
 
-                <Tag
-                  color={
-                    selectedTask.status === 'completed' || selectedTask.status === 'COMPLETED'
-                      ? 'success'
-                      : selectedTask.status === 'in_progress' || selectedTask.status === 'IN_PROGRESS'
-                      ? 'processing'
-                      : 'default'
-                  }
-                  className="rounded-lg font-bold uppercase"
-                >
-                  {selectedTask.status.toUpperCase()}
-                </Tag>
-              </div>
-
-              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white m-0">
-                {selectedTask.title}
-              </h3>
-
-              <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-300 font-mono text-[11px] pt-1">
-                <div>📅 Ngày: <strong className="text-slate-900 dark:text-white">{selectedTask.scheduled_date || 'Hôm nay'}</strong></div>
-                <div>⏰ Giờ: <strong className="text-slate-900 dark:text-white">{selectedTask.start_time || '09:00'} – {selectedTask.end_time || '10:30'}</strong></div>
-              </div>
-
-              {selectedTask.course_name && (
-                <div className="pt-1 flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                  <BookOutlined /> Môn học: {selectedTask.course_name}
-                </div>
-              )}
-            </div>
-
-            {/* Description & Topics to study */}
-            {selectedTask && (() => {
-              let desc = selectedTask.description || '';
-              let topic = selectedTask.topic || selectedTask.title;
-              let reason = selectedTask.reason || '';
-              let whatToStudy: string[] = selectedTask.what_to_study || [];
-              let whatToDo: string[] = selectedTask.what_to_do || [];
-
-              if (desc && desc.startsWith('{') && desc.endsWith('}')) {
-                try {
-                  const parsed = JSON.parse(desc);
-                  desc = parsed.description || '';
-                  topic = parsed.topic || topic;
-                  reason = parsed.reason || reason;
-                  if (parsed.what_to_study && Array.isArray(parsed.what_to_study)) {
-                    whatToStudy = parsed.what_to_study;
-                  }
-                  if (parsed.what_to_do && Array.isArray(parsed.what_to_do)) {
-                    whatToDo = parsed.what_to_do;
-                  }
-                } catch (e) {
-                  // ignore
-                }
+          if (desc && desc.startsWith('{') && desc.endsWith('}')) {
+            try {
+              const parsed = JSON.parse(desc);
+              desc = parsed.description || '';
+              topic = parsed.topic || topic;
+              if (parsed.what_to_study && Array.isArray(parsed.what_to_study)) {
+                whatToStudy = parsed.what_to_study;
               }
+              if (parsed.what_to_do && Array.isArray(parsed.what_to_do)) {
+                whatToDo = parsed.what_to_do;
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
 
-              const cleanDesc = desc === selectedTask.title ? '' : desc;
+          // Extract or construct meaningful learning objectives list
+          let objectivesList = whatToStudy.length > 0 ? whatToStudy : whatToDo;
+          if (objectivesList.length === 0) {
+            objectivesList = [
+              `Giải thích các khái niệm cốt lõi và phương pháp tiếp cận cho chủ đề ${topic}.`,
+              `Phân biệt các đặc điểm chính và biết cách chọn phương pháp phân tích phù hợp.`,
+              `Hiểu rõ quy trình phân tích và vận dụng kiến thức vào thực hành môn ${selectedTask.course_name || 'học'}.`,
+            ];
+          }
 
-              return (
-                <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                  <h4 className="font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 m-0 flex items-center gap-2 text-xs">
-                    <FileTextOutlined className="text-indigo-500 text-sm" /> Nội dung & Mục tiêu cần học
-                  </h4>
+          const completedCount = objectivesList.filter((item) => activeChecklist.includes(item)).length;
 
-                  {topic && (
-                    <div className="text-xs">
-                      <span className="font-bold text-slate-400 uppercase text-[10px] block">Chủ đề chính:</span>
-                      <span className="font-bold text-indigo-700 dark:text-indigo-300 text-sm">{topic}</span>
-                    </div>
-                  )}
-
-                  {cleanDesc && (
-                    <div className="text-xs">
-                      <span className="font-bold text-slate-400 uppercase text-[10px] block">Mô tả & Chi tiết:</span>
-                      <p className="text-slate-700 dark:text-slate-300 m-0 leading-relaxed font-medium">
-                        {cleanDesc}
-                      </p>
-                    </div>
-                  )}
-
-                  {reason && (
-                    <div className="text-xs p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 font-medium">
-                      🎯 <strong>Lý do học:</strong> {reason}
-                    </div>
-                  )}
-
-                  <div className="text-xs pt-1">
-                    <span className="font-bold text-slate-400 uppercase text-[10px] block mb-1">Cần ôn tập & Nắm vững:</span>
-                    {whatToStudy && whatToStudy.length > 0 ? (
-                      <ul className="list-disc pl-4 space-y-1 text-slate-700 dark:text-slate-300 font-medium m-0">
-                        {whatToStudy.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <ul className="list-disc pl-4 space-y-1 text-slate-700 dark:text-slate-300 font-medium m-0">
-                        <li>Ôn tập lý thuyết nền tảng và phương pháp triển khai cho chủ đề <strong>{topic}</strong>.</li>
-                        <li>Đọc lại tài liệu liên quan và thực hành theo checklist hành động bên dưới.</li>
-                      </ul>
+          return (
+            <div className="space-y-4 pt-2 text-xs">
+              {/* Header info card */}
+              <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/90 border-2 border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className={selectedTask.source_type === 'MANUAL' ? 'badge-voxel-gold text-xs' : 'badge-voxel-green text-xs'}>
+                      {selectedTask.source_type === 'MANUAL' ? 'My Plan' : 'AI Planned'}
+                    </span>
+                    {selectedTask.priority && (
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                        Ưu tiên {PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
+                      </span>
                     )}
                   </div>
-                </div>
-              );
-            })()}
 
-            {/* Action Checklist */}
-            {selectedTask.what_to_do && selectedTask.what_to_do.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-bold uppercase tracking-wider text-slate-500 m-0 flex items-center gap-1.5">
-                  <CheckCircleOutlined className="text-emerald-500" /> Checklist công việc cần hoàn thành
-                </h4>
-                <div className="space-y-2">
-                  {selectedTask.what_to_do.map((act, idx) => {
-                    const isChecked = activeChecklist.includes(act);
+                  <span className="px-2.5 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-slate-200/60 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-300/50 dark:border-slate-700">
+                    {selectedTask.status.toUpperCase()}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white m-0">
+                  {selectedTask.title}
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-xs">
+                    <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <CalendarOutlined className="text-base" />
+                    </span>
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Ngày học</div>
+                      <div className="text-sm font-extrabold text-slate-900 dark:text-white font-mono">
+                        {selectedTask.scheduled_date ? dayjs(selectedTask.scheduled_date).format('DD/MM/YYYY') : 'Hôm nay'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-xs">
+                    <span className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <ClockCircleOutlined className="text-base" />
+                    </span>
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Khung giờ</div>
+                      <div className="text-sm font-extrabold text-slate-900 dark:text-white font-mono">
+                        {selectedTask.start_time || '09:00'} – {selectedTask.end_time || '10:30'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedTask.course_name && (
+                  <div className="pt-1 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold">
+                    <BookOutlined /> Môn học: {selectedTask.course_name}
+                  </div>
+                )}
+              </div>
+
+              {/* LEARNING OBJECTIVES SECTION */}
+              <div className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-extrabold text-xs uppercase tracking-wider">
+                    <AimOutlined className="text-sm text-emerald-600 dark:text-emerald-400" />
+                    <span>Mục Tiêu Bài Học (Learning Objectives)</span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-slate-400">
+                    {completedCount} / {objectivesList.length} hoàn thành
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 italic">
+                  Sau khi hoàn thành buổi học này, bạn nên nắm vững và thực hiện được các mục tiêu sau:
+                </p>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-1">
+                  {objectivesList.map((item, idx) => {
+                    const isChecked = activeChecklist.includes(item);
                     return (
                       <div
                         key={idx}
-                        onClick={() => handleToggleChecklist(act)}
-                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
-                          isChecked
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
-                            : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'
+                        onClick={() => handleToggleChecklist(item)}
+                        className={`pt-2.5 pb-2 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-all ${
+                          isChecked ? 'opacity-75' : ''
                         }`}
                       >
-                        <Checkbox checked={isChecked} disabled />
-                        <span className={isChecked ? 'line-through text-slate-400 font-medium' : 'font-semibold text-slate-800 dark:text-slate-200'}>
-                          {act}
+                        <Checkbox
+                          checked={isChecked}
+                          onChange={() => handleToggleChecklist(item)}
+                          className="mt-0.5 scale-105"
+                        />
+                        <span className={`text-xs leading-relaxed flex-1 select-none ${
+                          isChecked
+                            ? 'line-through text-slate-400 font-medium'
+                            : 'font-semibold text-slate-800 dark:text-slate-200'
+                        }`}>
+                          {item}
                         </span>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
 
-            {/* Quick Actions Bar */}
-            <div className="pt-2 flex items-center justify-between gap-3 flex-wrap border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  onClick={() => handleStartSession(selectedTask.id)}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold px-4 h-10 flex items-center gap-1"
-                >
-                  Vào Bài Học (Workspace) 🚀
-                </Button>
-
-                {(selectedTask.source_type as string) !== 'FIXED_CLASS' && (
-                  <Popconfirm
-                    title="Xóa nhiệm vụ này?"
-                    description="Nhiệm vụ này sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu vĩnh viễn."
-                    onConfirm={async () => {
-                      await handleDeleteTask(undefined, selectedTask.id);
-                      setIsTaskDrawerOpen(false);
-                    }}
-                    okText="Xóa vĩnh viễn"
-                    cancelText="Hủy"
-                    okButtonProps={{ danger: true }}
+              {/* Main Actions Bar */}
+              <div className="pt-2 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Button 1: Vào bài học Workspace */}
+                  <button
+                    type="button"
+                    onClick={() => handleStartSession(selectedTask.id)}
+                    className="btn-voxel-green text-xs py-3.5 px-4 rounded-xl font-extrabold flex items-center justify-center gap-2 w-full shadow-voxel active:translate-y-1 transition-all cursor-pointer"
                   >
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      className="rounded-xl font-bold h-10"
+                    <PlayCircleOutlined className="text-base" />
+                    <span>Vào Bài Học (Workspace)</span>
+                  </button>
+
+                  {/* Button 2: Kiến thức trọng tâm */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTaskDrawerOpen(false);
+                      navigate(`/study-session/${selectedTask.id}?view=knowledge`);
+                    }}
+                    className="btn-voxel-gold text-xs py-3.5 px-4 rounded-xl font-extrabold uppercase flex items-center justify-center gap-2 w-full shadow-voxel-gold active:translate-y-1 transition-all cursor-pointer"
+                  >
+                    <BookOutlined className="text-base" />
+                    <span>Kiến Thức Trọng Tâm</span>
+                  </button>
+                </div>
+
+                {/* Sub row: Xóa nhiệm vụ & Tag hoàn thành */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                  {(selectedTask.source_type as string) !== 'FIXED_CLASS' ? (
+                    <Popconfirm
+                      title="Xóa nhiệm vụ này?"
+                      description="Nhiệm vụ này sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu vĩnh viễn."
+                      onConfirm={async () => {
+                        await handleDeleteTask(undefined, selectedTask.id);
+                        setIsTaskDrawerOpen(false);
+                      }}
+                      okText="Xóa vĩnh viễn"
+                      cancelText="Hủy"
+                      okButtonProps={{ danger: true }}
                     >
-                      Xóa nhiệm vụ
-                    </Button>
-                  </Popconfirm>
-                )}
+                      <button
+                        type="button"
+                        className="px-3.5 py-1.5 rounded-xl border-2 border-rose-300 dark:border-rose-800/80 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1.5 active:translate-y-0.5 transition-all cursor-pointer"
+                      >
+                        <DeleteOutlined />
+                        <span>Xóa nhiệm vụ</span>
+                      </button>
+                    </Popconfirm>
+                  ) : <div />}
+
+                  {(selectedTask.status === 'completed' || selectedTask.status === 'COMPLETED') && (
+                    <span className="badge-voxel-green text-xs">
+                      <CheckCircleOutlined /> Đã hoàn thành
+                    </span>
+                  )}
+                </div>
               </div>
-
-              {selectedTask.status !== 'completed' && selectedTask.status !== 'COMPLETED' ? (
-                <Button
-                  type="primary"
-                  icon={<CheckOutlined />}
-                  onClick={async () => {
-                    try {
-                      const updated = await weeklyPlanService.completeStudySession(selectedTask.id);
-                      setSelectedTask(updated);
-                      message.success('Đã hoàn thành buổi học!');
-                      fetchCalendarData();
-                    } catch (e) {
-                      message.error('Không thể cập nhật trạng thái.');
-                    }
-                  }}
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold px-4 h-10 flex items-center gap-1"
-                >
-                  Đánh Dấu Đã Học ✅
-                </Button>
-              ) : (
-                <Tag color="success" className="px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1 m-0">
-                  <CheckCircleOutlined /> Đã hoàn thành
-                </Tag>
-              )}
             </div>
-
-            {/* Reflection Form */}
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-              <h4 className="font-bold uppercase tracking-wider text-slate-500 m-0 flex items-center gap-1.5">
-                📝 Phản hồi & Ghi chú thu hoạch
-              </h4>
-              <Form
-                form={reflectionForm}
-                layout="vertical"
-                initialValues={selectedTask.reflection_data || {}}
-                onFinish={handleSaveReflection}
-              >
-                <Form.Item name="what_learned" label="Bạn đã tiếp thu và nắm chắc được những kiến thức gì?">
-                  <TextArea rows={2} className="rounded-xl" placeholder="Tóm tắt ngắn gọn kiến thức đã nắm..." />
-                </Form.Item>
-
-                <Form.Item name="struggling_with" label="Điều gì bạn còn thắc mắc / cần trợ lý AI hỗ trợ thêm?">
-                  <TextArea rows={2} className="rounded-xl" placeholder="Những chỗ thắc mắc hoặc cần giải đáp..." />
-                </Form.Item>
-
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={submittingReflection}
-                  icon={<CheckOutlined />}
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold w-full h-9"
-                >
-                  Lưu Ghi Chú Phản Hồi
-                </Button>
-              </Form>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* Create Task Modal */}
@@ -1404,22 +1396,29 @@ export const LearningCalendarPage: React.FC = () => {
         open={isCreateTaskModalOpen}
         onCancel={() => setIsCreateTaskModalOpen(false)}
         footer={null}
-        title={<span className="font-extrabold text-base">➕ Thêm Nhiệm Vụ Học Tập Thường Quy</span>}
+        title={
+          <div className="flex items-center gap-2.5 text-slate-900 dark:text-white">
+            <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <PlusOutlined className="text-base font-bold" />
+            </span>
+            <span className="font-extrabold text-base">Thêm Nhiệm Vụ Học Tập Thường Quy</span>
+          </div>
+        }
         centered
-        className="rounded-2xl overflow-hidden"
+        className="rounded-3xl overflow-hidden"
       >
         <Form form={createTaskForm} layout="vertical" onFinish={handleCreateTask} className="pt-3">
           <Form.Item name="title" label="Tên nhiệm vụ / Buổi học" rules={[{ required: true, message: 'Vui lòng nhập tên nhiệm vụ' }]}>
-            <Input placeholder="Ví dụ: Ôn tập thuật toán Sắp xếp" className="rounded-xl" />
+            <Input placeholder="Ví dụ: Ôn tập thuật toán Sắp xếp" className="rounded-xl py-2" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-3">
             <Form.Item name="scheduled_date" label="Ngày học">
-              <DatePicker className="w-full rounded-xl" format="YYYY-MM-DD" />
+              <DatePicker className="w-full rounded-xl py-2" format="YYYY-MM-DD" />
             </Form.Item>
 
             <Form.Item name="priority" label="Độ ưu tiên" initialValue="medium">
-              <Select className="rounded-xl" options={[
+              <Select className="rounded-xl h-10" options={[
                 { label: 'Khẩn cấp', value: 'urgent' },
                 { label: 'Cao', value: 'high' },
                 { label: 'Trung bình', value: 'medium' },
@@ -1430,23 +1429,34 @@ export const LearningCalendarPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <Form.Item name="start_time" label="Giờ bắt đầu (HH:MM)" rules={[{ required: true, message: 'Nhập giờ bắt đầu' }]}>
-              <Input placeholder="19:00" className="rounded-xl" />
+              <Input placeholder="19:00" className="rounded-xl py-2" />
             </Form.Item>
 
             <Form.Item name="end_time" label="Giờ kết thúc (HH:MM)" rules={[{ required: true, message: 'Nhập giờ kết thúc' }]}>
-              <Input placeholder="20:30" className="rounded-xl" />
+              <Input placeholder="20:30" className="rounded-xl py-2" />
             </Form.Item>
           </div>
 
           <Form.Item name="description" label="Mô tả / Ghi chú">
-            <TextArea rows={2} placeholder="Nội dung cần chuẩn bị..." className="rounded-xl" />
+            <TextArea rows={3} placeholder="Nội dung cần chuẩn bị..." className="rounded-xl" />
           </Form.Item>
 
           <div className="flex justify-end gap-2 pt-3">
-            <Button onClick={() => setIsCreateTaskModalOpen(false)} className="rounded-xl">Hủy</Button>
-            <Button type="primary" htmlType="submit" loading={creatingTask} className="rounded-xl bg-indigo-600">
-              Lưu Nhiệm Vụ
-            </Button>
+            <button
+              type="button"
+              onClick={() => setIsCreateTaskModalOpen(false)}
+              className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={creatingTask}
+              className="btn-voxel-gold text-xs px-5 py-2 rounded-xl font-bold flex items-center gap-2 shadow-voxel-gold active:translate-y-1 transition-all cursor-pointer"
+            >
+              {creatingTask ? <Spin size="small" /> : <PlusOutlined />}
+              <span>Lưu Nhiệm Vụ</span>
+            </button>
           </div>
         </Form>
       </Modal>
@@ -1461,22 +1471,25 @@ export const LearningCalendarPage: React.FC = () => {
         footer={null}
         width={680}
         title={
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-            <RobotOutlined className="text-xl" />
+          <div className="flex items-center gap-2.5 text-slate-900 dark:text-white">
+            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <RobotOutlined className="text-lg" />
+            </span>
             <span className="font-extrabold text-base">Tạo Kế Hoạch Học Tập Tối Ưu Bằng AI</span>
           </div>
         }
         centered
+        className="rounded-3xl overflow-hidden"
       >
         <div className="space-y-4 pt-2 text-xs">
-          <p className="text-slate-500 m-0 leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 m-0 leading-relaxed">
             AI Companion sẽ tự động phân tích <strong>Lịch học cố định giảng đường</strong>, các <strong>Bài tập sắp tới</strong>, và <strong>Mục tiêu cá nhân</strong> của bạn để đề xuất khung giờ học tối ưu không bị trùng lặp.
           </p>
 
           {/* Focus Assignment Select */}
           <div>
-            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              🎯 Bài tập cần tập trung ưu tiên (Không bắt buộc / Focus Option):
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+              Bài tập cần tập trung ưu tiên (Không bắt buộc / Focus Option):
             </label>
             <Select
               allowClear
@@ -1493,7 +1506,7 @@ export const LearningCalendarPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
               Yêu cầu hoặc định hướng riêng cho tuần này (Không bắt buộc):
             </label>
             <TextArea
@@ -1505,52 +1518,50 @@ export const LearningCalendarPage: React.FC = () => {
             />
 
             {/* Quick Prompt Suggestions */}
-            <div className="mt-2.5 space-y-1.5">
+            <div className="mt-3 space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                ✨ Gợi ý yêu cầu nhanh (Click để điền):
+                Gợi ý yêu cầu nhanh (Click để điền):
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  '🎯 Tập trung hoàn thành bài tập ưu tiên trước hạn nộp',
-                  '🌙 Chỉ xếp lịch học vào các buổi tối (19:00 - 22:00)',
-                  '⚡ Dành 2 tiếng mỗi sáng thứ 3 và thứ 5 để học Tiếng Anh & Thuật toán',
-                  '☕ Ưu tiên xếp lịch nhẹ nhàng vào cuối tuần',
-                  '📚 Tự động xếp lịch ôn tập tổng hợp ngay sau các giờ học cố định',
-                ].map((sug, idx) => {
-                  const cleanText = sug.replace(/^[^\s]+\s/, '');
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() =>
-                        setAiPromptText((prev) =>
-                          prev ? `${prev}. ${cleanText}` : cleanText
-                        )
-                      }
-                      className="text-[11px] px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all font-medium text-left shadow-2xs"
-                    >
-                      {sug}
-                    </button>
-                  );
-                })}
+                  'Tập trung hoàn thành bài tập ưu tiên trước hạn nộp',
+                  'Chỉ xếp lịch học vào các buổi tối (19:00 - 22:00)',
+                  'Dành 2 tiếng mỗi sáng thứ 3 và thứ 5 để học Tiếng Anh & Thuật toán',
+                  'Ưu tiên xếp lịch nhẹ nhàng vào cuối tuần',
+                  'Tự động xếp lịch ôn tập tổng hợp ngay sau các giờ học cố định',
+                ].map((sug, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() =>
+                      setAiPromptText((prev) =>
+                        prev ? `${prev}. ${sug}` : sug
+                      )
+                    }
+                    className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all font-semibold text-left cursor-pointer"
+                  >
+                    {sug}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button
+            <button
+              type="button"
               onClick={() => {
                 setIsAIModalOpen(false);
                 setAiResult(null);
               }}
-              className="rounded-xl"
+              className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
             >
               Đóng
-            </Button>
+            </button>
             <button
               disabled={generatingAI}
               onClick={handleGenerateAIPlan}
-              className="btn-voxel-green text-xs px-5 py-2 rounded-xl font-bold flex items-center gap-2"
+              className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
             >
               {generatingAI ? <Spin size="small" /> : <RocketOutlined />}
               <span>{generatingAI ? 'Đang Tính Toán...' : 'Kích Hoạt AI Lập Lịch'}</span>
@@ -1559,14 +1570,14 @@ export const LearningCalendarPage: React.FC = () => {
 
           {/* AI Draft Schedule Results Preview */}
           {aiResult && (
-            <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-3 mt-4">
+            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border-2 border-emerald-500/30 space-y-3 mt-4">
               <div className="flex items-center justify-between">
-                <div className="font-extrabold text-indigo-700 dark:text-indigo-300 text-sm flex items-center gap-2">
+                <div className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-2">
                   <RocketOutlined /> Dự thảo Kế hoạch AI đề xuất (Chưa lưu)
                 </div>
-                <Tag color="gold" className="rounded-lg font-bold">
+                <span className="badge-voxel-gold text-xs">
                   {(aiResult.proposed_tasks || (aiResult.created_tasks as any) || []).length} Buổi học
-                </Tag>
+                </span>
               </div>
 
               <p className="text-slate-700 dark:text-slate-300 m-0 leading-relaxed font-medium text-xs">
@@ -1576,42 +1587,43 @@ export const LearningCalendarPage: React.FC = () => {
               {((aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[]).length > 0 && (
                 <div className="space-y-2 pt-1 max-h-60 overflow-y-auto pr-1">
                   <div className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
-                    📋 Danh sách các buổi học AI xếp lịch:
+                    Danh sách các buổi học AI xếp lịch:
                   </div>
                   {((aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[]).map((t, idx) => (
                     <div
                       key={t.id || idx}
-                      className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-500/20 flex items-center justify-between text-xs"
+                      className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs"
                     >
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white">{t.title}</div>
                         <div className="text-[11px] text-slate-500 font-mono">
-                          📅 {t.scheduled_date || 'Tuần này'} ({t.start_time || '09:00'} – {t.end_time || '10:30'})
+                          {t.scheduled_date || 'Tuần này'} ({t.start_time || '09:00'} – {t.end_time || '10:30'})
                         </div>
                       </div>
-                      <Tag color={PRIORITY_CONFIG[t.priority]?.color || 'blue'} className="rounded-lg font-bold uppercase text-[10px]">
+                      <span className="px-2 py-0.5 rounded-md font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                         {PRIORITY_CONFIG[t.priority]?.label || t.priority}
-                      </Tag>
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="pt-2 flex items-center justify-between border-t border-indigo-500/20">
-                <Button
+              <div className="pt-2 flex items-center justify-between border-t border-emerald-500/20">
+                <button
+                  type="button"
                   onClick={() => setAiResult(null)}
                   disabled={applyingAI}
-                  className="rounded-xl border-slate-300"
+                  className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
                 >
                   Bỏ qua
-                </Button>
+                </button>
                 <button
                   disabled={applyingAI}
                   onClick={handleAcceptAIPlan}
-                  className="btn-voxel-green text-xs px-5 py-2 rounded-xl font-bold flex items-center gap-2"
+                  className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
                 >
                   {applyingAI ? <Spin size="small" /> : <CheckCircleOutlined />}
-                  <span>{applyingAI ? 'Đang lưu...' : 'Chấp Nhận & Áp Dụng Kế Hoạch 📅'}</span>
+                  <span>{applyingAI ? 'Đang lưu...' : 'Chấp Nhận & Áp Dụng Kế Hoạch'}</span>
                 </button>
               </div>
             </div>

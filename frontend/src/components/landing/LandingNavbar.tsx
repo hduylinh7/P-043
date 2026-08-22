@@ -76,11 +76,11 @@ export const LandingNavbar: React.FC = () => {
 
             {isAuthenticated ? (
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/courses')}
                 className="btn-voxel-green text-sm"
               >
                 <RocketOutlined />
-                <span>Vào Bảng Điều Khiển</span>
+                <span>Vào Không Gian Học Tập</span>
               </button>
             ) : (
               <>

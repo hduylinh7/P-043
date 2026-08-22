@@ -31,7 +31,7 @@ export const RoleSelectionPage: React.FC = () => {
 
     try {
       await assignRole({ role: 'student' });
-      navigate('/dashboard', { replace: true });
+      navigate('/courses', { replace: true });
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Không thể gán vai trò Sinh viên. Vui lòng thử lại.';
       setErrorMsg(msg);
@@ -55,7 +55,7 @@ export const RoleSelectionPage: React.FC = () => {
         role: 'instructor',
         verification_code: verificationCode.trim(),
       });
-      navigate('/dashboard', { replace: true });
+      navigate('/courses', { replace: true });
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Mã xác thực học viện không chính xác.';
       setErrorMsg(msg);

@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -107,7 +107,7 @@ class StudentLearningContextService:
             .options(selectinload(Enrollment.course))
             .where(
                 (Enrollment.user_id == student_id)
-                & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                & (func.lower(Enrollment.role) == "student")
             )
         )
         enroll_res = await db.execute(enroll_stmt)
