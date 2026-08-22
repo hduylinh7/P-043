@@ -125,7 +125,7 @@ class PlannerContextBuilder:
         if end_d is None:
             # Query active enrolled course assignments to auto-detect farthest assignment deadline
             enroll_stmt = select(Enrollment.course_id).where(
-                (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.user_id == student_id) & (func.lower(Enrollment.role) == "student")
             )
             enroll_res = await db.execute(enroll_stmt)
             c_ids = enroll_res.scalars().all()

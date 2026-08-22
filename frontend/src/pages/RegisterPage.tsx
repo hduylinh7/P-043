@@ -46,7 +46,7 @@ export const RegisterPage: React.FC = () => {
         if (!res.user.roles || res.user.roles.length === 0) {
           navigate('/onboarding/role-select', { replace: true });
         } else {
-          navigate('/dashboard', { replace: true });
+          navigate('/courses', { replace: true });
         }
       }, 500);
     } catch (err: any) {

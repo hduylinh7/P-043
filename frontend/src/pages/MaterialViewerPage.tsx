@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -8,6 +8,8 @@ import {
   Input,
   Tooltip,
   Drawer,
+  Badge,
+  Popconfirm,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -23,6 +25,8 @@ import {
   HistoryOutlined,
   PlusOutlined,
   MessageOutlined,
+  CloseOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -51,18 +55,19 @@ export const MaterialViewerPage: React.FC = () => {
   const [currentMaterial, setCurrentMaterial] = useState<CourseMaterial | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
-  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(true);
+  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [extractedContent, setExtractedContent] = useState<string | null>(null);
 
   // AI Assistant Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       sender: 'ai',
-      text: 'Xin chào! Tôi là Trợ Lý AI Học Tập. Bạn có câu hỏi nào về bài giảng này không? Tôi có thể giúp bạn tóm tắt, trích xuất điểm chính hoặc giải thích các khái niệm khó!',
+      text: 'Xin chào! Tôi là Trợ Lý AI Học Tập. Bạn có câu hỏi nào về bài giảng này không? Tôi có thể giúp bạn tóm tắt, trích xuất điểm chính, giải thích các khái niệm khó hoặc đưa ra ví dụ thực tế!',
     },
   ]);
   const [inputQuestion, setInputQuestion] = useState<string>('');
   const [aiThinking, setAiThinking] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isDark = themeMode === 'dark';
 
@@ -151,6 +156,10 @@ export const MaterialViewerPage: React.FC = () => {
     loadData();
     loadChatHistory();
   }, [courseId, materialId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, aiThinking]);
 
 
   const handleDownload = async () => {
@@ -376,53 +385,95 @@ export const MaterialViewerPage: React.FC = () => {
             )}
           </div>
 
-          {/* AI Study Assistant Side Panel */}
+          {/* Floating AI Robot Trigger FAB Button (when chat is closed) */}
+          {!showAiAssistant && (
+            <button
+              type="button"
+              onClick={() => setShowAiAssistant(true)}
+              className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
+              title="Mở Trợ Lý AI Học Tập (Hỏi đáp toàn bộ bài giảng)"
+            >
+              {/* Robot Icon */}
+              <div className="w-7 h-7 rounded-lg border-2 border-white flex flex-col items-center justify-center p-1 relative shadow-inner">
+                <div className="flex items-center justify-between w-full px-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white block" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white block" />
+                </div>
+                <div className="w-3 h-0.5 bg-white rounded-full mt-1" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-0.5 bg-white rounded-full" />
+              </div>
+              {/* Ping notification dot */}
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-white"></span>
+              </span>
+            </button>
+          )}
+
+          {/* AI Study Assistant Side Panel (Docked Side-by-Side Mode) */}
           {showAiAssistant && (
-            <motion.aside
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 380, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`border-l flex flex-col h-full z-10 shrink-0 ${
-                isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+            <aside
+              className={`w-[440px] sm:w-[480px] lg:w-[520px] shrink-0 border-l flex flex-col h-full z-20 transition-all duration-300 ${
+                isDark ? 'bg-[#0F172A] border-slate-800 shadow-2xl shadow-black/80' : 'bg-white border-slate-200 shadow-xl'
               }`}
             >
-              {/* AI Header */}
-              <div className={`p-3.5 border-b flex items-center justify-between ${
-                isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'
+              {/* Header (Matching Web Theme) */}
+              <div className={`px-5 py-3.5 border-b flex items-center justify-between shrink-0 ${
+                isDark ? 'bg-[#151F30] border-slate-800' : 'bg-[#FDFBF7] border-amber-900/10'
               }`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-minecraft-grass flex items-center justify-center text-white font-bold shadow-md">
-                    <ThunderboltOutlined className="text-sm" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500 border border-amber-600/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+                    <RobotOutlined className="text-xl" />
                   </div>
-                  <div>
-                    <div className="font-bold text-sm leading-none">Trợ Lý AI Học Tập</div>
-                    <div className="text-[11px] text-slate-400 mt-1">Đồng hành cùng bài giảng</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-bold text-sm sm:text-base m-0 truncate text-slate-900 dark:text-white">
+                        Trợ Lý AI Học Tập
+                      </h4>
+                      <Badge
+                        status="processing"
+                        text={
+                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                            Material RAG
+                          </span>
+                        }
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                      Hỏi đáp toàn diện nội dung, công thức &amp; bài giảng
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <Tooltip title="Xem các phiên hội thoại cũ">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Tooltip title="Lịch sử hội thoại">
                     <Button
                       size="small"
                       icon={<HistoryOutlined />}
                       onClick={() => setHistoryDrawerOpen(true)}
-                      className="rounded-lg text-xs"
+                      className="rounded-xl text-xs font-semibold px-2.5 flex items-center gap-1"
                     >
                       Lịch sử
                     </Button>
                   </Tooltip>
-                  <Tooltip title="Tạo cuộc hội thoại mới">
+                  <Tooltip title="Bắt đầu hội thoại mới">
                     <Button
                       size="small"
-                      type="primary"
                       icon={<PlusOutlined />}
                       onClick={handleNewChatSession}
-                      className="rounded-lg text-xs bg-minecraft-grass hover:bg-emerald-600 text-white"
+                      className="rounded-xl text-xs font-semibold px-2.5 flex items-center gap-1 bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500 hover:text-white"
                     >
                       Mới
                     </Button>
                   </Tooltip>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiAssistant(false)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Đóng cửa sổ chat"
+                  >
+                    <CloseOutlined className="text-base" />
+                  </button>
                 </div>
               </div>
 
@@ -432,7 +483,7 @@ export const MaterialViewerPage: React.FC = () => {
                 placement="right"
                 onClose={() => setHistoryDrawerOpen(false)}
                 open={historyDrawerOpen}
-                width={320}
+                width={340}
               >
                 <div className="space-y-2">
                   <Button
@@ -440,7 +491,7 @@ export const MaterialViewerPage: React.FC = () => {
                     block
                     icon={<PlusOutlined />}
                     onClick={handleNewChatSession}
-                    className="mb-4 bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white rounded-xl"
+                    className="mb-4 bg-emerald-600 hover:bg-emerald-500 border border-emerald-700 text-white rounded-xl font-bold"
                   >
                     Bắt đầu cuộc trò chuyện mới
                   </Button>
@@ -452,17 +503,17 @@ export const MaterialViewerPage: React.FC = () => {
                       <button
                         key={s.id}
                         onClick={() => switchSession(s.id)}
-                        className={`w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
+                        className={`w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between cursor-pointer ${
                           sessionId === s.id
-                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 font-semibold'
+                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-semibold'
                             : isDark
                             ? 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
                             : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <MessageOutlined className="text-emerald-400" />
-                          <span className="truncate">{s.title || 'Untitled Chat'}</span>
+                          <MessageOutlined className="text-emerald-500" />
+                          <span className="truncate">{s.title || 'Đoạn chat bài giảng'}</span>
                         </div>
                         {sessionId === s.id && (
                           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
@@ -473,98 +524,140 @@ export const MaterialViewerPage: React.FC = () => {
                 </div>
               </Drawer>
 
-
-
-              {/* Quick AI Prompts */}
-              <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex gap-2 overflow-x-auto">
-                <Button
-                  size="small"
-                  onClick={() => handleAskAi('Tóm tắt bài giảng này giúp tôi')}
-                  className="rounded-full text-xs font-medium"
-                >
-                  ✨ Tóm tắt bài giảng
-                </Button>
-                <Button
-                  size="small"
-                  onClick={() => handleAskAi('Tạo 3 câu hỏi ôn tập')}
-                  className="rounded-full text-xs font-medium"
-                >
-                  ❓ Câu hỏi ôn tập
-                </Button>
-              </div>
-
-              {/* Chat Message Stream */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                {chatMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-2.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
-                  >
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
-                      msg.sender === 'user' ? 'bg-minecraft-grass text-white' : 'bg-minecraft-gold text-slate-900 font-bold'
-                    }`}>
-                      {msg.sender === 'user' ? <UserOutlined /> : <RobotOutlined />}
-                    </div>
-                    <div className="flex flex-col gap-1 max-w-[80%]">
+              {/* Messages Body */}
+              <div className={`flex-1 overflow-y-auto p-5 space-y-6 ${
+                isDark ? 'bg-[#0B1118]' : 'bg-[#FAFAF9]'
+              }`}>
+                {chatMessages.map((msg, index) => {
+                  const isUser = msg.sender === 'user';
+                  return (
+                    <div
+                      key={index}
+                      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      {/* Avatar */}
                       <div
-                        className={`p-3 rounded-2xl text-xs leading-normal ${
-                          msg.sender === 'user'
-                            ? 'bg-minecraft-grass text-white rounded-tr-none font-medium'
-                            : isDark
-                            ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
+                        className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                          isUser
+                            ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
+                            : 'bg-amber-500 text-white border-amber-600 font-bold'
                         }`}
                       >
-                        <MarkdownRenderer content={msg.text} isUser={msg.sender === 'user'} />
+                        {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined className="text-base" />}
                       </div>
 
-                      {msg.sender === 'ai' && msg.sources && msg.sources.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap text-[10px] text-slate-400 pl-1">
-                          <span className="font-semibold text-emerald-400">📚 Tài liệu:</span>
-                          {msg.sources.map((src, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className="bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded"
-                            >
-                              {src}
-                            </span>
-                          ))}
+                      {/* Content Bubble */}
+                      <div className="space-y-2 max-w-[82%]">
+                        <div
+                          className={
+                            isUser
+                              ? 'p-3.5 px-5 rounded-2xl text-sm leading-snug bg-minecraft-grass text-white font-medium shadow-sm rounded-tr-none'
+                              : 'p-4 sm:p-5 rounded-2xl text-sm leading-relaxed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-tl-none font-sans'
+                          }
+                        >
+                          <MarkdownRenderer
+                            content={msg.text}
+                            isUser={isUser}
+                          />
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
 
+                        {/* Sources list if any */}
+                        {!isUser && msg.sources && msg.sources.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            <span className="text-[11px] font-medium text-slate-500">
+                              Trích xuất từ:
+                            </span>
+                            {msg.sources.map((src, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+                              >
+                                📄 {src}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {aiThinking && (
-                  <div className="flex items-center gap-2 text-xs text-amber-500">
-                    <Spin size="small" />
-                    <span>AI đang suy nghĩ...</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-sm">
+                      <RobotOutlined className="animate-spin text-base" />
+                    </div>
+                    <div className="p-4 rounded-2xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                      <Spin size="small" />
+                      <span className="font-medium">AI đang tra cứu tài liệu và tổng hợp câu trả lời...</span>
+                    </div>
                   </div>
                 )}
+
+                <div ref={messagesEndRef} />
               </div>
 
-              {/* Chat Input */}
-              <div className="p-3 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Hỏi AI về nội dung bài giảng..."
+              {/* Quick Prompt Chips */}
+              <div className={`px-4 py-2.5 border-t border-b flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 ${
+                isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                {[
+                  { label: '✨ Tóm tắt bài giảng', query: 'Tóm tắt các ý chính và nội dung quan trọng nhất của bài giảng này giúp tôi.' },
+                  { label: '📖 Giải thích khái niệm khó', query: 'Hãy liệt kê và giải thích chi tiết các thuật ngữ hoặc khái niệm phức tạp trong tài liệu này.' },
+                  { label: '🎯 Điểm cần nhớ để thi', query: 'Những phần nào trong bài giảng này quan trọng nhất cần ghi nhớ cho kỳ thi?' },
+                  { label: '❓ Tạo 3 câu hỏi ôn tập', query: 'Hãy tạo 3 câu hỏi kèm gợi ý trả lời để tôi tự kiểm tra mức độ hiểu bài giảng này.' },
+                  { label: '💡 Cho ví dụ thực tế', query: 'Hãy cho các ví dụ ứng dụng thực tế minh họa cho kiến thức trong bài giảng này.' },
+                  { label: '🔍 Trích xuất công thức', query: 'Hãy tổng hợp tất cả các công thức và quy tắc quan trọng trong tài liệu.' },
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleAskAi(chip.query)}
+                    disabled={aiThinking}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:scale-105 active:scale-95 shadow-2xs"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input Area */}
+              <div className={`p-4 pt-3 border-t shrink-0 ${
+                isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <div className={`flex items-center gap-2 p-2 rounded-2xl border-2 transition-all ${
+                  isDark
+                    ? 'bg-slate-900 border-slate-700 focus-within:border-emerald-500'
+                    : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-sm'
+                }`}>
+                  <input
+                    type="text"
+                    placeholder="Hỏi AI bất kỳ câu hỏi nào về bài giảng này..."
                     value={inputQuestion}
                     onChange={(e) => setInputQuestion(e.target.value)}
-                    onPressEnter={() => handleAskAi()}
-                    size="large"
-                    className="rounded-xl text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleAskAi();
+                      }
+                    }}
+                    disabled={aiThinking}
+                    className="flex-1 bg-transparent border-0 outline-none text-sm px-2 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
                   />
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
+                  <button
+                    type="button"
                     onClick={() => handleAskAi()}
-                    size="large"
-                    className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white"
-                  />
+                    disabled={!inputQuestion.trim() || aiThinking}
+                    className="w-10 h-10 rounded-xl bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    <SendOutlined className="text-base" />
+                  </button>
                 </div>
+                <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 m-0 pt-2 truncate">
+                  Trợ lý bài giảng hỗ trợ giải thích, tóm tắt và hỏi đáp đầy đủ toàn bộ tài liệu học tập.
+                </p>
               </div>
-            </motion.aside>
+            </aside>
           )}
         </div>
       </div>

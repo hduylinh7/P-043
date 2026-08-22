@@ -590,7 +590,7 @@ class AssignmentRepository:
             .join(Enrollment, User.id == Enrollment.user_id)
             .where(
                 (Enrollment.course_id == assignment.course_id)
-                & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                & (func.lower(Enrollment.role) == "student")
             )
         )
         enroll_res = await db.execute(enroll_stmt)

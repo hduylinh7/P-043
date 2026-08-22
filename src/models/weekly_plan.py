@@ -132,9 +132,16 @@ class SelfCheckEvalResponse(BaseModel):
     suggested_review: str | None = None
 
 
+class ReadingRoadmapData(BaseModel):
+    focus_sections: list[str] = Field(default_factory=list)
+    skim_sections: list[str] = Field(default_factory=list)
+    skip_sections: list[str] = Field(default_factory=list)
+
+
 class StudySessionCompanionResponse(BaseModel):
     learning_objectives: list[LearningObjectiveItem] = Field(default_factory=list)
     ai_study_guide: AIStudyGuideData | None = None
+    reading_roadmap: ReadingRoadmapData | None = None
     related_assignment: RelatedAssignmentData | None = None
     quick_self_check: list[SelfCheckQuestionItem] = Field(default_factory=list)
     sources: list[dict] = Field(default_factory=list)

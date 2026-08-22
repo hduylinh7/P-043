@@ -13,7 +13,8 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  const rawFrom = location.state?.from?.pathname;
+  const from = rawFrom && rawFrom !== '/' && rawFrom !== '/dashboard' ? rawFrom : '/courses';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

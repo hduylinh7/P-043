@@ -50,12 +50,13 @@ def get_llm(
             settings.openrouter_api_key
             or os.getenv("OPENROUTER_API_KEY")
             or "dummy-key-for-test"
-        )
-        target_model = model_name or settings.model_name or "google/gemini-2.5-flash"
+        ).strip().strip('"\'')
+        target_model = (model_name or settings.model_name or "meta-llama/llama-3.3-70b-instruct").strip().strip('"\'')
+        base_url = (settings.openrouter_base_url or os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1").strip().strip('"\'')
         return ChatOpenAI(
             model=target_model,
             api_key=api_key,
-            base_url=settings.openrouter_base_url or "https://openrouter.ai/api/v1",
+            base_url=base_url,
             temperature=temp,
             max_tokens=2000,
             default_headers={

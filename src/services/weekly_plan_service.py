@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -439,7 +439,7 @@ class WeeklyPlanService:
                 .options(selectinload(Course.schedules))
                 .where(
                     (Enrollment.user_id == current_user.id)
-                    & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                    & (func.lower(Enrollment.role) == "student")
                     & (Enrollment.status == "active")
                 )
             )
@@ -672,7 +672,7 @@ class WeeklyPlanService:
                 .options(selectinload(Course.schedules))
                 .where(
                     (Enrollment.user_id == current_user.id)
-                    & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                    & (func.lower(Enrollment.role) == "student")
                     & (Enrollment.status == "active")
                 )
             )
@@ -943,21 +943,48 @@ class WeeklyPlanService:
             except Exception:
                 existing_meta = {}
 
-        # If companion_data is already generated and saved in metadata, return it
+        # If companion_data is already generated and saved in metadata, return it (unless poor cache)
         cached_comp = existing_meta.get("companion_data")
         if cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
-            try:
-                return StudySessionCompanionResponse(**cached_comp)
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
+            guide = cached_comp.get("ai_study_guide") or {}
+            concepts = guide.get("key_concepts") or []
+            is_poor = (
+                len(concepts) < 2
+                or any(
+                    c.get("title", "").strip().lower() in ["học và làm", "làm bài tập", "ôn tập", "chuẩn bị", "tự học"]
+                    or "học & làm" in c.get("title", "").strip().lower()
+                    for c in concepts
+                )
+            )
+            if not is_poor:
+                try:
+                    return StudySessionCompanionResponse(**cached_comp)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
 
         # Retrieve course material chunks via RAGService
         course_id = existing_meta.get("course_id")
         material_id = existing_meta.get("material_id")
         assignment_id = task.assignment_id or existing_meta.get("assignment_id")
-        topic = existing_meta.get("topic") or task.title
+        raw_topic = existing_meta.get("topic") or task.title or "Chủ đề học tập"
+        clean_topic = raw_topic
+        for prefix in ["Học & Làm", "Học và Làm", "học và làm", "học & làm"]:
+            clean_topic = clean_topic.replace(prefix, "")
+        clean_topic = clean_topic.strip(" :-–,.") or raw_topic
+
         course_name = existing_meta.get("course_name") or "Khóa học"
+        if course_id and course_name == "Khóa học":
+            try:
+                from src.db.models.learning.course import Course
+                c_stmt = select(Course).where(Course.id == course_id)
+                c_res = await db.execute(c_stmt)
+                course_obj = c_res.scalar_one_or_none()
+                if course_obj and course_obj.name:
+                    course_name = course_obj.name
+            except Exception:
+                pass
+
         what_to_study = existing_meta.get("what_to_study") or []
         what_to_do = existing_meta.get("what_to_do") or []
 
@@ -965,7 +992,7 @@ class WeeklyPlanService:
         retrieved_chunks = []
         try:
             from src.services.rag_service import RAGService
-            query = f"{topic} {' '.join(what_to_study)}"
+            query = f"{course_name} {clean_topic} {' '.join(what_to_study)}"
             retrieved_chunks = RAGService.search_course_materials(
                 course_id=course_id,
                 query=query,
@@ -973,6 +1000,12 @@ class WeeklyPlanService:
                 assignment_id=assignment_id,
                 top_k=5,
             )
+            if not retrieved_chunks and course_id:
+                retrieved_chunks = RAGService.search_course_materials(
+                    course_id=course_id,
+                    query=f"{course_name} giáo trình bài giảng lý thuyết",
+                    top_k=4,
+                )
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"RAG search failed for study session task {task_id}: {e}")
@@ -1026,27 +1059,36 @@ class WeeklyPlanService:
         ])
 
         system_instruction = (
-            "You are a Personal Learning Companion AI Assistant. "
-            "Generate grounded Study Guide, Learning Objectives, and Quick Self-Check questions from the provided course materials.\n"
+            "You are a Personal Learning Companion AI Assistant for University Students. "
+            "Generate high-quality grounded Study Guide, Reading Roadmap, Learning Objectives, and Quick Self-Check questions from the course materials and topic.\n"
             "STRICT RULES:\n"
-            "1. Ground all information strictly in provided materials. Do not hallucinate external facts.\n"
-            "2. learning_objectives: 3-4 actionable items in Vietnamese ('Giải thích...', 'Phân biệt...', 'Hiểu rõ...').\n"
-            "3. ai_study_guide:\n"
-            "   - key_concepts: 2-3 concepts (title, short definition in Vietnamese, main characteristics list, examples list).\n"
-            "   - focus_area: 1 sentence highlighted focus in Vietnamese (e.g. ⭐ Trọng tâm cần chú ý là...).\n"
-            "   - important_points: 3-5 key points in Vietnamese.\n"
-            "4. quick_self_check: 2-3 lightweight non-graded self-check questions in Vietnamese with hint and explanation.\n"
-            "5. Return valid JSON strictly matching the specified structure."
+            "1. Ground all information strictly in course domain and provided materials. NEVER output meta task names (such as 'Học và Làm', 'Làm bài tập', 'Ôn tập', 'Chuẩn bị') as concept titles.\n"
+            "2. ai_study_guide.key_concepts:\n"
+            "   - MUST generate exactly 3 distinct, concrete, subject-matter knowledge concepts/theories from the course curriculum (e.g. for Data Analysis: 'Kiểm định thống kê', 'Phân tích dữ liệu định lượng', 'Biểu đồ thống kê'; for Machine Learning: 'Decision Tree', 'Random Forest', 'Đánh giá mô hình').\n"
+            "   - Each concept MUST include:\n"
+            "     * title: Specific academic concept name in Vietnamese (e.g. 'Kiểm định thống kê').\n"
+            "     * definition: Concise, precise academic definition in Vietnamese.\n"
+            "     * main_characteristics: 2-4 bullet points detailing core properties, mathematical/statistical conditions, or steps.\n"
+            "     * examples: 1-3 practical, realistic application examples in Vietnamese.\n"
+            "3. learning_objectives: 3-4 actionable items in Vietnamese ('Giải thích...', 'Phân biệt...', 'Hiểu rõ...').\n"
+            "4. ai_study_guide.focus_area: 1 highlighted focus sentence in Vietnamese (e.g. ⭐ Trọng tâm cần chú ý là...).\n"
+            "5. ai_study_guide.important_points: 3-5 key takeaways in Vietnamese.\n"
+            "6. reading_roadmap:\n"
+            "   - focus_sections: 2-3 essential sections/topics that MUST be studied deeply.\n"
+            "   - skim_sections: 1-2 overview or contextual sections to read quickly.\n"
+            "   - skip_sections: 1-2 optional appendix or advanced non-exam sections.\n"
+            "7. quick_self_check: 2-3 lightweight non-graded self-check questions in Vietnamese with hint and explanation.\n"
+            "8. Return valid JSON strictly matching the specified structure."
         )
 
         user_prompt = (
             f"Study Session Context:\n"
             f"- Course: {course_name}\n"
-            f"- Topic: {topic}\n"
-            f"- Topics to study: {', '.join(what_to_study)}\n"
+            f"- Topic: {clean_topic}\n"
+            f"- Topics to study: {', '.join(what_to_study) if what_to_study else clean_topic}\n"
             f"- Activities: {', '.join(what_to_do)}\n\n"
             f"Retrieved Course Material Snippets:\n"
-            f"{context_text if context_text else 'No detailed snippets retrieved. Generate standard framework based on topic.'}\n\n"
+            f"{context_text if context_text else f'Generate 3 concrete academic concepts for course {course_name} on topic {clean_topic}.'}\n\n"
             f"Return JSON:\n"
             f'{{\n'
             f'  "learning_objectives": [\n'
@@ -1054,10 +1096,17 @@ class WeeklyPlanService:
             f'  ],\n'
             f'  "ai_study_guide": {{\n'
             f'    "key_concepts": [\n'
-            f'      {{"title": "...", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}}\n'
+            f'      {{"title": "Khái niệm 1", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}},\n'
+            f'      {{"title": "Khái niệm 2", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}},\n'
+            f'      {{"title": "Khái niệm 3", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}}\n'
             f'    ],\n'
             f'    "focus_area": "⭐ Trọng tâm cần chú ý đặc biệt...",\n'
             f'    "important_points": ["..."]\n'
+            f'  }},\n'
+            f'  "reading_roadmap": {{\n'
+            f'    "focus_sections": ["Phần trọng tâm cần đọc kỹ..."],\n'
+            f'    "skim_sections": ["Phần đọc lướt..."],\n'
+            f'    "skip_sections": ["Phần có thể xem sau..."]\n'
             f'  }},\n'
             f'  "quick_self_check": [\n'
             f'    {{"id": "q1", "question": "...", "type": "short_answer", "options": [], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
@@ -1067,37 +1116,70 @@ class WeeklyPlanService:
 
         comp_data_dict = {
             "learning_objectives": [
-                {"id": "1", "text": f"Giải thích khái niệm cốt lõi về {topic}.", "checked": False},
-                {"id": "2", "text": f"Phân biệt đặc điểm và ứng dụng chính của {topic}.", "checked": False},
-                {"id": "3", "text": "Áp dụng kiến thức vào thực hành giải bài tập môn học.", "checked": False},
+                {"id": "1", "text": f"Giải thích khái niệm cốt lõi về {clean_topic}.", "checked": False},
+                {"id": "2", "text": f"Phân biệt đặc điểm và ứng dụng chính của {clean_topic}.", "checked": False},
+                {"id": "3", "text": f"Áp dụng kiến thức {clean_topic} vào thực hành giải bài tập môn {course_name}.", "checked": False},
             ],
             "ai_study_guide": {
                 "key_concepts": [
                     {
-                        "title": topic,
-                        "definition": f"Khái niệm và nguyên lý cốt lõi thuộc chủ đề {topic} môn {course_name}.",
-                        "main_characteristics": what_to_study or [f"Đặc điểm chính của {topic}"],
-                        "examples": [f"Ví dụ thực tế thuộc môn {course_name}"],
-                    }
+                        "title": f"Lý thuyết & Nguyên lý {clean_topic}",
+                        "definition": f"Hệ thống định nghĩa, công thức và nguyên lý cốt lõi cần nắm vững trong chủ đề {clean_topic} môn {course_name}.",
+                        "main_characteristics": [
+                            "Xác định đúng phạm vi và điều kiện áp dụng",
+                            "Kiểm tra tính hợp lệ của dữ liệu và giả thiết ban đầu",
+                            "Hiểu bản chất của các tiêu chí và mô hình liên quan",
+                        ],
+                        "examples": [f"Bài toán áp dụng trong thực tế môn {course_name}"],
+                    },
+                    {
+                        "title": f"Phương pháp phân tích & Triển khai",
+                        "definition": f"Quy trình thực hiện từng bước để giải quyết bài toán và phân tích kết quả môn {course_name}.",
+                        "main_characteristics": [
+                            "Thu thập và tiền xử lý dữ liệu thô",
+                            "Lựa chọn phương pháp kiểm định hoặc mô hình phù hợp",
+                            "Đánh giá độ tin cậy và diễn giải ý nghĩa kết quả",
+                        ],
+                        "examples": [f"Trường hợp phân tích mẫu môn {course_name}"],
+                    },
+                    {
+                        "title": f"Trực quan hóa & Đánh giá kết quả",
+                        "definition": f"Cách trình bày dữ liệu trực quan và phân tích so sánh các chỉ số thực nghiệm.",
+                        "main_characteristics": [
+                            "Sử dụng biểu đồ thích hợp với từng loại biến số",
+                            "Phát hiện ngoại lệ, phân phối và xu hướng dữ liệu",
+                            "Tổng hợp báo cáo và rút ra kết luận logic",
+                        ],
+                        "examples": [f"Mô hình hóa dữ liệu mẫu môn {course_name}"],
+                    },
                 ],
-                "focus_area": f"⭐ Tập trung hiểu rõ {topic} và ứng dụng của nó trong bài tập môn học.",
-                "important_points": what_to_study or [f"Ôn tập kiến thức {topic}"],
+                "focus_area": f"⭐ Trọng tâm cần chú ý là nắm vững phương pháp và điều kiện áp dụng trong {clean_topic}.",
+                "important_points": what_to_study if len(what_to_study) >= 3 else [
+                    f"Xác định chính xác loại dữ liệu và mục tiêu bài toán {course_name}",
+                    f"Nắm vững các bước thực hiện và tiêu chuẩn kiểm tra",
+                    f"Liên hệ lý thuyết với dạng bài tập thực hành thường gặp",
+                ],
                 "sources": sources_list,
+            },
+            "reading_roadmap": {
+                "focus_sections": what_to_study[:2] if what_to_study else [f"Trọng tâm lý thuyết và phương pháp triển khai {clean_topic}", f"Ví dụ và bài tập mẫu của {clean_topic}"],
+                "skim_sections": [f"Tổng quan giới thiệu chủ đề {clean_topic}"],
+                "skip_sections": ["Phụ lục công thức nâng cao và nội dung đọc thêm"],
             },
             "related_assignment": related_assign_dict,
             "quick_self_check": [
                 {
                     "id": "q1",
-                    "question": f"Đâu là khái niệm cốt lõi của {topic}?",
+                    "question": f"Đâu là khái niệm cốt lõi của {clean_topic}?",
                     "type": "short_answer",
                     "options": [],
                     "hint": "Nắm định nghĩa cơ bản trong tài liệu bài giảng.",
-                    "sample_answer": f"{topic} là...",
-                    "explanation": f"Hiểu đúng khái niệm {topic} giúp sinh viên làm tốt các câu hỏi lý thuyết và bài tập.",
+                    "sample_answer": f"{clean_topic} là...",
+                    "explanation": f"Hiểu đúng khái niệm {clean_topic} giúp sinh viên làm tốt các câu hỏi lý thuyết và bài tập.",
                 },
                 {
                     "id": "q2",
-                    "question": f"Hãy nêu 1 ví dụ hoặc ứng dụng chính của {topic}?",
+                    "question": f"Hãy nêu 1 ví dụ hoặc ứng dụng chính của {clean_topic}?",
                     "type": "short_answer",
                     "options": [],
                     "hint": "Liên hệ với bài học hoặc ví dụ thực tế.",
@@ -1126,6 +1208,8 @@ class WeeklyPlanService:
                     parsed_guide = parsed["ai_study_guide"]
                     parsed_guide["sources"] = sources_list
                     comp_data_dict["ai_study_guide"] = parsed_guide
+                if parsed.get("reading_roadmap"):
+                    comp_data_dict["reading_roadmap"] = parsed["reading_roadmap"]
                 if parsed.get("quick_self_check"):
                     comp_data_dict["quick_self_check"] = parsed["quick_self_check"]
         except Exception as llm_err:
@@ -1275,7 +1359,7 @@ class WeeklyPlanService:
             .options(selectinload(Course.schedules))
             .where(
                 (Enrollment.user_id == student_id)
-                & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                & (func.lower(Enrollment.role) == "student")
                 & (Enrollment.status == "active")
             )
         )

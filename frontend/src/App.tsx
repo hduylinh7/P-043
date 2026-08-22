@@ -47,7 +47,7 @@ const OnboardingRoleRoute: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   if (user.roles && user.roles.length > 0) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/courses" replace />;
   }
 
   return <>{children}</>;
@@ -72,14 +72,10 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* 3. Trang Dashboard cá nhân */}
+            {/* 3. Chuyển hướng Dashboard sang Khóa học */}
             <Route
               path="/dashboard"
-              element={
-                <ProtectedDashboardRoute>
-                  <DashboardPage />
-                </ProtectedDashboardRoute>
-              }
+              element={<Navigate to="/courses" replace />}
             />
 
             {/* 4. Quản lý khóa học & Thời khóa biểu */}
