@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base, TimestampMixin, generate_uuid
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from src.db.models.knowledge.document import Document
     from src.db.models.learning.assignment import Assignment
     from src.db.models.learning.course_material import CourseMaterial
+    from src.db.models.learning.course_schedule import CourseSchedule
     from src.db.models.learning.enrollment import Enrollment
 
 
@@ -25,6 +26,7 @@ class Course(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     term: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    credits: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     start_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -60,6 +62,9 @@ class Course(Base, TimestampMixin):
     )
     materials: Mapped[list["CourseMaterial"]] = relationship(
         "CourseMaterial", back_populates="course", cascade="all, delete-orphan"
+    )
+    schedules: Mapped[list["CourseSchedule"]] = relationship(
+        "CourseSchedule", back_populates="course", cascade="all, delete-orphan"
     )
 
 

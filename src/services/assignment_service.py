@@ -2,7 +2,7 @@ import logging
 import mimetypes
 import uuid
 from io import BytesIO
-from fastapi import HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,12 +29,89 @@ from src.models.assignment import (
 from src.models.auth import UserResponse
 from src.repositories.assignment_repository import AssignmentRepository
 from src.repositories.course_repository import CourseRepository
+from src.services.rag_service import RAGService
 from src.services.storage.factory import get_storage_service
 
 logger = logging.getLogger(__name__)
 
 
 class AssignmentService:
+    @staticmethod
+    async def _trigger_assignment_ingestion(
+        db: AsyncSession,
+        assignment_id: str,
+        background_tasks: BackgroundTasks | None = None,
+        file_bytes: bytes | None = None,
+        file_name: str | None = None,
+        object_key: str | None = None,
+        mime_type: str = "",
+    ) -> None:
+        """Helper to fetch full assignment details and enqueue/execute RAG vector embedding."""
+        try:
+            full_assignment = await AssignmentRepository.get_by_id(db, assignment_id)
+            if not full_assignment:
+                return
+
+            q_dicts = []
+            if getattr(full_assignment, "questions", None):
+                for q in full_assignment.questions:
+                    q_opts = [{"option_text": opt.option_text} for opt in (getattr(q, "options", []) or [])]
+                    q_dicts.append({
+                        "question_text": q.question_text,
+                        "points": q.points,
+                        "expected_answer": q.expected_answer,
+                        "options": q_opts,
+                    })
+
+            chk_dicts = []
+            if getattr(full_assignment, "checklists", None):
+                for c in full_assignment.checklists:
+                    chk_dicts.append({
+                        "title": getattr(c, "title", ""),
+                        "description": getattr(c, "description", ""),
+                    })
+
+            eff_file_name = file_name or full_assignment.attachment_file_name
+            eff_object_key = object_key or full_assignment.attachment_object_key
+
+            # Download attachment from object storage for ingestion if not passed explicitly
+            if not file_bytes and eff_object_key:
+                try:
+                    storage = get_storage_service()
+                    file_bytes = await storage.download_file(eff_object_key)
+                except Exception as dl_err:
+                    logger.debug(f"Could not download attachment for re-ingestion: {dl_err}")
+
+            if background_tasks:
+                background_tasks.add_task(
+                    RAGService.ingest_assignment_background,
+                    course_id=full_assignment.course_id,
+                    assignment_id=full_assignment.id,
+                    title=full_assignment.title,
+                    description=full_assignment.description,
+                    questions=q_dicts,
+                    checklists=chk_dicts,
+                    file_bytes=file_bytes,
+                    file_name=eff_file_name,
+                    object_key=eff_object_key,
+                    mime_type=mime_type,
+                )
+            else:
+                await RAGService.ingest_assignment_background(
+                    course_id=full_assignment.course_id,
+                    assignment_id=full_assignment.id,
+                    title=full_assignment.title,
+                    description=full_assignment.description,
+                    questions=q_dicts,
+                    checklists=chk_dicts,
+                    file_bytes=file_bytes,
+                    file_name=eff_file_name,
+                    object_key=eff_object_key,
+                    mime_type=mime_type,
+                )
+        except Exception as e:
+            logger.warning(f"Could not trigger assignment ingestion for {assignment_id}: {e}")
+
     @staticmethod
     def _is_instructor_or_admin(current_user: UserResponse) -> bool:
         return "instructor" in current_user.roles or "admin" in current_user.roles
@@ -141,6 +218,7 @@ class AssignmentService:
         course_id: str,
         payload: AssignmentCreateRequest,
         current_user: UserResponse,
+        background_tasks: BackgroundTasks | None = None,
     ) -> AssignmentResponse:
         """Instructor creates a new assignment for an owned course."""
         course = await CourseRepository.get_by_id(db, course_id)
@@ -185,6 +263,14 @@ class AssignmentService:
                 )
 
         full_assignment = await AssignmentRepository.get_by_id(db, assignment.id)
+
+        # Trigger background vector DB embedding for the newly created assignment
+        await AssignmentService._trigger_assignment_ingestion(
+            db=db,
+            assignment_id=assignment.id,
+            background_tasks=background_tasks,
+        )
+
         return AssignmentService._build_assignment_response(full_assignment or assignment)
 
 
@@ -194,6 +280,7 @@ class AssignmentService:
         assignment_id: str,
         file: UploadFile,
         current_user: UserResponse,
+        background_tasks: BackgroundTasks | None = None,
     ) -> AssignmentResponse:
         """Instructor uploads a problem specification or reference file for an assignment."""
         assignment = await AssignmentRepository.get_by_id(db, assignment_id)
@@ -247,6 +334,17 @@ class AssignmentService:
             attachment_file_name=file.filename,
             attachment_file_url=file_url,
             attachment_object_key=object_key,
+        )
+
+        # Trigger background vector DB embedding for assignment with attachment file
+        await AssignmentService._trigger_assignment_ingestion(
+            db=db,
+            assignment_id=assignment.id,
+            background_tasks=background_tasks,
+            file_bytes=contents,
+            file_name=file.filename,
+            object_key=object_key,
+            mime_type=content_type,
         )
 
         return AssignmentResponse(
@@ -406,6 +504,7 @@ class AssignmentService:
         assignment_id: str,
         payload: AssignmentUpdateRequest,
         current_user: UserResponse,
+        background_tasks: BackgroundTasks | None = None,
     ) -> AssignmentResponse:
         """Instructor updates an assignment."""
         assignment = await AssignmentRepository.get_by_id(db, assignment_id)
@@ -450,6 +549,14 @@ class AssignmentService:
                 )
 
         full_updated = await AssignmentRepository.get_by_id(db, assignment_id)
+
+        # Trigger background vector DB re-embedding for the updated assignment
+        await AssignmentService._trigger_assignment_ingestion(
+            db=db,
+            assignment_id=assignment_id,
+            background_tasks=background_tasks,
+        )
+
         return AssignmentService._build_assignment_response(full_updated or updated_assignment)
 
 
@@ -475,6 +582,10 @@ class AssignmentService:
             )
 
         await AssignmentRepository.delete_assignment(db, assignment)
+        try:
+            RAGService.delete_assignment_vectors(assignment_id)
+        except Exception as e:
+            logger.warning(f"Could not delete vectors for assignment {assignment_id}: {e}")
         return {"message": "Xóa bài tập thành công."}
 
     @staticmethod
@@ -596,7 +707,15 @@ class AssignmentService:
             await db.commit()
 
         due_dt = assignment.due_at
-        is_late = bool(due_dt and submission.submitted_at and submission.submitted_at > due_dt)
+        sub_at = submission.submitted_at
+        if due_dt and sub_at:
+            if due_dt.tzinfo is None and sub_at.tzinfo is not None:
+                due_dt = due_dt.replace(tzinfo=timezone.utc)
+            elif due_dt.tzinfo is not None and sub_at.tzinfo is None:
+                sub_at = sub_at.replace(tzinfo=timezone.utc)
+            is_late = sub_at > due_dt
+        else:
+            is_late = False
 
         return SubmissionResponse(
             id=submission.id,

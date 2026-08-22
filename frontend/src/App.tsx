@@ -11,6 +11,8 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoleSelectionPage } from './pages/RoleSelectionPage';
 import { CoursesPage } from './pages/CoursesPage';
+import { TimetablePage } from './pages/TimetablePage';
+import { LearningCalendarPage } from './pages/LearningCalendarPage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { MaterialViewerPage } from './pages/MaterialViewerPage';
 import { AIChatPage } from './pages/AIChatPage';
@@ -45,7 +47,7 @@ const OnboardingRoleRoute: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   if (user.roles && user.roles.length > 0) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/courses" replace />;
   }
 
   return <>{children}</>;
@@ -70,17 +72,13 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* 3. Trang Dashboard cá nhân */}
+            {/* 3. Chuyển hướng Dashboard sang Khóa học */}
             <Route
               path="/dashboard"
-              element={
-                <ProtectedDashboardRoute>
-                  <DashboardPage />
-                </ProtectedDashboardRoute>
-              }
+              element={<Navigate to="/courses" replace />}
             />
 
-            {/* 4. Quản lý khóa học */}
+            {/* 4. Quản lý khóa học & Thời khóa biểu */}
             <Route
               path="/courses"
               element={
@@ -89,6 +87,16 @@ export const App: React.FC = () => {
                 </ProtectedDashboardRoute>
               }
             />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedDashboardRoute>
+                  <LearningCalendarPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route path="/timetable" element={<Navigate to="/calendar" replace />} />
+            <Route path="/weekly-plan" element={<Navigate to="/calendar" replace />} />
             <Route
               path="/courses/:courseId"
               element={

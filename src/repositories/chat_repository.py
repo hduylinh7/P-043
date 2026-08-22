@@ -42,6 +42,23 @@ class ChatRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def delete_session(db: AsyncSession, session_id: str, user_id: str | None = None) -> bool:
+        """Delete a chat session and its associated messages."""
+        from sqlalchemy import delete
+        query = select(ChatSession).where(ChatSession.id == session_id)
+        if user_id and user_id != "default_user":
+            query = query.where(ChatSession.user_id == user_id)
+        result = await db.execute(query)
+        session = result.scalar_one_or_none()
+        if not session:
+            return False
+
+        await db.execute(delete(ChatMessage).where(ChatMessage.session_id == session_id))
+        await db.delete(session)
+        await db.commit()
+        return True
+
+    @staticmethod
     async def list_sessions(
         db: AsyncSession,
         user_id: str = "default_user",

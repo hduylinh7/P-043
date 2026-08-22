@@ -1,0 +1,121 @@
+{
+  "hash": "0465aa9e",
+  "configHash": "6ae8dc53",
+  "lockfileHash": "ed96e81a",
+  "browserHash": "4f7df602",
+  "optimized": {
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "b911e3b9",
+      "needsInterop": true
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "f56b7291",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "3de07599",
+      "needsInterop": true
+    },
+    "@react-oauth/google": {
+      "src": "../../node_modules/@react-oauth/google/dist/index.esm.js",
+      "file": "@react-oauth_google.js",
+      "fileHash": "5012083e",
+      "needsInterop": false
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "ef6940ef",
+      "needsInterop": false
+    },
+    "lucide-react": {
+      "src": "../../node_modules/lucide-react/dist/esm/lucide-react.js",
+      "file": "lucide-react.js",
+      "fileHash": "6856a76c",
+      "needsInterop": false
+    },
+    "antd": {
+      "src": "../../node_modules/antd/es/index.js",
+      "file": "antd.js",
+      "fileHash": "ecf69fc3",
+      "needsInterop": false
+    },
+    "@ant-design/icons": {
+      "src": "../../node_modules/@ant-design/icons/es/index.js",
+      "file": "@ant-design_icons.js",
+      "fileHash": "8d861533",
+      "needsInterop": false
+    },
+    "dayjs": {
+      "src": "../../node_modules/dayjs/dayjs.min.js",
+      "file": "dayjs.js",
+      "fileHash": "0b524fde",
+      "needsInterop": true
+    },
+    "dayjs/plugin/duration": {
+      "src": "../../node_modules/dayjs/plugin/duration.js",
+      "file": "dayjs_plugin_duration.js",
+      "fileHash": "8d7cd3b5",
+      "needsInterop": true
+    },
+    "framer-motion": {
+      "src": "../../node_modules/framer-motion/dist/es/index.mjs",
+      "file": "framer-motion.js",
+      "fileHash": "d1a381c7",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "7b79b30e",
+      "needsInterop": false
+    },
+    "dayjs/plugin/isBetween": {
+      "src": "../../node_modules/dayjs/plugin/isBetween.js",
+      "file": "dayjs_plugin_isBetween.js",
+      "fileHash": "7f0b4d0d",
+      "needsInterop": true
+    },
+    "dayjs/plugin/isoWeek": {
+      "src": "../../node_modules/dayjs/plugin/isoWeek.js",
+      "file": "dayjs_plugin_isoWeek.js",
+      "fileHash": "3f7d6a47",
+      "needsInterop": true
+    },
+    "react-markdown": {
+      "src": "../../node_modules/react-markdown/index.js",
+      "file": "react-markdown.js",
+      "fileHash": "a4aaf2fa",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-Z6KTT3UJ": {
+      "file": "chunk-Z6KTT3UJ.js"
+    },
+    "chunk-3EJWB6Y4": {
+      "file": "chunk-3EJWB6Y4.js"
+    },
+    "chunk-HOY74XNA": {
+      "file": "chunk-HOY74XNA.js"
+    },
+    "chunk-E2KS3465": {
+      "file": "chunk-E2KS3465.js"
+    },
+    "chunk-W7MTVGGI": {
+      "file": "chunk-W7MTVGGI.js"
+    },
+    "chunk-H27U5RJN": {
+      "file": "chunk-H27U5RJN.js"
+    },
+    "chunk-H265ZCLP": {
+      "file": "chunk-H265ZCLP.js"
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -9,17 +10,23 @@ from sqlalchemy.orm import selectinload
 from src.db.enums import EnrollmentRoleEnum, SubmissionStatusEnum
 from src.db.models.identity.user import User
 from src.db.models.learning.assignment import Assignment
+from src.db.models.learning.course import Course
+from src.db.models.learning.course_material import CourseMaterial
 from src.db.models.learning.enrollment import Enrollment
+from src.db.models.learning.question import AssignmentQuestion
 from src.db.models.learning.submission import Submission
 from src.db.models.planning.goal import Goal
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
-from src.db.models.learning.course_material import CourseMaterial
+from src.services.rag_service import RAGService
+
+logger = logging.getLogger(__name__)
 from src.models.planner_context import (
     AssignmentContextDTO,
     CourseMaterialContextDTO,
     CurrentWeeklyPlanContextDTO,
+    FixedCourseScheduleDTO,
     GoalContextDTO,
     PlanTaskContextDTO,
     PlannerContext,
@@ -77,7 +84,7 @@ def parse_date_val(val: datetime | date | str | None) -> date | None:
 class PlannerContextBuilder:
     @staticmethod
     def _ensure_student(current_user: UserResponse) -> None:
-        if "student" not in current_user.roles and "admin" not in current_user.roles:
+        if "student" not in current_user.roles and "instructor" not in current_user.roles and "admin" not in current_user.roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Planner Context Builder is available for students only.",
@@ -118,7 +125,7 @@ class PlannerContextBuilder:
         if end_d is None:
             # Query active enrolled course assignments to auto-detect farthest assignment deadline
             enroll_stmt = select(Enrollment.course_id).where(
-                (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.user_id == student_id) & (func.lower(Enrollment.role) == "student")
             )
             enroll_res = await db.execute(enroll_stmt)
             c_ids = enroll_res.scalars().all()
@@ -127,7 +134,7 @@ class PlannerContextBuilder:
                     select(Assignment.due_at)
                     .where(
                         Assignment.course_id.in_(c_ids),
-                        Assignment.status == "ACTIVE",
+                        Assignment.status != "CLOSED",
                     )
                     .order_by(Assignment.due_at.desc())
                 )
@@ -170,11 +177,14 @@ class PlannerContextBuilder:
         ]
 
         # 3. Enrolled Courses, Upcoming Assignments & Course Materials
-        enroll_stmt = select(Enrollment.course_id).where(
-            (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
-        )
+        enroll_stmt = select(Enrollment.course_id).where(Enrollment.user_id == student_id)
         enroll_res = await db.execute(enroll_stmt)
-        course_ids = enroll_res.scalars().all()
+        course_ids = list(enroll_res.scalars().all())
+
+        # Fallback: If user is not explicitly enrolled in a course yet, include all available system courses
+        if not course_ids:
+            all_c_res = await db.execute(select(Course.id))
+            course_ids = list(all_c_res.scalars().all())
 
         assignment_dtos: list[AssignmentContextDTO] = []
         course_material_dtos: list[CourseMaterialContextDTO] = []
@@ -197,23 +207,60 @@ class PlannerContextBuilder:
             sub_res = await db.execute(sub_stmt)
             submitted_assignment_ids = set(sub_res.scalars().all())
 
-            # Query active assignments
+            # Query assignments that are not CLOSED (includes ACTIVE, DRAFT, PUBLISHED)
             assign_stmt = (
                 select(Assignment)
-                .options(selectinload(Assignment.course))
+                .options(
+                    selectinload(Assignment.course),
+                    selectinload(Assignment.checklists),
+                )
                 .where(
                     Assignment.course_id.in_(course_ids),
-                    Assignment.status == "ACTIVE",
+                    Assignment.status != "CLOSED",
                 )
                 .order_by(Assignment.due_at.asc().nulls_last())
             )
             assign_res = await db.execute(assign_stmt)
-            active_assignments = assign_res.scalars().all()
+            active_assignments = list(assign_res.scalars().all())
+
+            # Fallback: If no active assignments exist in explicit enrollments, fetch all non-closed system assignments
+            if not active_assignments:
+                fallback_assign_stmt = (
+                    select(Assignment)
+                    .options(       
+                        selectinload(Assignment.course),
+                        selectinload(Assignment.checklists),
+                    )
+                    .where(Assignment.status != "CLOSED")
+                    .order_by(Assignment.due_at.asc().nulls_last())
+                )
+                fallback_res = await db.execute(fallback_assign_stmt)
+                active_assignments = list(fallback_res.scalars().all())
 
             for a in active_assignments:
                 if a.id in submitted_assignment_ids:
                     continue  # Exclude completed assignments
                 course_title = a.course.name if a.course else None
+
+                # Extract checklist information
+                chk_dicts = []
+                for c in (a.checklists or []):
+                    chk_dicts.append({
+                        "title": c.title,
+                        "description": c.description,
+                    })
+
+                # Retrieve vector chunks only if this assignment is explicitly targeted for AI generation
+                embedded_chunks = []
+                if target_assignment_id and target_assignment_id == a.id:
+                    try:
+                        rag_res = RAGService.search_course_materials(
+                            assignment_id=a.id, query=a.title, top_k=5
+                        )
+                        embedded_chunks = [r["content"] for r in rag_res if r.get("content")]
+                    except Exception as rag_err:
+                        logger.debug(f"Could not retrieve vector chunks for target assignment {a.id}: {rag_err}")
+
                 assignment_dtos.append(
                     AssignmentContextDTO(
                         id=a.id,
@@ -225,6 +272,10 @@ class PlannerContextBuilder:
                         priority=a.priority,
                         estimated_hours=a.estimated_hours,
                         status=a.status,
+                        attachment_file_name=a.attachment_file_name,
+                        questions=[],
+                        checklists=chk_dicts,
+                        embedded_chunks=embedded_chunks,
                     )
                 )
 
@@ -250,6 +301,33 @@ class PlannerContextBuilder:
                     )
                 )
 
+            # Query fixed course schedules for enrolled courses
+            courses_stmt = (
+                select(Course)
+                .options(selectinload(Course.schedules))
+                .where(Course.id.in_(course_ids))
+            )
+            courses_res = await db.execute(courses_stmt)
+            enrolled_courses = courses_res.scalars().all()
+
+            fixed_course_schedule_dtos: list[FixedCourseScheduleDTO] = []
+            for c in enrolled_courses:
+                for s in (c.schedules or []):
+                    fixed_course_schedule_dtos.append(
+                        FixedCourseScheduleDTO(
+                            course_id=c.id,
+                            course_code=c.code,
+                            course_name=c.name,
+                            day_of_week=s.day_of_week,
+                            start_time=s.start_time,
+                            end_time=s.end_time,
+                            start_date=format_iso(c.start_date),
+                            end_date=format_iso(c.end_date),
+                        )
+                    )
+        else:
+            fixed_course_schedule_dtos = []
+
         # 4. Current Weekly Plan for requested week
         plan_stmt = (
             select(WeeklyGoal)
@@ -262,7 +340,7 @@ class PlannerContextBuilder:
         matched_plan: WeeklyGoal | None = None
         for p in user_plans:
             p_start = p.week_start_date.date() if isinstance(p.week_start_date, datetime) else p.week_start_date
-            if p_start == start_date:
+            if p_start == start_d:
                 matched_plan = p
                 break
 
@@ -313,8 +391,8 @@ class PlannerContextBuilder:
                 id=matched_plan.id,
                 title=matched_plan.title,
                 description=matched_plan.description,
-                week_start_date=format_iso(matched_plan.week_start_date) or start_date.strftime("%Y-%m-%d"),
-                week_end_date=format_iso(matched_plan.week_end_date) or end_date.strftime("%Y-%m-%d"),
+                week_start_date=format_iso(matched_plan.week_start_date) or start_d.strftime("%Y-%m-%d"),
+                week_end_date=format_iso(matched_plan.week_end_date) or end_d.strftime("%Y-%m-%d"),
                 status=plan_status,
                 tasks=task_dtos,
             )
@@ -326,5 +404,6 @@ class PlannerContextBuilder:
             goals=goal_dtos,
             assignments=assignment_dtos,
             course_materials=course_material_dtos,
+            fixed_course_schedules=fixed_course_schedule_dtos,
             current_weekly_plan=current_weekly_plan_dto,
         )

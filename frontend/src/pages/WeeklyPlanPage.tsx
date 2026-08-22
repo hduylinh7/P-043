@@ -37,6 +37,7 @@ import {
   QuestionCircleOutlined,
   PlayCircleOutlined,
   RocketOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -230,6 +231,7 @@ export const WeeklyPlanPage: React.FC = () => {
   // AI Planning Agent State
   const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState<boolean>(false);
+  const [isApplyingAI, setIsApplyingAI] = useState<boolean>(false);
   const [aiPlanRequest, setAiPlanRequest] = useState<string>('');
   const [aiResultModalOpen, setAiResultModalOpen] = useState<boolean>(false);
   const [aiResultData, setAiResultData] = useState<PlannerAgentResponseResult | null>(null);
@@ -296,6 +298,13 @@ export const WeeklyPlanPage: React.FC = () => {
         }) || plans[0];
       }
 
+      if (matchedPlan && matchedPlan.week_start_date) {
+        const pMonday = dayjs(matchedPlan.week_start_date).startOf('isoWeek');
+        if (!pMonday.isSame(weekStart, 'day')) {
+          setCurrentMonday(pMonday);
+        }
+      }
+
       setActivePlan(matchedPlan || null);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tải Kế hoạch học tập');
@@ -334,7 +343,7 @@ export const WeeklyPlanPage: React.FC = () => {
     }
   };
 
-  // Generate AI Plan
+  // Generate AI Plan Preview
   const handleGenerateAIPlan = async () => {
     setIsGeneratingAI(true);
     try {
@@ -349,12 +358,11 @@ export const WeeklyPlanPage: React.FC = () => {
         payload.end_date = dayjs(targetDueDate).format('YYYY-MM-DD');
       }
       const res = await weeklyPlanService.generateAIPlan(payload);
-      message.success('Tạo Study Plan AI thành công!');
+      message.success('AI đã lập xong dự thảo kế hoạch! Vui lòng đọc kiểm tra và bấm "Chấp nhận" để lưu.');
       setAiResultData(res);
       setIsAIModalOpen(false);
       setAiResultModalOpen(true);
       setAiPlanRequest('');
-      await fetchWeeklyPlans(res.weekly_plan_id || undefined);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch bằng AI. Vui lòng thử lại.');
     } finally {
@@ -362,6 +370,53 @@ export const WeeklyPlanPage: React.FC = () => {
     }
   };
 
+  // Remove individual proposed task from draft preview
+  const handleRemoveProposedTask = (index: number) => {
+    if (!aiResultData) return;
+    const taskList = aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || [];
+    const updated = taskList.filter((_: any, idx: number) => idx !== index);
+    setAiResultData({
+      ...aiResultData,
+      proposed_tasks: updated,
+      created_tasks: updated as any,
+    });
+  };
+
+  // Accept and save AI Plan to DB
+  const handleAcceptAIPlan = async () => {
+    if (!aiResultData) return;
+    const tasksToApply = aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || [];
+    if (tasksToApply.length === 0) {
+      message.warning('Danh sách nhiệm vụ đề xuất trống.');
+      return;
+    }
+    setIsApplyingAI(true);
+    try {
+      const applyPayload = {
+        week_start: aiResultData.week_start || weekStart.format('YYYY-MM-DD'),
+        week_end: aiResultData.week_end,
+        plan_title: aiResultData.plan_title || `Kế hoạch học tập ${weekStart.format('YYYY-MM-DD')}`,
+        summary: aiResultData.summary,
+        tasks: tasksToApply,
+      };
+      const res = await weeklyPlanService.applyAIPlan(applyPayload);
+      message.success('Đã chấp nhận và lưu kế hoạch thành công!');
+      setAiResultModalOpen(false);
+      setAiResultData(null);
+      await fetchWeeklyPlans(res.weekly_plan_id || undefined);
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Không thể lưu Kế hoạch AI.');
+    } finally {
+      setIsApplyingAI(false);
+    }
+  };
+
+  // Reject / Cancel AI Plan draft
+  const handleRejectAIPlan = () => {
+    setAiResultModalOpen(false);
+    setAiResultData(null);
+    message.info('Đã hủy kế hoạch dự thảo.');
+  };
 
   // Open Task Modal (Create / Edit)
   const openTaskModal = (task?: PlanTask, defaultDate?: Dayjs, defaultTime?: string) => {
@@ -493,10 +548,11 @@ export const WeeklyPlanPage: React.FC = () => {
       if (task.status === 'todo' || task.status === 'TODO') {
         await weeklyPlanService.startStudySession(task.id);
       }
+    } catch (err: any) {
+      console.warn('Start study session status update:', err);
+    } finally {
       setDetailTask(null);
       navigate(`/study-session/${task.id}`);
-    } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể bắt đầu buổi học');
     }
   };
 
@@ -1442,49 +1498,176 @@ export const WeeklyPlanPage: React.FC = () => {
         </div>
       </Modal>
 
-      {/* AI RESULT SUMMARY MODAL */}
+      {/* AI RESULT PREVIEW & ACCEPT MODAL */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-emerald-500 font-bold text-lg">
-            <CheckCircleOutlined className="text-xl" />
-            <span>Kế hoạch AI đã sẵn sàng!</span>
+          <div className="flex items-center justify-between pr-6">
+            <div className="flex items-center gap-2.5 text-indigo-700 dark:text-indigo-300 font-extrabold text-lg">
+              <RobotOutlined className="text-xl text-indigo-500" />
+              <span>Dự thảo Kế hoạch AI — Kiểm tra & Duyệt</span>
+            </div>
+            <Tag color="gold" className="rounded-full px-3 py-0.5 font-bold text-xs">
+              DỰ THẢO (CHƯA LƯU)
+            </Tag>
           </div>
         }
         open={aiResultModalOpen}
-        onOk={() => setAiResultModalOpen(false)}
-        onCancel={() => setAiResultModalOpen(false)}
-        okText="Đóng"
-        cancelButtonProps={{ style: { display: 'none' } }}
+        onCancel={handleRejectAIPlan}
+        footer={
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Kiểm tra kỹ thông tin trước khi nhấn Chấp nhận.
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRejectAIPlan}
+                disabled={isApplyingAI}
+                className="px-5 py-2.5 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleAcceptAIPlan}
+                disabled={isApplyingAI || (aiResultData?.proposed_tasks || (aiResultData?.created_tasks as any) || []).length === 0}
+                className="btn-voxel-green text-sm px-6 py-2.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:translate-y-0.5"
+              >
+                {isApplyingAI ? <Spin size="small" /> : <CheckCircleOutlined />}
+                <span>{isApplyingAI ? 'Đang lưu kế hoạch...' : 'Chấp nhận & Lưu kế hoạch'}</span>
+              </button>
+            </div>
+          </div>
+        }
+        destroyOnClose
+        centered
+        width={720}
+        className="rounded-3xl overflow-hidden"
       >
         {aiResultData && (
-          <div className="space-y-4 py-2 text-xs">
-            <p className="text-sm font-semibold text-slate-300">{aiResultData.summary}</p>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                <span className="block text-lg font-bold text-emerald-400">
-                  {aiResultData.created_tasks?.length || 0}
-                </span>
-                <span className="text-slate-400">Nhiệm vụ được tạo</span>
-              </div>
-              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
-                <span className="block text-lg font-bold text-blue-400">
-                  {aiResultData.skipped_items?.length || 0}
-                </span>
-                <span className="text-slate-400">Mục đã hoãn/bỏ qua</span>
+          <div className="space-y-4 py-2">
+            {/* Short Summary & Stats */}
+            <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60">
+              <p className="text-sm font-semibold leading-relaxed text-slate-800 dark:text-slate-100 m-0">
+                {aiResultData.summary}
+              </p>
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-indigo-100 dark:border-indigo-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">Mục tiêu tuần:</span>
+                  <span className="text-xs font-extrabold text-indigo-700 dark:text-indigo-300">
+                    {aiResultData.week_start} đến {aiResultData.week_end}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">Số buổi học đề xuất:</span>
+                  <Tag color="purple" className="rounded-lg font-mono font-bold text-xs m-0">
+                    {(aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || []).length} nhiệm vụ
+                  </Tag>
+                </div>
               </div>
             </div>
 
-            {aiResultData.warnings?.length > 0 && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
-                <span className="font-bold text-amber-400">Lưu ý & Đánh đổi:</span>
-                <ul className="list-disc list-inside text-slate-300">
+            {/* Warnings Box */}
+            {aiResultData.warnings && aiResultData.warnings.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800/60 space-y-1.5 text-slate-900 dark:text-slate-100">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-extrabold text-xs uppercase tracking-wider">
+                  <WarningOutlined className="text-amber-600 text-sm" />
+                  <span>Lưu ý & Xung đột lịch:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-xs text-amber-900 dark:text-amber-200 font-medium">
                   {aiResultData.warnings.map((w, idx) => (
                     <li key={idx}>{w}</li>
                   ))}
                 </ul>
               </div>
             )}
+
+            {/* Proposed Tasks Interactive Review List */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <FileTextOutlined className="text-indigo-500" />
+                  <span>Danh sách nhiệm vụ AI xếp lịch (Đọc kiểm tra):</span>
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Nhấn biểu tượng 🗑️ để loại bỏ bài không thích
+                </span>
+              </div>
+
+              <div className="max-h-[340px] overflow-y-auto space-y-2.5 pr-1">
+                {((aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || []) as any[]).length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-sm font-medium">
+                    Không có nhiệm vụ nào được chọn trong kế hoạch này.
+                  </div>
+                ) : (
+                  ((aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || []) as any[]).map((task: any, idx: number) => {
+                    const priorityCfg = PRIORITY_CONFIG[task.priority?.toLowerCase()] || PRIORITY_CONFIG.medium;
+                    const dateFormatted = task.scheduled_date
+                      ? dayjs(task.scheduled_date).format('dddd, DD/MM/YYYY')
+                      : 'Chưa xếp ngày';
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all shadow-sm group relative"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Tag color="blue" className="rounded-md font-bold text-[11px]">
+                                <CalendarOutlined className="mr-1" />
+                                {dateFormatted}
+                              </Tag>
+                              {task.start_time && task.end_time && (
+                                <Tag color="cyan" className="rounded-md font-bold text-[11px]">
+                                  <ClockCircleOutlined className="mr-1" />
+                                  {task.start_time} - {task.end_time}
+                                </Tag>
+                              )}
+                              <Tag color={priorityCfg.color} className="rounded-md font-bold text-[11px]">
+                                {priorityCfg.label}
+                              </Tag>
+                              {task.course_name && (
+                                <Tag color="purple" className="rounded-md font-medium text-[11px]">
+                                  {task.course_name}
+                                </Tag>
+                              )}
+                            </div>
+
+                            <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 m-0 pt-1">
+                              {task.title}
+                            </h4>
+
+                            {task.reason && (
+                              <p className="text-xs text-slate-600 dark:text-slate-400 m-0 font-medium leading-relaxed italic">
+                                💡 Lý do: {task.reason}
+                              </p>
+                            )}
+
+                            {task.what_to_study && task.what_to_study.length > 0 && (
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                                <span className="font-bold text-indigo-600 dark:text-indigo-400">Nội dung học: </span>
+                                {task.what_to_study.join(', ')}
+                              </div>
+                            )}
+                          </div>
+
+                          <Tooltip title="Loại bỏ bài này khỏi kế hoạch">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProposedTask(idx)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors opacity-70 group-hover:opacity-100"
+                            >
+                              <DeleteOutlined className="text-base" />
+                            </button>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
         )}
       </Modal>

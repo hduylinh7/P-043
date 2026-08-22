@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     google_api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
     openrouter_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL")
-    embedding_model_name: str = Field(default="models/text-embedding-004", validation_alias="EMBEDDING_MODEL_NAME")
-    model_name: str = Field(default="llama-3.3-70b-versatile", validation_alias="MODEL_NAME")
+    embedding_model_name: str = Field(default="models/gemini-embedding-2", validation_alias="EMBEDDING_MODEL_NAME")
+    model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
 
 
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
@@ -58,8 +58,11 @@ class Settings(BaseSettings):
     smtp_from: str = Field(default="noreply@ailearningcompanion.com", validation_alias="SMTP_FROM")
     smtp_tls: bool = Field(default=True, validation_alias="SMTP_TLS")
 
-    # Vector Store
-    chroma_persist_dir: str = "./data/chroma"
+    # Vector Store (Qdrant Cloud)
+    vector_store_type: str = Field(default="qdrant", validation_alias="VECTOR_STORE_TYPE")
+    qdrant_url: str = Field(default="", validation_alias="QDRANT_URL")
+    qdrant_api_key: str = Field(default="", validation_alias="QDRANT_API_KEY")
+    qdrant_collection_name: str = Field(default="course_materials", validation_alias="QDRANT_COLLECTION_NAME")
 
     # Role & Institution Verification
     instructor_invite_code: str = Field(default="VINUNI-2026-AI", validation_alias="INSTRUCTOR_INVITE_CODE")

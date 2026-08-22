@@ -5,8 +5,13 @@ import {
   PlanTask,
   PlannerAgentRequestPayload,
   PlannerAgentResponseResult,
+  PlannerApplyPayload,
+  PlannerContext,
+  SelfCheckEvaluationResult,
+  StudySessionCompanionData,
   TaskReflectionData,
   TaskStatus,
+  UnifiedCalendarEvent,
   UpdateTaskPayload,
   UpdateWeeklyPlanPayload,
   WeeklyPlan,
@@ -93,8 +98,41 @@ export const weeklyPlanService = {
     return response.data;
   },
 
+  async getStudySessionCompanionData(taskId: string): Promise<StudySessionCompanionData> {
+    const response = await api.get<StudySessionCompanionData>(`/tasks/${taskId}/study-companion`);
+    return response.data;
+  },
+
+  async evaluateSelfCheck(taskId: string, questionId: string, questionText: string, studentAnswer: string): Promise<SelfCheckEvaluationResult> {
+    const response = await api.post<SelfCheckEvaluationResult>(`/tasks/${taskId}/self-check/evaluate`, {
+      question_id: questionId,
+      question_text: questionText,
+      student_answer: studentAnswer,
+    });
+    return response.data;
+  },
+
   async generateAIPlan(payload: PlannerAgentRequestPayload): Promise<PlannerAgentResponseResult> {
     const response = await api.post<PlannerAgentResponseResult>('/planner/generate', payload);
+    return response.data;
+  },
+
+  async applyAIPlan(payload: PlannerApplyPayload): Promise<PlannerAgentResponseResult> {
+    const response = await api.post<PlannerAgentResponseResult>('/planner/apply', payload);
+    return response.data;
+  },
+
+  async getUnifiedCalendar(weekStart?: string): Promise<UnifiedCalendarEvent[]> {
+    const response = await api.get<UnifiedCalendarEvent[]>('/weekly-plans/unified-calendar', {
+      params: { week_start: weekStart },
+    });
+    return response.data;
+  },
+
+  async getPlannerContext(weekStart?: string): Promise<PlannerContext> {
+    const response = await api.get<PlannerContext>('/planner/context', {
+      params: { week_start: weekStart },
+    });
     return response.data;
   },
 };

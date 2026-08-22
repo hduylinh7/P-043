@@ -26,13 +26,13 @@ class Task(Base, TimestampMixin):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    priority: Mapped[TaskPriorityEnum] = mapped_column(
-        SQLEnum(TaskPriorityEnum, native_enum=False),
+    priority: Mapped[str] = mapped_column(
+        String(50),
         default=TaskPriorityEnum.MEDIUM,
         nullable=False,
     )
-    status: Mapped[TaskStatusEnum] = mapped_column(
-        SQLEnum(TaskStatusEnum, native_enum=False),
+    status: Mapped[str] = mapped_column(
+        String(50),
         default=TaskStatusEnum.TODO,
         nullable=False,
     )

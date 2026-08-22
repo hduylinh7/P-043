@@ -16,6 +16,7 @@ from src.db.models.learning import (
     AssignmentQuestion,
     Course,
     CourseMaterial,
+    CourseSchedule,
     Enrollment,
     QuestionOption,
     StudentAssignmentProgress,
@@ -34,6 +35,7 @@ __all__ = [
     # Learning
     "Course",
     "CourseMaterial",
+    "CourseSchedule",
     "Enrollment",
     "Assignment",
     "AssignmentChecklist",

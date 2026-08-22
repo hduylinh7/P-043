@@ -14,6 +14,8 @@ import { useTheme } from '../context/ThemeContext';
 const MINECRAFT_AVATARS = [
   { id: 'steve', label: 'Steve Hero 🟩', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Steve' },
   { id: 'alex', label: 'Alex Explorer 🟧', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Alex' },
+  { id: 'ronaldo', label: 'CR7 GOAT 🐐🇵🇹', url: '/avatars/ronaldo.jpg' },
+  { id: 'messi', label: 'Messi 🇦🇷', url: '/avatars/messi.jpg' },
   { id: 'king', label: 'Diamond King 👑', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=King' },
   { id: 'dragon', label: 'Ender Slayer 🐉', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Dragon' },
   { id: 'robot', label: 'Redstone AI 🤖', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Robot' },
@@ -74,9 +76,8 @@ export const ProfilePage: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Header */}
-        <header className={`p-6 border-b sticky top-0 z-30 backdrop-blur-md ${
-          isDark ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder' : 'bg-[#FDFBF7]/90 border-amber-900/10'
-        }`}>
+        <header className={`p-6 border-b sticky top-0 z-30 backdrop-blur-md ${isDark ? 'bg-[#0F1710]/90 border-minecraft-obsidianBorder' : 'bg-[#FDFBF7]/90 border-amber-900/10'
+          }`}>
           <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
             <div>
               <div className="flex items-center gap-2">
@@ -166,11 +167,10 @@ export const ProfilePage: React.FC = () => {
                         setSelectedAvatar(avatar.url);
                         setCustomAvatarUrl('');
                       }}
-                      className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-3 text-left ${
-                        isSelected
-                          ? 'tab-voxel-active border-minecraft-grass'
-                          : 'tab-voxel-inactive'
-                      }`}
+                      className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-3 text-left ${isSelected
+                        ? 'tab-voxel-active border-minecraft-grass'
+                        : 'tab-voxel-inactive'
+                        }`}
                     >
                       <img src={avatar.url} alt={avatar.label} className="w-10 h-10 rounded-xl shrink-0" />
                       <span className="text-xs font-bold truncate">{avatar.label}</span>
@@ -220,11 +220,10 @@ export const ProfilePage: React.FC = () => {
                       key={tier.id}
                       type="button"
                       onClick={() => setSelectedTier(tier.id)}
-                      className={`p-3.5 rounded-2xl border-2 text-left transition-all ${
-                        isSelected
-                          ? 'tab-voxel-active'
-                          : 'tab-voxel-inactive'
-                      }`}
+                      className={`p-3.5 rounded-2xl border-2 text-left transition-all ${isSelected
+                        ? 'tab-voxel-active'
+                        : 'tab-voxel-inactive'
+                        }`}
                     >
                       <div className="font-extrabold text-sm">{tier.label}</div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">{tier.desc}</div>

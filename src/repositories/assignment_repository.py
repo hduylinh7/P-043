@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.db.enums import EnrollmentRoleEnum, SubmissionStatusEnum
+from src.db.enums import EnrollmentRoleEnum, ProgressStatusEnum, SubmissionStatusEnum
 from src.db.models.identity.user import User
 from src.db.models.learning.assignment import Assignment
 from src.db.models.learning.assignment_checklist import AssignmentChecklist
@@ -590,7 +590,7 @@ class AssignmentRepository:
             .join(Enrollment, User.id == Enrollment.user_id)
             .where(
                 (Enrollment.course_id == assignment.course_id)
-                & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                & (func.lower(Enrollment.role) == "student")
             )
         )
         enroll_res = await db.execute(enroll_stmt)

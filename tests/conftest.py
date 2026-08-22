@@ -14,8 +14,8 @@ from src.main import app
 from src.models.auth import UserResponse
 from src.routers.auth_router import get_current_user
 
-# In-memory SQLite for testing
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# In-memory SQLite for testing with shared cache across sessions
+TEST_DATABASE_URL = "sqlite+aiosqlite:///file:memdb1?mode=memory&cache=shared&uri=true"
 
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(
@@ -46,7 +46,7 @@ async def override_get_current_user(db: AsyncSession = Depends(get_db)):
         full_name=user.full_name,
         is_active=user.is_active,
         is_verified=user.is_verified,
-        roles=["student"],
+        roles=["instructor", "student"],
     )
 
 

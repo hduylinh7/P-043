@@ -12,6 +12,7 @@ from src.models.course import (
     CourseResponse,
     CourseUpdateRequest,
     EnrolledStudentResponse,
+    TimetableEntryResponse,
 )
 from src.models.material import CourseMaterialResponse
 from src.routers.auth_router import get_current_user
@@ -42,6 +43,16 @@ async def update_course(
     return await CourseService.update_course(db, course_id, payload, current_user)
 
 
+@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
+async def delete_course(
+    course_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Instructor deletes an existing course."""
+    success = await CourseService.delete_course(db, course_id, current_user)
+    return {"message": "Xóa khóa học thành công", "success": success}
+
 
 @router.get("/instructor/my-courses", response_model=list[CourseResponse])
 async def get_instructor_courses(
@@ -61,6 +72,24 @@ async def get_available_courses(
     return await CourseService.get_available_courses(db, current_user)
 
 
+@router.get("/student/my-courses", response_model=list[CourseResponse])
+async def get_student_courses(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch all courses joined by current student."""
+    return await CourseService.get_student_courses(db, current_user)
+
+
+@router.get("/student/timetable", response_model=list[TimetableEntryResponse])
+async def get_student_timetable(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch official weekly timetable entries for student's enrolled courses."""
+    return await CourseService.get_student_timetable(db, current_user)
+
+
 @router.post("/{course_id}/join", response_model=CourseResponse)
 async def join_course(
     course_id: str,
@@ -71,13 +100,15 @@ async def join_course(
     return await CourseService.join_course(db, course_id, current_user)
 
 
-@router.get("/student/my-courses", response_model=list[CourseResponse])
-async def get_student_courses(
+@router.delete("/{course_id}/leave")
+@router.post("/{course_id}/leave")
+async def leave_course(
+    course_id: str,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    """Fetch all courses joined by current student."""
-    return await CourseService.get_student_courses(db, current_user)
+    """Student drops/leaves a course."""
+    return await CourseService.leave_course(db, course_id, current_user)
 
 
 @router.get("/{course_id}", response_model=CourseDetailResponse)
