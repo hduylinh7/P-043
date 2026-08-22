@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Link } from 'react-router-dom';
 import { ExportOutlined } from '@ant-design/icons';
 
@@ -44,7 +45,6 @@ export const cleanErrorMessage = (text: string): string => {
     text.includes("{'error':") ||
     text.includes('{"error":');
 
-  // If it's a normal chat message (e.g. asking about exercise 429 or quota), return completely unchanged!
   if (!isBackendErrorWrapper) {
     return text;
   }
@@ -69,11 +69,29 @@ export const cleanErrorMessage = (text: string): string => {
   return '⚠️ Trợ lý AI gặp sự cố gián đoạn tạm thời. Vui lòng gửi lại câu hỏi sau giây lát bạn nhé!';
 };
 
+export const preprocessMarkdown = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  let cleaned = text;
+
+  // 1. Replace HTML line breaks <br>, <br/>, <br /> with actual newlines
+  cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n');
+
+  // 2. Fix malformed double/triple pipes in markdown tables e.g. "||----------||" -> "|----------|"
+  cleaned = cleaned.replace(/\|{2,}/g, '|');
+
+  // 3. Ensure markdown tables have a newline before header line | ... |
+  cleaned = cleaned.replace(/([^\n])\s*(\|[\s\S]+?\|[\r\n]+\|[-:\s|]+\|)/g, '$1\n\n$2');
+
+  return cleaned;
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isUser, entityContext }) => {
-  const displayContent = cleanErrorMessage(content || '');
+  const cleanedContent = cleanErrorMessage(content || '');
+  const displayContent = preprocessMarkdown(cleanedContent);
 
   if (isUser) {
-    return <p className="m-0 font-sans leading-normal text-white">{displayContent}</p>;
+    return <p className="m-0 font-sans leading-relaxed text-white whitespace-pre-wrap">{displayContent}</p>;
   }
 
   // Lookup helper to match entity name against authenticated student's data
@@ -139,10 +157,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
   };
 
   return (
-    <div className="markdown-content text-sm leading-normal text-slate-900 dark:text-slate-100 font-sans space-y-0.5">
+    <div className="markdown-content text-sm leading-relaxed text-slate-900 dark:text-slate-100 font-sans space-y-1 overflow-hidden">
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="m-0 mb-0.5 last:mb-0 leading-normal text-slate-900 dark:text-slate-100">{children}</p>,
+          p: ({ children }) => <p className="m-0 mb-1.5 last:mb-0 leading-relaxed text-slate-900 dark:text-slate-100">{children}</p>,
           a: ({ href, children }) => {
             const linkStr = href || '';
             const isInternal = linkStr.startsWith('/') || linkStr.includes('/courses/') || linkStr.includes('/goals');
@@ -201,25 +220,57 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
             );
           },
           em: ({ children }) => <em className="italic">{children}</em>,
-          ul: ({ children }) => <ul className="list-disc pl-5 my-0.5 space-y-0.5 text-slate-900 dark:text-slate-100">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-5 my-0.5 space-y-0.5 text-slate-900 dark:text-slate-100">{children}</ol>,
+          ul: ({ children }) => <ul className="list-disc pl-5 my-1.5 space-y-1 text-slate-900 dark:text-slate-100">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 my-1.5 space-y-1 text-slate-900 dark:text-slate-100">{children}</ol>,
           li: ({ children }) => (
-            <li className="leading-normal my-0.5 [&>p]:inline [&>p]:m-0 [&>p]:leading-normal text-slate-900 dark:text-slate-100">
+            <li className="leading-relaxed my-0.5 [&>p]:inline [&>p]:m-0 text-slate-900 dark:text-slate-100">
               {children}
             </li>
           ),
-          h1: ({ children }) => <h1 className="text-base font-bold my-1 text-slate-900 dark:text-white pb-0.5 border-b border-slate-200 dark:border-slate-800">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-sm font-bold my-1 text-slate-900 dark:text-white">{children}</h2>,
+          h1: ({ children }) => <h1 className="text-base font-bold my-2 text-slate-900 dark:text-white pb-1 border-b border-slate-200 dark:border-slate-800">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-bold my-1.5 text-slate-900 dark:text-white">{children}</h2>,
           h3: ({ children }) => <h3 className="text-xs font-bold my-1 text-slate-900 dark:text-white">{children}</h3>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-slate-300 dark:border-slate-700 pl-3 my-0.5 italic text-slate-700 dark:text-slate-300">
+            <blockquote className="border-l-3 border-emerald-500 pl-3 my-2 italic text-slate-700 dark:text-slate-300 bg-emerald-500/5 py-1 rounded-r-md">
               {children}
             </blockquote>
           ),
           code: ({ children }) => (
-            <code className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">
+            <code className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-pink-600 dark:text-pink-400 font-medium">
               {children}
             </code>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950">
+              <table className="w-full text-xs text-left border-collapse">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-800">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900/30">
+              {children}
+            </tbody>
+          ),
+          tr: ({ children }) => (
+            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+              {children}
+            </tr>
+          ),
+          th: ({ children }) => (
+            <th className="px-3.5 py-2.5 font-semibold text-slate-900 dark:text-slate-100 border-r last:border-r-0 border-slate-200 dark:border-slate-800">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3.5 py-2 text-slate-700 dark:text-slate-300 border-r last:border-r-0 border-slate-100 dark:border-slate-800/60 leading-normal">
+              {children}
+            </td>
           ),
         }}
       >
@@ -228,3 +279,4 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
     </div>
   );
 };
+

@@ -56,6 +56,10 @@ RULES & GUIDELINES:
    - For an assignment: Format as `[Assignment Name](/courses/{{course_id}}?assignment={{id}})`
    - For a course: Format as `[Course Name](/courses/{{id}})`
    Use the exact `id` and `course_id` provided in the STUDENT ACADEMIC & LEARNING CONTEXT JSON.
+14. MARKDOWN TABLE & LAYOUT FORMATTING RULE:
+   - Format structured data (assignments, courses, deadlines, grades) using standard GitHub Flavored Markdown tables or bulleted lists.
+   - ALWAYS put a blank newline BEFORE and AFTER any table.
+   - Put each table row on its own line (`| Col 1 | Col 2 |`). NEVER use HTML tags like `<br>` or double pipes `||` inside tables.
 """
 
 

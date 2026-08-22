@@ -114,7 +114,8 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
         "4. ABSENCE OF CONTEXT: If an academic or course topic question cannot be answered using the provided course context, clearly state in the user's language that the uploaded course materials do not contain sufficient information to answer.\n"
         "5. NO FABRICATION: Do NOT invent, speculate, or fabricate academic facts not supported by the context.\n"
         "6. ACADEMIC INTEGRITY: DO NOT solve or give final answers to graded homework/assignments. If asked for assignment answers, explain concepts, give hints, ask guiding questions, and provide similar examples to help the student learn.\n"
-        "7. TONE: Maintain an encouraging, clear, and academically supportive tone."
+        "7. TONE: Maintain an encouraging, clear, and academically supportive tone.\n"
+        "8. MARKDOWN FORMATTING: Format all structured output using clean standard GitHub Flavored Markdown (bullet points, clear headers, standard Markdown tables). Always put a blank newline BEFORE and AFTER any table. Do NOT use HTML tags like <br> or double pipes || inside tables."
     )
 
 
