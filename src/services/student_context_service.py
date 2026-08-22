@@ -42,9 +42,19 @@ def get_current_week_start() -> date:
     return today - timedelta(days=today.weekday())
 
 
+def truncate_str(text: Any, max_len: int = 150) -> Any:
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        return text
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + "..."
+
+
 class StudentLearningContextService:
     """
-    Service to assemble the authenticated student's complete personal learning context
+    Service to assemble the authenticated student's personal learning context
     for the Personal Learning Companion chatbot.
 
     Scoped strictly to the authenticated student's data.
@@ -58,6 +68,195 @@ class StudentLearningContextService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Personal Learning Companion context is available for students only.",
             )
+
+    @classmethod
+    async def get_assignments_context(
+        cls,
+        db: AsyncSession,
+        current_user: UserResponse,
+    ) -> dict[str, Any]:
+        """
+        Build a lightweight context containing ONLY student assignments and deadlines.
+        """
+        cls._ensure_student(current_user)
+        student_id = current_user.id
+
+        student_info = {
+            "student_id": student_id,
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+        }
+
+        enroll_stmt = (
+            select(Enrollment)
+            .options(selectinload(Enrollment.course))
+            .where(
+                (Enrollment.user_id == student_id)
+                & (func.lower(Enrollment.role) == "student")
+            )
+        )
+        enroll_res = await db.execute(enroll_stmt)
+        enrollments = enroll_res.scalars().all()
+        course_ids = [en.course.id for en in enrollments if en.course]
+
+        assignments_list = []
+        if course_ids:
+            sub_stmt = select(Submission).where(Submission.student_id == student_id)
+            sub_res = await db.execute(sub_stmt)
+            submissions = sub_res.scalars().all()
+            submissions_dict = {s.assignment_id: s for s in submissions}
+
+            assign_stmt = (
+                select(Assignment)
+                .options(selectinload(Assignment.course))
+                .where(
+                    Assignment.course_id.in_(course_ids),
+                    Assignment.status == "ACTIVE",
+                )
+                .order_by(Assignment.due_at.asc().nulls_last())
+            )
+            assign_res = await db.execute(assign_stmt)
+            assignments = assign_res.scalars().all()
+
+            for a in assignments:
+                sub = submissions_dict.get(a.id)
+
+                is_submitted = False
+                submission_status = "NOT_SUBMITTED"
+                submitted_at_str = None
+                score = None
+                grade = None
+                feedback = None
+
+                if sub:
+                    sub_status_val = sub.status.value if hasattr(sub.status, "value") else str(sub.status)
+                    if sub_status_val in ["submitted", "graded", "SUBMITTED", "GRADED"] or sub.submitted_at:
+                        is_submitted = True
+                        due_dt = a.due_at
+                        if due_dt and sub.submitted_at and sub.submitted_at > due_dt:
+                            submission_status = "LATE"
+                        elif sub.score is not None or sub.grade == "GRADED":
+                            submission_status = "GRADED"
+                        else:
+                            submission_status = "SUBMITTED"
+                    else:
+                        submission_status = "NOT_SUBMITTED"
+
+                    submitted_at_str = format_iso_datetime(sub.submitted_at)
+                    score = sub.score
+                    grade = sub.grade
+                    feedback = truncate_str(sub.feedback, 100)
+
+                assignments_list.append({
+                    "id": a.id,
+                    "title": a.title,
+                    "description": truncate_str(a.description, 100),
+                    "course_id": a.course_id,
+                    "course_name": a.course.name if a.course else None,
+                    "course_code": a.course.code if a.course else None,
+                    "due_date": format_iso_datetime(a.due_at),
+                    "due_date_short": format_iso_date(a.due_at),
+                    "priority": a.priority,
+                    "is_submitted": is_submitted,
+                    "submission_status": submission_status,
+                    "submitted_at": submitted_at_str,
+                    "score": score,
+                    "grade": grade,
+                    "feedback": feedback,
+                })
+
+        total_assignments = len(assignments_list)
+        submitted_assignments = [a for a in assignments_list if a["is_submitted"]]
+        unsubmitted_assignments = [a for a in assignments_list if not a["is_submitted"]]
+        graded_assignments = [a for a in assignments_list if a["score"] is not None]
+
+        scores = [a["score"] for a in graded_assignments if a["score"] is not None]
+        avg_score = round(sum(scores) / len(scores), 2) if scores else None
+
+        upcoming_deadlines = [
+            a for a in unsubmitted_assignments if a["due_date"] is not None
+        ]
+        upcoming_deadlines.sort(key=lambda x: x["due_date"])
+
+        return {
+            "student_info": student_info,
+            "assignments": assignments_list,
+            "learning_progress": {
+                "total_assignments_count": total_assignments,
+                "submitted_assignments_count": len(submitted_assignments),
+                "unsubmitted_assignments_count": len(unsubmitted_assignments),
+                "graded_assignments_count": len(graded_assignments),
+                "average_score": avg_score,
+                "upcoming_unsubmitted_deadlines": upcoming_deadlines[:5],
+            },
+        }
+
+    @classmethod
+    async def get_courses_context(
+        cls,
+        db: AsyncSession,
+        current_user: UserResponse,
+    ) -> dict[str, Any]:
+        """
+        Build a lightweight context containing ONLY student enrolled courses and materials.
+        """
+        cls._ensure_student(current_user)
+        student_id = current_user.id
+
+        student_info = {
+            "student_id": student_id,
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+        }
+
+        enroll_stmt = (
+            select(Enrollment)
+            .options(selectinload(Enrollment.course))
+            .where(
+                (Enrollment.user_id == student_id)
+                & (func.lower(Enrollment.role) == "student")
+            )
+        )
+        enroll_res = await db.execute(enroll_stmt)
+        enrollments = enroll_res.scalars().all()
+
+        courses_list = []
+        for en in enrollments:
+            c = en.course
+            if not c:
+                continue
+
+            mat_stmt = (
+                select(CourseMaterial)
+                .where(CourseMaterial.course_id == c.id)
+                .order_by(CourseMaterial.created_at.desc())
+            )
+            mat_res = await db.execute(mat_stmt)
+            materials = mat_res.scalars().all()
+
+            materials_metadata = [
+                {
+                    "id": m.id,
+                    "title": m.title,
+                    "type": m.type,
+                    "file_name": m.file_name,
+                }
+                for m in materials
+            ]
+
+            courses_list.append({
+                "course_id": c.id,
+                "course_code": c.code,
+                "course_name": c.name,
+                "description": truncate_str(c.description, 100),
+                "instructor_id": c.instructor_id,
+                "materials": materials_metadata,
+            })
+
+        return {
+            "student_info": student_info,
+            "courses": courses_list,
+        }
 
     @classmethod
     async def build_student_context(
@@ -92,7 +291,7 @@ class StudentLearningContextService:
             {
                 "id": g.id,
                 "title": g.title,
-                "description": g.description,
+                "description": truncate_str(g.description, 150),
                 "category": g.category,
                 "priority": g.priority,
                 "target_date": format_iso_date(g.target_date),
@@ -145,7 +344,7 @@ class StudentLearningContextService:
                 "course_id": c.id,
                 "course_code": c.code,
                 "course_name": c.name,
-                "description": c.description,
+                "description": truncate_str(c.description, 150),
                 "instructor_id": c.instructor_id,
                 "materials": materials_metadata,
             })
@@ -201,12 +400,12 @@ class StudentLearningContextService:
                     submitted_at_str = format_iso_datetime(sub.submitted_at)
                     score = sub.score
                     grade = sub.grade
-                    feedback = sub.feedback
+                    feedback = truncate_str(sub.feedback, 150)
 
                 assignments_list.append({
                     "id": a.id,
                     "title": a.title,
-                    "description": a.description,
+                    "description": truncate_str(a.description, 150),
                     "course_id": a.course_id,
                     "course_name": a.course.name if a.course else None,
                     "course_code": a.course.code if a.course else None,
@@ -242,7 +441,7 @@ class StudentLearningContextService:
                     {
                         "id": t.id,
                         "title": t.title,
-                        "description": t.description,
+                        "description": truncate_str(t.description, 150),
                         "status": t.status.value if hasattr(t.status, "value") else str(t.status),
                         "priority": t.priority.value if hasattr(t.priority, "value") else str(t.priority),
                         "scheduled_date": format_iso_date(t.scheduled_date),
@@ -257,7 +456,7 @@ class StudentLearningContextService:
                 current_weekly_plan = {
                     "id": p.id,
                     "title": p.title,
-                    "description": p.description,
+                    "description": truncate_str(p.description, 150),
                     "week_start_date": format_iso_date(p.week_start_date),
                     "week_end_date": format_iso_date(p.week_end_date),
                     "status": p.status.value if hasattr(p.status, "value") else str(p.status),
@@ -279,13 +478,13 @@ class StudentLearningContextService:
                                 "task_id": t.id,
                                 "topic": meta.get("topic") or t.title,
                                 "course_name": meta.get("course_name"),
-                                "what_learned": ref_data.get("what_learned"),
-                                "understood_well": ref_data.get("understood_well"),
-                                "struggling_with": ref_data.get("struggling_with"),
+                                "what_learned": truncate_str(ref_data.get("what_learned"), 100),
+                                "understood_well": truncate_str(ref_data.get("understood_well"), 100),
+                                "struggling_with": truncate_str(ref_data.get("struggling_with"), 100),
                                 "understanding_level": ref_data.get("understanding_level"),
                                 "achieved_goal": ref_data.get("achieved_goal"),
-                                "ai_insight": meta.get("ai_insight"),
-                                "suggested_next_focus": meta.get("suggested_next_focus"),
+                                "ai_insight": truncate_str(meta.get("ai_insight"), 100),
+                                "suggested_next_focus": truncate_str(meta.get("suggested_next_focus"), 100),
                                 "completed_at": meta.get("completed_at"),
                             })
                     except Exception:
@@ -325,6 +524,7 @@ class StudentLearningContextService:
             "courses": courses_list,
             "assignments": assignments_list,
             "weekly_plan": current_weekly_plan,
-            "recent_reflections": recent_reflections[:10],
+            "recent_reflections": recent_reflections[:5],
             "learning_progress": learning_progress,
         }
+

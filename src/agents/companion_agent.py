@@ -59,6 +59,38 @@ RULES & GUIDELINES:
 """
 
 
+def is_greeting_query(query: str) -> bool:
+    q = query.strip().lower()
+    greetings = [
+        "xin chào", "chào bạn", "chào em", "chào anh", "chào chị", "chào",
+        "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
+        "bạn là ai", "bạn tên gì", "who are you", "bạn có thể làm gì"
+    ]
+    if len(q.split()) <= 5:
+        for g in greetings:
+            if g in q:
+                return True
+    return False
+
+
+def is_assignment_query(query: str) -> bool:
+    q = query.lower()
+    keywords = [
+        "bài tập", "assignment", "dead line", "deadline", "hạn nộp",
+        "nộp bài", "chưa nộp", "đã nộp", "bài nộp", "điểm bài tập",
+        "bài tập nào", "bài tập sắp đến"
+    ]
+    return any(k in q for k in keywords)
+
+
+def is_course_query(query: str) -> bool:
+    q = query.lower()
+    keywords = [
+        "môn học", "khóa học", "course", "tài liệu", "môn nào", "đang học"
+    ]
+    return any(k in q for k in keywords)
+
+
 class PersonalLearningCompanionAgent:
     """
     AI Agent that serves as the Personal Learning Companion on the main/home screen and study sessions.
@@ -74,17 +106,35 @@ class PersonalLearningCompanionAgent:
         study_session_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Execute the Personal Learning Companion agent workflow.
+        Execute the Personal Learning Companion agent workflow with Intent Routing.
         """
         try:
-            # 1. Retrieve authenticated student's full learning context from DB
-            student_context = await StudentLearningContextService.build_student_context(
-                db=db, current_user=current_user
-            )
+            # 1. Intent Detection & Selective DB Context Fetching
+            query_lower = query.lower()
 
-            # Format context as pretty JSON
-            context_json_str = json.dumps(student_context, indent=2, ensure_ascii=False)
-            study_session_json_str = json.dumps(study_session_context or {}, indent=2, ensure_ascii=False)
+            if is_greeting_query(query_lower):
+                student_context = {
+                    "student_info": {
+                        "full_name": current_user.full_name,
+                        "email": current_user.email,
+                    }
+                }
+            elif is_assignment_query(query_lower):
+                student_context = await StudentLearningContextService.get_assignments_context(
+                    db=db, current_user=current_user
+                )
+            elif is_course_query(query_lower):
+                student_context = await StudentLearningContextService.get_courses_context(
+                    db=db, current_user=current_user
+                )
+            else:
+                student_context = await StudentLearningContextService.build_student_context(
+                    db=db, current_user=current_user
+                )
+
+            # Format context as compact JSON to save tokens and prevent TPM limit errors
+            context_json_str = json.dumps(student_context, separators=(',', ':'), ensure_ascii=False)
+            study_session_json_str = json.dumps(study_session_context or {}, separators=(',', ':'), ensure_ascii=False)
 
             # 2. Build system prompt
             system_prompt_content = COMPANION_SYSTEM_PROMPT.format(
@@ -135,6 +185,11 @@ class PersonalLearningCompanionAgent:
                     "GROQ_API_KEY chưa hợp lệ hoặc chưa được điền trong file .env!\n"
                     "👉 Bạn hãy truy cập https://console.groq.com/keys để tạo API Key miễn phí, sau đó dán vào file .env:\n"
                     "GROQ_API_KEY=gsk_..."
+                )
+            elif "413" in err_str or "rate_limit_exceeded" in err_str.lower() or "tpm" in err_str.lower():
+                user_friendly_msg = (
+                    "Yêu cầu vượt quá giới hạn token theo phút (TPM) của LLM provider (Groq API Rate Limit).\n"
+                    "👉 Hệ thống đã tự động tối ưu hóa và thu gọn dữ liệu ngữ cảnh. Bạn hãy thử gửi lại câu hỏi!"
                 )
             else:
                 user_friendly_msg = err_str
