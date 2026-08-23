@@ -1,6 +1,8 @@
 import json
 import logging
-from typing import Any
+import re
+from datetime import datetime, timezone
+from typing import Any, Callable
 
 from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,11 +13,28 @@ from src.services.student_context_service import StudentLearningContextService
 
 logger = logging.getLogger(__name__)
 
+CLASSIFIER_SYSTEM_PROMPT = """You are an intent classifier for a student assistant AI.
+Categorize the user's input query into EXACTLY ONE of the following intent categories:
+- "greeting": Friendly greetings, social small talk, asking who the assistant is.
+- "assignment": Questions specifically about homework, assignments, submission status, due dates, deadlines.
+- "course": Questions about enrolled courses, subject lists, or course materials.
+- "score": Questions about grades, test scores, assignment marks, or teacher feedback.
+- "goal": Questions about personal academic goals or study objectives.
+- "schedule": Questions about daily/weekly schedules, what to do today/tomorrow, study plans, or timetables.
+- "general": Complex, multi-part, or general learning advice queries that require complete student context.
+
+Return ONLY a single valid JSON object with NO markdown formatting:
+{"intent": "<category_name>"}
+"""
+
 COMPANION_SYSTEM_PROMPT = """
 You are the student's Personal Learning Companion AI Assistant.
 
 YOUR PURPOSE:
 Understand and answer questions about the student's own learning situation based STRICTLY on real database context.
+
+CURRENT DATETIME:
+{current_datetime}
 
 STUDENT ACADEMIC & LEARNING CONTEXT:
 {context_json}
@@ -77,22 +96,57 @@ def is_greeting_query(query: str) -> bool:
     return False
 
 
-def is_assignment_query(query: str) -> bool:
-    q = query.lower()
-    keywords = [
-        "bài tập", "assignment", "dead line", "deadline", "hạn nộp",
-        "nộp bài", "chưa nộp", "đã nộp", "bài nộp", "điểm bài tập",
-        "bài tập nào", "bài tập sắp đến"
-    ]
-    return any(k in q for k in keywords)
+async def classify_intent(query: str) -> str:
+    """
+    Classify user query intent using a lightweight LLM call (temperature=0.0).
+    """
+    try:
+        llm = get_llm(temperature=0.0)
+        messages = [
+            SystemMessage(content=CLASSIFIER_SYSTEM_PROMPT),
+            HumanMessage(content=query),
+        ]
+        response = await llm.ainvoke(messages)
+        content_val = response.content if hasattr(response, "content") else str(response)
+        if isinstance(content_val, list):
+            texts = []
+            for part in content_val:
+                if isinstance(part, dict) and "text" in part:
+                    texts.append(part["text"])
+                elif isinstance(part, str):
+                    texts.append(part)
+                else:
+                    texts.append(str(part))
+            content_val = "".join(texts)
+
+        clean_text = str(content_val).strip()
+        if "```" in clean_text:
+            clean_text = re.sub(r"^```(?:json)?\s*", "", clean_text, flags=re.IGNORECASE)
+            clean_text = re.sub(r"\s*```$", "", clean_text)
+            clean_text = clean_text.strip()
+
+        data = json.loads(clean_text)
+        intent = data.get("intent", "general").strip().lower()
+
+        valid_intents = {"greeting", "assignment", "course", "score", "goal", "schedule", "general"}
+        if intent not in valid_intents:
+            intent = "general"
+
+        logger.info(f"Classified intent: {intent!r} for query: {query!r}")
+        return intent
+    except Exception as e:
+        logger.warning(f"Intent classification failed for query {query!r}: {e}. Defaulting to 'general'.")
+        return "general"
 
 
-def is_course_query(query: str) -> bool:
-    q = query.lower()
-    keywords = [
-        "môn học", "khóa học", "course", "tài liệu", "môn nào", "đang học"
-    ]
-    return any(k in q for k in keywords)
+INTENT_HANDLERS: dict[str, Callable] = {
+    "assignment": StudentLearningContextService.get_assignments_context,
+    "course": StudentLearningContextService.get_courses_context,
+    "schedule": StudentLearningContextService.get_schedule_context,
+    "score": StudentLearningContextService.get_scores_context,
+    "goal": StudentLearningContextService.get_goals_context,
+    "general": StudentLearningContextService.build_student_context,
+}
 
 
 class PersonalLearningCompanionAgent:
@@ -110,43 +164,41 @@ class PersonalLearningCompanionAgent:
         study_session_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Execute the Personal Learning Companion agent workflow with Intent Routing.
+        Execute the Personal Learning Companion agent workflow with LLM Intent Routing.
         """
         try:
-            # 1. Intent Detection & Selective DB Context Fetching
-            query_lower = query.lower()
-
-            if is_greeting_query(query_lower):
+            # 1. Fast-path check for simple greetings (no LLM call needed)
+            if is_greeting_query(query):
+                intent = "greeting"
+                logger.info(f"Fast-path greeting matched for query: {query!r}")
                 student_context = {
                     "student_info": {
                         "full_name": current_user.full_name,
                         "email": current_user.email,
                     }
                 }
-            elif is_assignment_query(query_lower):
-                student_context = await StudentLearningContextService.get_assignments_context(
-                    db=db, current_user=current_user
-                )
-            elif is_course_query(query_lower):
-                student_context = await StudentLearningContextService.get_courses_context(
-                    db=db, current_user=current_user
-                )
             else:
-                student_context = await StudentLearningContextService.build_student_context(
-                    db=db, current_user=current_user
-                )
+                # 2. LLM Intent Classification & Selective Context Retrieval via Handler Registry
+                intent = await classify_intent(query)
+                handler = INTENT_HANDLERS.get(intent, StudentLearningContextService.build_student_context)
+                student_context = await handler(db=db, current_user=current_user)
 
             # Format context as compact JSON to save tokens and prevent TPM limit errors
             context_json_str = json.dumps(student_context, separators=(',', ':'), ensure_ascii=False)
             study_session_json_str = json.dumps(study_session_context or {}, separators=(',', ':'), ensure_ascii=False)
 
-            # 2. Build system prompt
+            # Current Date & Time string for temporal groundings
+            now_utc = datetime.now(timezone.utc)
+            current_datetime_str = f"{now_utc.strftime('%Y-%m-%d %H:%M:%S UTC')} ({now_utc.strftime('%A')})"
+
+            # 3. Build system prompt
             system_prompt_content = COMPANION_SYSTEM_PROMPT.format(
+                current_datetime=current_datetime_str,
                 context_json=context_json_str,
                 study_session_json=study_session_json_str,
             )
 
-            # 3. Assemble message list
+            # 4. Assemble message list
             messages: list[BaseMessage] = [SystemMessage(content=system_prompt_content)]
 
             # Include recent chat history if available
@@ -157,7 +209,7 @@ class PersonalLearningCompanionAgent:
             # Append current user query
             messages.append(HumanMessage(content=query))
 
-            # 4. Invoke LLM
+            # 5. Invoke LLM
             llm = get_llm(temperature=0.3)
             response = await llm.ainvoke(messages)
 
@@ -177,7 +229,7 @@ class PersonalLearningCompanionAgent:
 
             return {
                 "response": response_text,
-                "analysis": "Personal Learning Companion Context Analysis",
+                "analysis": f"Personal Learning Companion Analysis (Intent: {intent})",
                 "citations": [],
                 "sources": [],
             }
@@ -204,3 +256,4 @@ class PersonalLearningCompanionAgent:
                 "citations": [],
                 "sources": [],
             }
+

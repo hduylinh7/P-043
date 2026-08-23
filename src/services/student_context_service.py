@@ -259,6 +259,222 @@ class StudentLearningContextService:
         }
 
     @classmethod
+    async def get_goals_context(
+        cls,
+        db: AsyncSession,
+        current_user: UserResponse,
+    ) -> dict[str, Any]:
+        """
+        Build a lightweight context containing ONLY student personal goals.
+        """
+        cls._ensure_student(current_user)
+        student_id = current_user.id
+
+        student_info = {
+            "student_id": student_id,
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+        }
+
+        goals_stmt = (
+            select(Goal)
+            .where(Goal.student_id == student_id)
+            .where(Goal.status == "ACTIVE")
+            .order_by(Goal.target_date.asc().nulls_last())
+        )
+        goals_res = await db.execute(goals_stmt)
+        active_goals = goals_res.scalars().all()
+
+        goals_list = [
+            {
+                "id": g.id,
+                "title": g.title,
+                "description": truncate_str(g.description, 150),
+                "category": g.category,
+                "priority": g.priority,
+                "target_date": format_iso_date(g.target_date),
+                "status": g.status,
+            }
+            for g in active_goals
+        ]
+
+        return {
+            "student_info": student_info,
+            "goals": goals_list,
+        }
+
+    @classmethod
+    async def get_scores_context(
+        cls,
+        db: AsyncSession,
+        current_user: UserResponse,
+    ) -> dict[str, Any]:
+        """
+        Build a lightweight context containing ONLY student grades, assignment scores, and feedback.
+        """
+        cls._ensure_student(current_user)
+        student_id = current_user.id
+
+        student_info = {
+            "student_id": student_id,
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+        }
+
+        sub_stmt = (
+            select(Submission)
+            .options(selectinload(Submission.assignment).selectinload(Assignment.course))
+            .where(Submission.student_id == student_id)
+            .order_by(Submission.submitted_at.desc().nulls_last())
+        )
+        sub_res = await db.execute(sub_stmt)
+        submissions = sub_res.scalars().all()
+
+        scores_list = []
+        scores_values = []
+
+        for sub in submissions:
+            assign = sub.assignment
+            c_name = assign.course.name if assign and assign.course else None
+            c_code = assign.course.code if assign and assign.course else None
+
+            if sub.score is not None:
+                scores_values.append(sub.score)
+
+            scores_list.append({
+                "assignment_id": sub.assignment_id,
+                "assignment_title": assign.title if assign else None,
+                "course_name": c_name,
+                "course_code": c_code,
+                "score": sub.score,
+                "grade": sub.grade,
+                "status": sub.status.value if hasattr(sub.status, "value") else str(sub.status),
+                "submitted_at": format_iso_datetime(sub.submitted_at),
+                "feedback": truncate_str(sub.feedback, 150),
+            })
+
+        avg_score = round(sum(scores_values) / len(scores_values), 2) if scores_values else None
+
+        return {
+            "student_info": student_info,
+            "scores_summary": {
+                "total_graded_assignments": len(scores_values),
+                "average_score": avg_score,
+            },
+            "submissions_and_scores": scores_list,
+        }
+
+    @classmethod
+    async def get_schedule_context(
+        cls,
+        db: AsyncSession,
+        current_user: UserResponse,
+        target_date: date | None = None,
+    ) -> dict[str, Any]:
+        """
+        Build a targeted context containing schedule, daily/weekly tasks, and near-term assignment deadlines.
+        Defaults to near-term window (today through +2 days).
+        """
+        cls._ensure_student(current_user)
+        student_id = current_user.id
+
+        today = target_date or datetime.now(timezone.utc).date()
+        window_end = today + timedelta(days=2)
+
+        student_info = {
+            "student_id": student_id,
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+            "current_date": today.isoformat(),
+        }
+
+        # 1. Near-term unsubmitted assignments
+        enroll_stmt = (
+            select(Enrollment.course_id)
+            .where(
+                (Enrollment.user_id == student_id)
+                & (func.lower(Enrollment.role) == "student")
+            )
+        )
+        enroll_res = await db.execute(enroll_stmt)
+        course_ids = enroll_res.scalars().all()
+
+        near_term_assignments = []
+        if course_ids:
+            sub_stmt = select(Submission.assignment_id).where(Submission.student_id == student_id)
+            sub_res = await db.execute(sub_stmt)
+            submitted_ids = set(sub_res.scalars().all())
+
+            assign_stmt = (
+                select(Assignment)
+                .options(selectinload(Assignment.course))
+                .where(
+                    Assignment.course_id.in_(course_ids),
+                    Assignment.status == "ACTIVE",
+                )
+                .order_by(Assignment.due_at.asc().nulls_last())
+            )
+            assign_res = await db.execute(assign_stmt)
+            active_assignments = assign_res.scalars().all()
+
+            for a in active_assignments:
+                if a.id in submitted_ids:
+                    continue
+                a_due_date = a.due_at.date() if isinstance(a.due_at, datetime) else None
+                # Include if due within near-term window or due date is null
+                if a_due_date is None or (today <= a_due_date <= window_end):
+                    near_term_assignments.append({
+                        "id": a.id,
+                        "title": a.title,
+                        "description": truncate_str(a.description, 100),
+                        "course_id": a.course_id,
+                        "course_name": a.course.name if a.course else None,
+                        "due_date": format_iso_datetime(a.due_at),
+                        "due_date_short": format_iso_date(a.due_at),
+                        "priority": a.priority,
+                    })
+
+        # 2. Current Weekly Plan & Scheduled Tasks for near-term window
+        week_start_date = get_current_week_start()
+        plan_stmt = (
+            select(WeeklyGoal)
+            .options(selectinload(WeeklyGoal.tasks))
+            .where(WeeklyGoal.student_id == student_id)
+        )
+        plan_res = await db.execute(plan_stmt)
+        user_plans = plan_res.scalars().all()
+
+        near_term_tasks = []
+        for p in user_plans:
+            p_start = p.week_start_date.date() if isinstance(p.week_start_date, datetime) else p.week_start_date
+            if p_start == week_start_date:
+                for t in (p.tasks or []):
+                    t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
+                    if t_date is None or (today <= t_date <= window_end):
+                        near_term_tasks.append({
+                            "id": t.id,
+                            "title": t.title,
+                            "description": truncate_str(t.description, 100),
+                            "status": t.status.value if hasattr(t.status, "value") else str(t.status),
+                            "priority": t.priority.value if hasattr(t.priority, "value") else str(t.priority),
+                            "scheduled_date": format_iso_date(t.scheduled_date),
+                            "start_time": t.start_time,
+                            "end_time": t.end_time,
+                            "estimated_duration": t.estimated_minutes,
+                        })
+                break
+
+        return {
+            "student_info": student_info,
+            "schedule_window": {
+                "start_date": today.isoformat(),
+                "end_date": window_end.isoformat(),
+            },
+            "near_term_assignments": near_term_assignments,
+            "scheduled_tasks": near_term_tasks,
+        }
+
+    @classmethod
     async def build_student_context(
         cls,
         db: AsyncSession,
