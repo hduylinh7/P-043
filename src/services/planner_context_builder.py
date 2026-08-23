@@ -38,9 +38,12 @@ from src.models.planner_context import (
 def format_iso(dt: datetime | date | str | None) -> str | None:
     if dt is None:
         return None
-    if isinstance(dt, (datetime, date)):
+    if isinstance(dt, datetime):
+        return dt.strftime("%Y-%m-%d %H:%M:%S") if (dt.hour or dt.minute or dt.second) else dt.strftime("%Y-%m-%d")
+    if isinstance(dt, date):
         return dt.strftime("%Y-%m-%d")
-    return str(dt).split("T")[0]
+    return str(dt)
+
 
 
 def parse_week_start(val: datetime | date | str | None) -> date:

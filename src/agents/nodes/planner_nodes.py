@@ -236,7 +236,8 @@ ACADEMIC INTEGRITY RULES:
 
 DATE & TIME CONSTRAINTS:
 1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER generate or schedule an AI Study Session during hours occupied by a fixed university class lecture! Choose free open hours (e.g. evening 19:00 - 20:30).
-2. If a task has a non-null `assignment_id`, its `scheduled_date` MUST be strictly earlier than that assignment's due date — never on the same day or after. Study sessions must always leave the student time to act on what they studied before the deadline.
+2. If a task has a non-null `assignment_id` or relates to an assignment with a due date/time (e.g. "2026-08-24 10:25:00"), its `scheduled_date` and `end_time` MUST be strictly BEFORE that assignment's deadline — never at the same time or after! If the deadline is in the morning/noon (e.g. 10:25 AM), NEVER schedule study sessions in the evening of that day or after 10:25 AM! Schedule study sessions 1 to 2 days BEFORE the deadline date, or in early morning (08:00 - 09:30) before the deadline time.
+
 3. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
 4. priority MUST be strictly one of: "low", "medium", "high", "urgent".
@@ -381,21 +382,37 @@ def validate_scheduled_before_deadline(
     week_start: str = "",
     user_request: str = "",
 ) -> dict[str, Any]:
-    """Validates that task scheduled_date is strictly before the related assignment due date."""
+    """
+    Validates and auto-adjusts task scheduled_date & start_time/end_time so they finish strictly before
+    the related assignment due date/time.
+    """
     if not isinstance(decision, dict) or "tasks" not in decision:
         return decision
 
     assignments = context_dict.get("assignments", []) if isinstance(context_dict, dict) else []
-    assignment_due_dates: dict[str, date] = {}
+    assignment_due_dts: dict[str, datetime] = {}
+    assignment_title_map: dict[str, datetime] = {}
+
     for ass in assignments:
         if isinstance(ass, dict):
             ass_id = ass.get("id")
+            title = (ass.get("title") or "").strip().lower()
             due_raw = ass.get("due_date") or ass.get("due_at")
-            if ass_id and due_raw:
+            if due_raw:
                 try:
-                    clean_due = str(due_raw).split("T")[0].rstrip("Z")
-                    due_d = datetime.strptime(clean_due, "%Y-%m-%d").date()
-                    assignment_due_dates[ass_id] = due_d
+                    due_str = str(due_raw).rstrip("Z")
+                    if "T" in due_str:
+                        due_str = due_str.replace("T", " ")
+
+                    if len(due_str) > 10 and ":" in due_str:
+                        due_dt = datetime.strptime(due_str[:19], "%Y-%m-%d %H:%M:%S")
+                    else:
+                        due_dt = datetime.strptime(due_str[:10], "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+
+                    if ass_id:
+                        assignment_due_dts[ass_id] = due_dt
+                    if title:
+                        assignment_title_map[title] = due_dt
                 except Exception:
                     pass
 
@@ -403,41 +420,102 @@ def validate_scheduled_before_deadline(
     if not isinstance(tasks, list) or not tasks:
         return decision
 
-    valid_tasks = []
+    start_date_obj = None
+    if week_start:
+        try:
+            start_date_obj = datetime.strptime(week_start, "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    adjusted_tasks = []
     for task in tasks:
         if not isinstance(task, dict):
-            valid_tasks.append(task)
+            adjusted_tasks.append(task)
             continue
 
-        ass_id = task.get("assignment_id")
-        sched_raw = task.get("scheduled_date")
+        ass_id = task.get("assignment_id") or task.get("source_id")
+        task_topic = (task.get("topic") or task.get("title") or task.get("assignment_title") or "").strip().lower()
 
-        if ass_id and ass_id in assignment_due_dates:
-            due_d = assignment_due_dates[ass_id]
-            sched_d = None
+        due_dt = None
+        if ass_id and ass_id in assignment_due_dts:
+            due_dt = assignment_due_dts[ass_id]
+        elif task_topic:
+            for t_title, d_dt in assignment_title_map.items():
+                if t_title in task_topic or task_topic in t_title:
+                    due_dt = d_dt
+                    break
+
+        if due_dt:
+            sched_raw = task.get("scheduled_date")
+            start_time_str = task.get("start_time") or "19:00"
+            end_time_str = task.get("end_time") or "20:30"
+
+            sched_date = None
             if sched_raw:
                 try:
                     clean_sched = str(sched_raw).split("T")[0].rstrip("Z")
-                    sched_d = datetime.strptime(clean_sched, "%Y-%m-%d").date()
+                    sched_date = datetime.strptime(clean_sched, "%Y-%m-%d").date()
                 except Exception:
                     pass
 
-            if sched_d and sched_d >= due_d:
+            if not sched_date:
+                sched_date = due_dt.date()
+
+            # Parse start and end datetime of the proposed study session
+            try:
+                s_h, s_m = map(int, start_time_str.split(":")[:2])
+                task_start_dt = datetime.combine(sched_date, datetime.min.time()).replace(hour=s_h, minute=s_m)
+            except Exception:
+                task_start_dt = datetime.combine(sched_date, datetime.min.time()).replace(hour=19, minute=0)
+
+            try:
+                e_h, e_m = map(int, end_time_str.split(":")[:2])
+                task_end_dt = datetime.combine(sched_date, datetime.min.time()).replace(hour=e_h, minute=e_m)
+            except Exception:
+                task_end_dt = task_start_dt + timedelta(minutes=90)
+
+            # Violation: study session ends after/at due_dt, or starts after due_dt
+            if task_end_dt >= due_dt or task_start_dt >= due_dt:
                 logger.warning(
-                    f"Task '{task.get('title')}' scheduled_date ({sched_raw}) is not strictly before assignment '{ass_id}' due date ({due_d}). Removing task."
+                    f"Task '{task.get('title')}' ({task_start_dt} to {task_end_dt}) violates assignment deadline ({due_dt}). Auto-adjusting schedule."
                 )
-                continue
 
-        valid_tasks.append(task)
+                # Step 1: Default to 1 day before due_date in evening (19:00 - 20:30)
+                new_date = due_dt.date() - timedelta(days=1)
 
-    if len(tasks) > 0 and len(valid_tasks) == 0:
-        logger.warning(
-            "All tasks were removed because scheduled_date was not strictly before assignment due date. Falling back to default decision."
-        )
-        return create_fallback_decision(context_dict, week_start, user_request)
+                # Bounded by planning week start
+                if start_date_obj and new_date < start_date_obj:
+                    new_date = start_date_obj
 
-    decision["tasks"] = valid_tasks
+                # If new_date is same as due_dt.date(), check if morning hours fit before due_dt
+                if new_date == due_dt.date():
+                    due_min = due_dt.hour * 60 + due_dt.minute
+                    if due_min >= 600:  # Deadline is at/after 10:00 AM
+                        new_start = "08:00"
+                        new_end = "09:30"
+                    else:
+                        # Deadline is earlier than 10:00 AM, shift date to previous day if possible
+                        new_date = due_dt.date() - timedelta(days=1)
+                        if start_date_obj and new_date < start_date_obj:
+                            new_date = start_date_obj
+                        new_start = "19:00"
+                        new_end = "20:30"
+                else:
+                    new_start = "19:00"
+                    new_end = "20:30"
+
+                task["scheduled_date"] = new_date.strftime("%Y-%m-%d")
+                task["start_time"] = new_start
+                task["end_time"] = new_end
+                due_fmt = due_dt.strftime("%d/%m/%Y %H:%M") if (due_dt.hour or due_dt.minute) else due_dt.strftime("%d/%m/%Y")
+                reason_clean = task.get('reason') or ''
+                task["reason"] = f"{reason_clean} (Tự động sắp xếp trước hạn nộp {due_fmt}).".strip()
+
+        adjusted_tasks.append(task)
+
+    decision["tasks"] = adjusted_tasks
     return decision
+
 
 
 async def load_context_node(state: PlannerAgentState) -> dict[str, Any]:
@@ -570,31 +648,55 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
     p_date, p_start, p_end = parse_task_datetime_from_text(None, None, week_start, user_request)
 
     for idx, ass in enumerate(context_dict.get("assignments", [])):
+        due_str = ass.get("due_date") or ass.get("due_at")
+        due_dt = None
+        if due_str:
+            try:
+                ds = str(due_str).rstrip("Z").replace("T", " ")
+                if len(ds) > 10 and ":" in ds:
+                    due_dt = datetime.strptime(ds[:19], "%Y-%m-%d %H:%M:%S")
+                else:
+                    due_dt = datetime.strptime(ds[:10], "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            except Exception:
+                pass
+
         if p_date:
             try:
                 target_day = datetime.strptime(p_date, "%Y-%m-%d").date()
             except Exception:
                 target_day = curr_date
-        else:
-            due_str = ass.get("due_date")
-            if due_str:
-                try:
-                    target_day = datetime.strptime(due_str.split("T")[0], "%Y-%m-%d").date()
-                except Exception:
-                    target_day = curr_date + timedelta(days=idx % 5)
+            f_start = p_start or "19:00"
+            f_end = p_end or "20:30"
+        elif due_dt:
+            # Schedule 1 day before due date if possible
+            target_day = due_dt.date() - timedelta(days=1)
+            if target_day < curr_date:
+                target_day = curr_date
+
+            # If target day is same as due date and deadline is morning/noon, set morning study session
+            if target_day == due_dt.date() and (due_dt.hour * 60 + due_dt.minute) <= 660:
+                f_start = "08:00"
+                f_end = "09:30"
             else:
-                target_day = curr_date + timedelta(days=idx % 5)
+                f_start = "19:00"
+                f_end = "20:30"
+        else:
+            target_day = curr_date + timedelta(days=idx % 5)
+            f_start = "19:00"
+            f_end = "20:30"
 
         matched_mat = next((m for m in materials if m.get("course_id") == ass.get("course_id")), None)
         mat_id = matched_mat.get("id") if matched_mat else None
         mat_title = matched_mat.get("title") if matched_mat else "No matching course material was found."
+
+        due_display = due_dt.strftime("%d/%m/%Y %H:%M") if due_dt and (due_dt.hour or due_dt.minute) else (ass.get('due_date') or 'N/A')
 
         tasks.append({
             "title": f"Ôn tập & Chuẩn bị: {ass.get('title')}",
             "topic": ass.get("title"),
             "what_to_study": ["Xem lại kiến thức môn học", "Đọc yêu cầu bài tập"],
             "what_to_do": ["1. Xem lại bài giảng liên quan", "2. Thực hành kiến thức", "3. Hoàn thành bài tập"],
-            "reason": f"Bài tập môn {ass.get('course_name', '')} sắp tới hạn ({ass.get('due_date', 'N/A')}).",
+            "reason": f"Bài tập môn {ass.get('course_name', '')} hạn nộp ({due_display}).",
             "course_id": ass.get("course_id"),
             "course_name": ass.get("course_name"),
             "material_id": mat_id,
@@ -602,8 +704,8 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
             "assignment_id": ass.get("id"),
             "assignment_title": ass.get("title"),
             "scheduled_date": target_day.strftime("%Y-%m-%d"),
-            "start_time": p_start or "19:00",
-            "end_time": p_end or "20:30",
+            "start_time": f_start,
+            "end_time": f_end,
             "priority": normalize_priority(ass.get("priority", "high")),
             "estimated_duration": 90,
             "source_type": "ASSIGNMENT",
@@ -617,6 +719,7 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
         "skipped_items": skipped,
         "tasks": tasks,
     }
+
 
 
 def check_time_overlap(
