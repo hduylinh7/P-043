@@ -193,7 +193,13 @@ Read the `STUDENT REQUEST` carefully to extract the student's exact goal and con
 STEP 2: MATCH DATABASE CONTEXT WITH STUDENT INTENT
 Inspect the provided `assignments`, `courses`, and `course_materials` in `PLANNER CONTEXT`:
 - Match the student's requested subject/course with the corresponding real course and assignment in the context.
-- If the student requested a single session or focused plan, SELECT ONLY the relevant assignment(s) matching their requested subject. DO NOT include unrelated courses or assignments!
+- IF STEP 1 identified a specific Target Course/Subject (regardless of whether a session limit was given):
+  * You MUST select ONLY assignments, course materials, and tasks belonging to that exact target course.
+  * Strictly forbid mixing in tasks, assignments, or materials from any other courses. Mixing courses when a specific target course was requested is a CRITICAL ERROR.
+- IF a session count limit was also given (e.g., "chỉ 1 buổi"):
+  * Additionally cap the total number of tasks in the `tasks` JSON array strictly to that limit.
+- IF no specific target course/subject was identified in STEP 1:
+  * It is acceptable to consider all courses in context.
 
 STEP 3: GENERATE THE TAILORED STUDY PLAN
 - Create tasks that satisfy the student's request.
@@ -230,10 +236,11 @@ ACADEMIC INTEGRITY RULES:
 
 DATE & TIME CONSTRAINTS:
 1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER generate or schedule an AI Study Session during hours occupied by a fixed university class lecture! Choose free open hours (e.g. evening 19:00 - 20:30).
-2. Weekday Date Mapping ({week_start} to {week_end}):
+2. If a task has a non-null `assignment_id`, its `scheduled_date` MUST be strictly earlier than that assignment's due date — never on the same day or after. Study sessions must always leave the student time to act on what they studied before the deadline.
+3. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
-3. priority MUST be strictly one of: "low", "medium", "high", "urgent".
-4. Ensure start_time < end_time (e.g. "19:00" to "20:30").
+4. priority MUST be strictly one of: "low", "medium", "high", "urgent".
+5. Ensure start_time < end_time (e.g. "19:00" to "20:30").
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
@@ -274,6 +281,165 @@ Respond strictly with a valid JSON object formatted as follows:
 """
 
 
+def try_match_target_course(user_request: str, context_dict: dict[str, Any]) -> str | None:
+    """Matches a course name (from context_dict) appearing in user_request (case-insensitive)."""
+    if not user_request or not context_dict:
+        return None
+
+    user_req_lower = user_request.lower()
+
+    # Collect candidate courses from context_dict["courses"] as well as assignments, course_materials, fixed_course_schedules
+    courses = list(context_dict.get("courses", []))
+    seen_ids = {
+        c.get("id") or c.get("course_id")
+        for c in courses
+        if isinstance(c, dict) and (c.get("id") or c.get("course_id"))
+    }
+
+    for collection in [
+        context_dict.get("assignments", []),
+        context_dict.get("course_materials", []),
+        context_dict.get("fixed_course_schedules", []),
+    ]:
+        if isinstance(collection, list):
+            for item in collection:
+                if isinstance(item, dict):
+                    c_id = item.get("course_id")
+                    c_name = item.get("course_name")
+                    if c_id and c_id not in seen_ids:
+                        courses.append({"id": c_id, "name": c_name, "code": item.get("course_code")})
+                        seen_ids.add(c_id)
+
+    best_match_id = None
+    max_match_len = 0
+
+    for c in courses:
+        if not isinstance(c, dict):
+            continue
+        cid = c.get("id") or c.get("course_id")
+        if not cid:
+            continue
+
+        possible_names = []
+        for key in [
+            "name",
+            "course_name",
+            "title",
+            "name_vi",
+            "vietnamese_name",
+            "name_en",
+            "english_name",
+            "code",
+            "course_code",
+        ]:
+            val = c.get(key)
+            if val and isinstance(val, str):
+                possible_names.append(val.strip())
+                if "(" in val:
+                    parts = val.replace(")", "").split("(")
+                    possible_names.extend([p.strip() for p in parts if p.strip()])
+                if "/" in val:
+                    parts = val.split("/")
+                    possible_names.extend([p.strip() for p in parts if p.strip()])
+
+        for name in possible_names:
+            name_lower = name.lower()
+            if len(name_lower) >= 2 and name_lower in user_req_lower:
+                if len(name_lower) > max_match_len:
+                    max_match_len = len(name_lower)
+                    best_match_id = cid
+
+    return best_match_id
+
+
+def filter_context_to_course(context_dict: dict[str, Any], course_id: str) -> dict[str, Any]:
+    """Trims context_dict lists containing course_id down to only the entries belonging to that course_id."""
+    if not context_dict or not course_id:
+        return context_dict
+
+    filtered = dict(context_dict)
+
+    for key, val in context_dict.items():
+        if isinstance(val, list):
+            if key == "courses":
+                filtered[key] = [
+                    item for item in val
+                    if isinstance(item, dict) and (item.get("id") == course_id or item.get("course_id") == course_id)
+                ]
+            else:
+                filtered[key] = [
+                    item for item in val
+                    if not (isinstance(item, dict) and "course_id" in item) or item.get("course_id") == course_id
+                ]
+
+    return filtered
+
+
+def validate_scheduled_before_deadline(
+    decision: dict[str, Any],
+    context_dict: dict[str, Any],
+    week_start: str = "",
+    user_request: str = "",
+) -> dict[str, Any]:
+    """Validates that task scheduled_date is strictly before the related assignment due date."""
+    if not isinstance(decision, dict) or "tasks" not in decision:
+        return decision
+
+    assignments = context_dict.get("assignments", []) if isinstance(context_dict, dict) else []
+    assignment_due_dates: dict[str, date] = {}
+    for ass in assignments:
+        if isinstance(ass, dict):
+            ass_id = ass.get("id")
+            due_raw = ass.get("due_date") or ass.get("due_at")
+            if ass_id and due_raw:
+                try:
+                    clean_due = str(due_raw).split("T")[0].rstrip("Z")
+                    due_d = datetime.strptime(clean_due, "%Y-%m-%d").date()
+                    assignment_due_dates[ass_id] = due_d
+                except Exception:
+                    pass
+
+    tasks = decision.get("tasks", [])
+    if not isinstance(tasks, list) or not tasks:
+        return decision
+
+    valid_tasks = []
+    for task in tasks:
+        if not isinstance(task, dict):
+            valid_tasks.append(task)
+            continue
+
+        ass_id = task.get("assignment_id")
+        sched_raw = task.get("scheduled_date")
+
+        if ass_id and ass_id in assignment_due_dates:
+            due_d = assignment_due_dates[ass_id]
+            sched_d = None
+            if sched_raw:
+                try:
+                    clean_sched = str(sched_raw).split("T")[0].rstrip("Z")
+                    sched_d = datetime.strptime(clean_sched, "%Y-%m-%d").date()
+                except Exception:
+                    pass
+
+            if sched_d and sched_d >= due_d:
+                logger.warning(
+                    f"Task '{task.get('title')}' scheduled_date ({sched_raw}) is not strictly before assignment '{ass_id}' due date ({due_d}). Removing task."
+                )
+                continue
+
+        valid_tasks.append(task)
+
+    if len(tasks) > 0 and len(valid_tasks) == 0:
+        logger.warning(
+            "All tasks were removed because scheduled_date was not strictly before assignment due date. Falling back to default decision."
+        )
+        return create_fallback_decision(context_dict, week_start, user_request)
+
+    decision["tasks"] = valid_tasks
+    return decision
+
+
 async def load_context_node(state: PlannerAgentState) -> dict[str, Any]:
     """Node 1: Load student's Planner Context via PlannerTools."""
     db = state["db"]
@@ -312,6 +478,12 @@ async def analyze_and_decide_node(state: PlannerAgentState) -> dict[str, Any]:
 
     # Context formatting for prompt
     context_dict = context.model_dump() if hasattr(context, "model_dump") else context
+
+    # 1. Hard filter context to target course if user_request matches a specific course
+    target_course_id = try_match_target_course(user_request, context_dict)
+    if target_course_id:
+        context_dict = filter_context_to_course(context_dict, target_course_id)
+
     week_start = context_dict.get("planning_period", {}).get("week_start", state.get("week_start"))
     week_end = context_dict.get("planning_period", {}).get("week_end", state.get("week_end"))
 
@@ -362,6 +534,24 @@ PLANNER CONTEXT (Real database context - Assignments, Courses, Goals, Materials)
             clean_content = clean_content.split("```")[1].split("```")[0].strip()
 
         decision = json.loads(clean_content)
+
+        # Post-LLM validation 1: if target_course_id was matched, keep only tasks belonging to target_course_id
+        if target_course_id and isinstance(decision, dict) and "tasks" in decision:
+            filtered_tasks = [
+                task for task in decision.get("tasks", [])
+                if task.get("course_id") == target_course_id
+            ]
+            if not filtered_tasks:
+                logger.warning(
+                    f"Post-LLM validation failed: No tasks matched target_course_id '{target_course_id}'. Calling fallback decision."
+                )
+                decision = create_fallback_decision(context_dict, week_start, user_request)
+            else:
+                decision["tasks"] = filtered_tasks
+
+        # Post-LLM validation 2: validate scheduled_date is strictly before assignment due date
+        decision = validate_scheduled_before_deadline(decision, context_dict, week_start, user_request)
+
         return {"plan_decision": decision}
     except Exception as e:
         logger.error(f"LLM call or JSON parsing error in analyze_and_decide_node: {e}", exc_info=True)
