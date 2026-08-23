@@ -1,13 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from 'antd';
 import { RocketOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const CTASection: React.FC = () => {
   const navigate = useNavigate();
   const { themeMode } = useTheme();
+  const { isAuthenticated } = useAuth();
 
   return (
     <section className="py-20 relative overflow-hidden">
@@ -39,11 +40,11 @@ export const CTASection: React.FC = () => {
 
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block">
               <button
-                onClick={() => navigate('/register')}
+                onClick={() => navigate(isAuthenticated ? '/courses' : '/register')}
                 className="btn-voxel-gold text-base px-10 py-4 shadow-xl"
               >
                 <RocketOutlined />
-                <span>Đăng Ký Miễn Phí</span>
+                <span>{isAuthenticated ? 'Vào Không Gian Học Tập' : 'Đăng Ký Miễn Phí'}</span>
               </button>
             </motion.div>
           </div>

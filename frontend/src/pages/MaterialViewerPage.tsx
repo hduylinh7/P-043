@@ -323,10 +323,12 @@ export const MaterialViewerPage: React.FC = () => {
           </div>
         </header>
 
-        {/* Main Split Body Area */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Main Body Area */}
+        <div className="flex-1 flex overflow-hidden relative">
           {/* Main Viewer Canvas */}
-          <div className="flex-1 flex flex-col h-full bg-slate-900/40 relative overflow-hidden">
+          <div className={`flex-1 flex flex-col h-full bg-slate-900/40 relative overflow-hidden transition-all duration-300 ${
+            showAiAssistant ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px]' : ''
+          }`}>
             {isPdf ? (
               <iframe
                 src={streamUrl}
@@ -390,7 +392,7 @@ export const MaterialViewerPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAiAssistant(true)}
-              className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
+              className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
               title="Mở Trợ Lý AI Học Tập (Hỏi đáp toàn bộ bài giảng)"
             >
               {/* Robot Icon */}
@@ -410,14 +412,16 @@ export const MaterialViewerPage: React.FC = () => {
             </button>
           )}
 
-          {/* AI Study Assistant Side Panel (Docked Side-by-Side Mode) */}
+          {/* AI Study Assistant Floating Card Popup */}
           {showAiAssistant && (
             <aside
-              className={`w-[440px] sm:w-[480px] lg:w-[520px] shrink-0 border-l flex flex-col h-full z-20 transition-all duration-300 ${
-                isDark ? 'bg-[#0F172A] border-slate-800 shadow-2xl shadow-black/80' : 'bg-white border-slate-200 shadow-xl'
+              className={`fixed top-20 right-6 bottom-6 w-[430px] sm:w-[470px] lg:w-[500px] max-w-[calc(100vw-3rem)] z-40 flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${
+                isDark
+                  ? 'bg-[#0F172A]/95 backdrop-blur-md border-slate-800 shadow-black/80'
+                  : 'bg-white/95 backdrop-blur-md border-slate-200/90 shadow-slate-900/15'
               }`}
             >
-              {/* Header (Matching Web Theme) */}
+              {/* Header */}
               <div className={`px-5 py-3.5 border-b flex items-center justify-between shrink-0 ${
                 isDark ? 'bg-[#151F30] border-slate-800' : 'bg-[#FDFBF7] border-amber-900/10'
               }`}>

@@ -29,7 +29,6 @@ export const LandingNavbar: React.FC = () => {
   const navLinks = [
     { label: 'Tính năng', id: 'features' },
     { label: 'Cách hoạt động', id: 'how-it-works' },
-    { label: 'Đánh giá', id: 'testimonials' },
     { label: 'Về chúng tôi', id: 'about' },
   ];
 
@@ -63,7 +62,7 @@ export const LandingNavbar: React.FC = () => {
 
           {/* Actions & Theme Toggle */}
           <div className="hidden md:flex items-center gap-3">
-            <Tooltip title={themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+            <Tooltip title={themeMode === 'dark' ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối'}>
               <Button
                 type="text"
                 shape="circle"
@@ -123,7 +122,7 @@ export const LandingNavbar: React.FC = () => {
 
       {/* Mobile Drawer */}
       <Drawer
-        title="AI Learning Companion"
+        title="Lita Learning - Trợ Lý Học Tập"
         placement="right"
         onClose={() => setMobileDrawerOpen(false)}
         open={mobileDrawerOpen}

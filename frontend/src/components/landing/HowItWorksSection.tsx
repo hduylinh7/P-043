@@ -10,20 +10,20 @@ export const HowItWorksSection: React.FC = () => {
     {
       number: '01',
       icon: <UserAddOutlined className="text-2xl text-emerald-600 dark:text-emerald-400" />,
-      title: 'Create your account',
-      description: 'Sign up in under 60 seconds with your email or Google account. Free for students.',
+      title: 'Khám phá & Chọn môn học',
+      description: 'Lựa chọn các môn học, tài liệu bài giảng và bài tập bạn muốn học tập và ôn luyện.',
     },
     {
       number: '02',
       icon: <SolutionOutlined className="text-2xl text-amber-500 dark:text-amber-400" />,
-      title: 'Set your learning goals',
-      description: 'Input your courses, assignment deadlines, and desired GPA targets into your dashboard.',
+      title: 'Thiết lập mục tiêu & Thời hạn',
+      description: 'Nhập hạn nộp bài tập, kỳ thi và mục tiêu điểm số để AI tự động xây dựng lộ trình học.',
     },
     {
       number: '03',
       icon: <RocketOutlined className="text-2xl text-emerald-600 dark:text-emerald-400" />,
-      title: 'Let AI guide your journey',
-      description: 'Receive personalized daily study plans, interactive tutoring, and automated reminders.',
+      title: 'Học tập cùng Trợ lý AI',
+      description: 'Nhận kế hoạch học tập mỗi ngày, hỏi đáp bài giảng tức thì và ôn luyện qua phương pháp Gamified.',
     },
   ];
 
@@ -35,18 +35,18 @@ export const HowItWorksSection: React.FC = () => {
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3">
-            SIMPLE WORKFLOW
+          <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3 font-pixel">
+            QUY TRÌNH ĐƠN GIẢN
           </h2>
           <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
             themeMode === 'dark' ? 'text-white' : 'text-slate-900'
           }`}>
-            How Lita Learning Works
+            Cách Lita Learning Hoạt Động
           </h3>
           <p className={`mt-4 text-base sm:text-lg ${
             themeMode === 'dark' ? 'text-slate-400' : 'text-slate-600'
           }`}>
-            Get started in 3 quick steps and transform the way you study forever.
+            Bắt đầu với 3 bước nhanh chóng và nâng tầm phương pháp học tập của bạn.
           </p>
         </div>
 

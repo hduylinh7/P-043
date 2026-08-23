@@ -57,7 +57,7 @@ export const Sidebar: React.FC = () => {
       ? [
           {
             id: 'calendar',
-            name: 'My Learning Calendar',
+            name: 'Lịch học cá nhân',
             path: '/calendar',
             icon: Calendar,
           },
@@ -72,7 +72,7 @@ export const Sidebar: React.FC = () => {
 
     {
       id: 'chat',
-      name: 'AI Chat Assistant',
+      name: 'Trợ Lý Chat AI',
       path: '/ai-chat',
       icon: MessageSquare,
       badge: 'RAG',
@@ -165,7 +165,7 @@ export const Sidebar: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-minecraft-grass/20 text-emerald-600 dark:text-emerald-400 border border-minecraft-grass/30 truncate">
-                      ✨ {user.account_tier || (isStudent ? 'PRO Student' : 'VIP Instructor')}
+                      ✨ {user.account_tier || (isStudent ? 'Sinh viên PRO' : 'Giảng viên VIP')}
                     </span>
                   </div>
                 </div>

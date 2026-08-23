@@ -56,42 +56,19 @@ export const HeroSection: React.FC = () => {
               Lập kế hoạch thông minh, học tập hiệu quả và chinh phục mục tiêu cá nhân cùng trợ lý AI linh hoạt. Trải nghiệm phương pháp học tập Gamified đầy hứng khởi.
             </p>
 
-            {/* Buttons */}
-            <div className="flex flex-wrap items-center gap-4">
-              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <button
-                  onClick={() => navigate('/register')}
-                  className="btn-voxel-green text-base px-8 py-3.5"
-                >
-                  <RocketOutlined />
-                  <span>Bắt Đầu Ngay</span>
-                </button>
-              </motion.div>
-
-              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="btn-voxel-gold text-base px-8 py-3.5"
-                >
-                  <LoginOutlined />
-                  <span>Đăng Nhập</span>
-                </button>
-              </motion.div>
-            </div>
-
             {/* Key benefits list */}
-            <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
               <div className="flex items-center gap-2">
                 <CheckCircleFilled className="text-emerald-500" />
-                <span>No Credit Card Required</span>
+                <span>Hoàn toàn miễn phí</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircleFilled className="text-emerald-500" />
-                <span>Free Student Plan</span>
+                <span>Dành cho học sinh - sinh viên</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircleFilled className="text-emerald-500" />
-                <span>24/7 AI Assistance</span>
+                <span>Trợ lý AI hỗ trợ 24/7</span>
               </div>
             </div>
           </motion.div>
@@ -117,15 +94,15 @@ export const HeroSection: React.FC = () => {
                     <RobotOutlined className="text-xl" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm m-0">AI Study Tutor</h4>
+                    <h4 className="font-bold text-sm m-0">Gia Sư AI Học Tập</h4>
                     <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                      Active & Responding
+                      Đang hoạt động &amp; Phản hồi
                     </span>
                   </div>
                 </div>
                 <Tag color="green" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                  GPT-4o Agent
+                  Trợ Lý AI Thông Minh
                 </Tag>
               </div>
 
@@ -133,12 +110,12 @@ export const HeroSection: React.FC = () => {
               <div className="space-y-4 text-xs font-sans mb-6">
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-2xl rounded-tl-none border border-emerald-100 dark:border-emerald-900/50">
                   <p className="text-emerald-950 dark:text-emerald-200 m-0 leading-relaxed font-medium">
-                    👋 Hello Linh! Based on your upcoming Machine Learning assignment, I generated a 3-step revision plan for today.
+                    👋 Chào bạn! Dựa trên bài tập môn Học máy (Machine Learning) sắp tới, tôi đã lập kế hoạch ôn tập 3 bước cho hôm nay.
                   </p>
                 </div>
                 <div className="bg-slate-100 dark:bg-slate-800 p-3.5 rounded-2xl rounded-tr-none ml-auto max-w-[85%]">
                   <p className="text-slate-800 dark:text-slate-200 m-0 leading-relaxed">
-                    Great! Can you summarize Neural Networks Backpropagation for me?
+                    Tuyệt vời! Bạn có thể tóm tắt thuật toán lan truyền ngược (Backpropagation) trong Mạng nơ-ron giúp tôi không?
                   </p>
                 </div>
               </div>
@@ -146,8 +123,8 @@ export const HeroSection: React.FC = () => {
               {/* Progress Card */}
               <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
                 <div className="flex justify-between items-center text-xs mb-2">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Weekly Learning Goal</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">85% Completed</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Mục Tiêu Học Tập Tuần</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Đã hoàn thành 85%</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
                   <div className="bg-minecraft-grass h-full rounded-full w-[85%]" />
@@ -165,8 +142,8 @@ export const HeroSection: React.FC = () => {
                 <ThunderboltFilled className="text-xl text-emerald-500" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 m-0">Study Efficiency</p>
-                <p className="text-base font-extrabold text-slate-900 dark:text-white m-0">+3.4x Faster</p>
+                <p className="text-xs text-slate-500 m-0">Hiệu quả học tập</p>
+                <p className="text-base font-extrabold text-slate-900 dark:text-white m-0">Nhanh hơn +3.4x</p>
               </div>
             </motion.div>
 
@@ -180,8 +157,8 @@ export const HeroSection: React.FC = () => {
                 <ClockCircleOutlined className="text-lg text-emerald-500" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 m-0 font-medium">Assignment Alert</p>
-                <p className="text-xs font-bold text-slate-900 dark:text-white m-0">Due in 2 days</p>
+                <p className="text-xs text-slate-500 m-0 font-medium">Nhắc nhở bài tập</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white m-0">Hạn nộp còn 2 ngày</p>
               </div>
             </motion.div>
 

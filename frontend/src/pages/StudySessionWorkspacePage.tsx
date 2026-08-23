@@ -818,12 +818,16 @@ export const StudySessionWorkspacePage: React.FC = () => {
             </div>
           </header>
 
-          {/* Main Body: Split View (Left Content + Right Docked Chat Panel) */}
+          {/* Main Body: (Left Content + Floating AI Chat Panel) */}
           <div className="flex-1 flex overflow-hidden relative min-w-0">
             {/* Left Area: Either Guide or Material Reader */}
             {knowledgeTab === 'guide' ? (
-            <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col items-center min-w-0">
-              <div className="w-full max-w-4xl space-y-6 pb-28">
+            <div className={`flex-1 overflow-y-auto px-6 py-6 flex flex-col min-w-0 transition-all duration-300 ${
+              isKnowledgeChatOpen ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px] items-start' : 'items-center'
+            }`}>
+              <div className={`w-full space-y-6 pb-28 transition-all duration-300 ${
+                isKnowledgeChatOpen ? 'max-w-full' : 'max-w-4xl'
+              }`}>
 
                 {/* Related Assignment Alert */}
                 {relatedAssign && (
@@ -895,7 +899,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
                             <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 m-0">
                               Khái niệm cốt lõi:
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            <div className={`grid gap-3.5 ${
+                              isKnowledgeChatOpen ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'
+                            }`}>
                               {companionData.ai_study_guide.key_concepts.map((kc, idx) => {
                                 const isChatActive = activeConceptChatIdx === idx;
                                 const chatRecord = conceptChatHistory[idx];
@@ -1068,7 +1074,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                          <div className={`grid gap-3.5 ${
+                            isKnowledgeChatOpen ? 'grid-cols-1 xl:grid-cols-3' : 'grid-cols-1 md:grid-cols-3'
+                          }`}>
                             {/* Cột 1: Cần đọc kỹ */}
                             <div className="p-4 rounded-xl border-2 border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 shadow-voxel-sm shadow-rose-900/20 space-y-2.5">
                               <div className="flex items-center justify-between">
@@ -1268,7 +1276,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
             </div>
             ) : (
               /* ─── FULL DOCUMENT / MATERIAL READER TAB ─── */
-              <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-900/40 relative">
+              <div className={`flex-1 flex flex-col h-full overflow-hidden bg-slate-900/40 relative transition-all duration-300 ${
+                isKnowledgeChatOpen ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px]' : ''
+              }`}>
                 {/* Material Subheader */}
                 <div className={`px-6 py-3 border-b flex items-center justify-between z-10 shrink-0 ${
                   isDark ? 'bg-[#151F30] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
@@ -1408,7 +1418,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleOpenKnowledgeChat}
-                className="fixed bottom-24 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
+                className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
                 title="Mở Trợ Lý AI Học Tập"
               >
                 {/* Robot Icon matching Image 2 */}
@@ -1431,16 +1441,16 @@ export const StudySessionWorkspacePage: React.FC = () => {
               </button>
             )}
 
-            {/* ─── RIGHT DOCKED AI CHAT PANEL (Split Side-by-Side Mode) ─── */}
+            {/* ─── FLOATING AI CHAT POPUP WINDOW (When Opened) ─── */}
             {isKnowledgeChatOpen && (
-              <aside className={`w-[440px] sm:w-[480px] lg:w-[520px] shrink-0 border-l flex flex-col h-full z-20 transition-all duration-300 ${
+              <aside className={`fixed top-20 right-6 bottom-6 w-[430px] sm:w-[470px] lg:w-[500px] max-w-[calc(100vw-3rem)] z-40 flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${
                 isDark
-                  ? 'bg-[#0F172A] border-slate-800 shadow-2xl shadow-black/80'
-                  : 'bg-white border-slate-200 shadow-xl'
+                  ? 'bg-[#0F172A]/95 backdrop-blur-md border-slate-800 shadow-black/80'
+                  : 'bg-white/95 backdrop-blur-md border-slate-200/90 shadow-slate-900/15'
               }`}>
-                {/* Header (Matching Web Theme) */}
-                <div className={`px-5 py-3.5 border-b flex items-center justify-between shrink-0 ${
-                  isDark ? 'bg-[#151F30] border-slate-800' : 'bg-[#FDFBF7] border-amber-900/10'
+                {/* Header (Matching Floating Card Style) */}
+                <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+                  isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
                 }`}>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-2xl bg-amber-500 border border-amber-600/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
@@ -1703,11 +1713,15 @@ export const StudySessionWorkspacePage: React.FC = () => {
           </div>
         </header>
 
-        {/* WORKSPACE CONTENT AREA (SPLIT VIEW: EXERCISE + FLOATING/DOCKED AI CHAT) */}
+        {/* WORKSPACE CONTENT AREA (SPLIT VIEW: EXERCISE + FLOATING AI CHAT) */}
         <div className="flex-1 flex overflow-hidden relative min-w-0">
           {/* LEFT SCROLLABLE CONTENT: ASSIGNMENT & INTERACTIVE QUESTIONS */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col items-center min-w-0">
-            <div className="w-full max-w-4xl space-y-6 pb-20">
+          <div className={`flex-1 overflow-y-auto p-6 space-y-6 flex flex-col min-w-0 transition-all duration-300 ${
+            isKnowledgeChatOpen ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px] items-start' : 'items-center'
+          }`}>
+            <div className={`w-full space-y-6 pb-20 transition-all duration-300 ${
+              isKnowledgeChatOpen ? 'max-w-full' : 'max-w-4xl'
+            }`}>
               {/* COMPLETED SESSION SUMMARY (IF FINISHED) */}
               {isCompleted && (
                 <div className="p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-4 shadow-sm">
@@ -1916,7 +1930,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenKnowledgeChat}
-              className="fixed bottom-24 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
+              className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
               title="Mở Trợ Lý AI Học Tập (Gia sư Socratic)"
             >
               {/* Robot Icon matching Image 2 */}
@@ -1939,16 +1953,16 @@ export const StudySessionWorkspacePage: React.FC = () => {
             </button>
           )}
 
-          {/* ─── RIGHT DOCKED AI CHAT PANEL (Split Side-by-Side Mode) ─── */}
+          {/* ─── FLOATING AI CHAT POPUP WINDOW (When Opened) ─── */}
           {isKnowledgeChatOpen && (
-            <aside className={`w-[440px] sm:w-[480px] lg:w-[520px] shrink-0 border-l flex flex-col h-full z-20 transition-all duration-300 ${
+            <aside className={`fixed top-20 right-6 bottom-6 w-[430px] sm:w-[470px] lg:w-[500px] max-w-[calc(100vw-3rem)] z-40 flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${
               isDark
-                ? 'bg-[#0F172A] border-slate-800 shadow-2xl shadow-black/80'
-                : 'bg-white border-slate-200 shadow-xl'
+                ? 'bg-[#0F172A]/95 backdrop-blur-md border-slate-800 shadow-black/80'
+                : 'bg-white/95 backdrop-blur-md border-slate-200/90 shadow-slate-900/15'
             }`}>
-              {/* Header (Matching Web Theme) */}
-              <div className={`px-5 py-3.5 border-b flex items-center justify-between shrink-0 ${
-                isDark ? 'bg-[#151F30] border-slate-800' : 'bg-[#FDFBF7] border-amber-900/10'
+              {/* Header (Matching Floating Card Style) */}
+              <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+                isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
               }`}>
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-2xl bg-amber-500 border border-amber-600/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
