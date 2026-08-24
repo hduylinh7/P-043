@@ -249,6 +249,7 @@ export const LearningCalendarPage: React.FC = () => {
 
   // AI Planner Modal State
   const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false);
+  const [aiStep, setAiStep] = useState<'input' | 'preview'>('input');
   const [generatingAI, setGeneratingAI] = useState<boolean>(false);
   const [aiPromptText, setAiPromptText] = useState<string>('');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | undefined>(undefined);
@@ -512,7 +513,6 @@ export const LearningCalendarPage: React.FC = () => {
   // AI Plan Generation Handler (Preview)
   const handleGenerateAIPlan = async () => {
     setGeneratingAI(true);
-    setAiResult(null);
     try {
       const weekStartStr = currentMonday.format('YYYY-MM-DD');
       const promptText = aiPromptText.trim() || 'Lên kế hoạch học tập tự động cho tuần này.';
@@ -523,7 +523,8 @@ export const LearningCalendarPage: React.FC = () => {
         assignment_id: selectedAssignmentId,
       });
       setAiResult(res);
-      message.success('AI đã lập xong dự thảo kế hoạch! Vui lòng đọc kiểm tra và bấm "Chấp nhận" để lưu.');
+      setAiStep('preview');
+      message.success('AI đã lập xong dự thảo kế hoạch! Vui lòng đọc kiểm tra phân lịch và bấm "Chấp nhận" để lưu.');
     } catch (err: any) {
       console.error('AI plan error:', err);
       message.error(err.response?.data?.detail || 'Lỗi khi gọi AI Planner Agent.');
@@ -531,6 +532,67 @@ export const LearningCalendarPage: React.FC = () => {
       setGeneratingAI(false);
     }
   };
+
+  // Remove individual task from proposed AI plan
+  const handleRemoveProposedTask = (originalIndex: number) => {
+    if (!aiResult) return;
+    const currentTasks = aiResult.proposed_tasks || (aiResult.created_tasks as any) || [];
+    const updatedTasks = currentTasks.filter((_: any, idx: number) => idx !== originalIndex);
+    setAiResult({
+      ...aiResult,
+      proposed_tasks: updatedTasks,
+      created_tasks: updatedTasks as any,
+    });
+    message.info('Đã loại bỏ 1 buổi học khỏi dự thảo kế hoạch.');
+  };
+
+  // Group proposed tasks by scheduled date for timeline visualization
+  const proposedTasksGroupedByDate = useMemo(() => {
+    if (!aiResult) return [];
+    const rawTasks = (aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[];
+    
+    const groups: Record<string, any[]> = {};
+    rawTasks.forEach((task, idx) => {
+      const dateKey = task.scheduled_date ? dayjs(task.scheduled_date).format('YYYY-MM-DD') : 'undated';
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push({ ...task, _originalIndex: idx });
+    });
+
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      if (a === 'undated') return 1;
+      if (b === 'undated') return -1;
+      return a.localeCompare(b);
+    });
+
+    const vnDays = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+    return sortedDates.map((dateKey) => {
+      const dayTasks = groups[dateKey];
+      dayTasks.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
+
+      let dayOfWeekName = 'Chưa xác định ngày';
+      let formattedDate = 'Linh hoạt trong tuần';
+      let dateBadge = '';
+
+      if (dateKey !== 'undated') {
+        const d = dayjs(dateKey);
+        const dayIdx = d.day();
+        dayOfWeekName = vnDays[dayIdx];
+        formattedDate = `${vnDays[dayIdx]}, ${d.format('DD/MM/YYYY')}`;
+        dateBadge = d.format('DD/MM');
+      }
+
+      return {
+        dateKey,
+        dayOfWeekName,
+        formattedDate,
+        dateBadge,
+        tasks: dayTasks,
+      };
+    });
+  }, [aiResult]);
 
   // Accept and save AI Plan from Calendar Page
   const handleAcceptAIPlan = async () => {
@@ -553,6 +615,7 @@ export const LearningCalendarPage: React.FC = () => {
       message.success('Đã chấp nhận và lưu kế hoạch vào lịch thành công!');
       setIsAIModalOpen(false);
       setAiResult(null);
+      setAiStep('input');
       await fetchCalendarData();
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể lưu Kế hoạch AI.');
@@ -1461,170 +1524,363 @@ export const LearningCalendarPage: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* AI Plan Generator Modal */}
+      {/* AI Plan Generator & Review Modal (2-Step Flow) */}
       <Modal
         open={isAIModalOpen}
         onCancel={() => {
           setIsAIModalOpen(false);
           setAiResult(null);
+          setAiStep('input');
         }}
         footer={null}
-        width={680}
+        width={aiStep === 'preview' ? 860 : 680}
         title={
           <div className="flex items-center gap-2.5 text-slate-900 dark:text-white">
             <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <RobotOutlined className="text-lg" />
+              {aiStep === 'preview' ? <RocketOutlined className="text-lg" /> : <RobotOutlined className="text-lg" />}
             </span>
-            <span className="font-extrabold text-base">Tạo Kế Hoạch Học Tập Tối Ưu Bằng AI</span>
+            <span className="font-extrabold text-base">
+              {aiStep === 'preview'
+                ? 'Dự Thảo Phân Bổ Lịch Học AI — Đọc & Tùy Chỉnh Lịch'
+                : 'Tạo Kế Hoạch Học Tập Tối Ưu Bằng AI'}
+            </span>
           </div>
         }
         centered
         className="rounded-3xl overflow-hidden"
       >
         <div className="space-y-4 pt-2 text-xs">
-          <p className="text-slate-600 dark:text-slate-400 m-0 leading-relaxed">
-            AI Companion sẽ tự động phân tích <strong>Lịch học cố định giảng đường</strong>, các <strong>Bài tập sắp tới</strong>, và <strong>Mục tiêu cá nhân</strong> của bạn để đề xuất khung giờ học tối ưu không bị trùng lặp.
-          </p>
+          {/* Stepper Navigation Tab Bar */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAiStep('input')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  aiStep === 'input'
+                    ? 'border-2 border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 shadow-voxel-sm font-extrabold'
+                    : 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                <span>Thiết Lập Yêu Cầu</span>
+              </button>
 
-          {/* Focus Assignment Select */}
-          <div>
-            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-              Bài tập cần tập trung ưu tiên (Không bắt buộc / Focus Option):
-            </label>
-            <Select
-              allowClear
-              loading={loadingAssignments}
-              placeholder="-- Chọn bài tập cần AI ưu tiên lập kế hoạch --"
-              className="w-full rounded-xl"
-              value={selectedAssignmentId}
-              onChange={(val) => setSelectedAssignmentId(val)}
-              options={availableAssignments.map((a) => ({
-                value: a.id,
-                label: `${a.title} ${a.course_name ? `(${a.course_name})` : ''} — Hạn: ${a.due_date || 'Chưa định'}`,
-              }))}
-            />
-          </div>
+              <span className="text-slate-300 dark:text-slate-700 font-bold">➔</span>
 
-          <div>
-            <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-              Yêu cầu hoặc định hướng riêng cho tuần này (Không bắt buộc):
-            </label>
-            <TextArea
-              rows={3}
-              value={aiPromptText}
-              onChange={(e) => setAiPromptText(e.target.value)}
-              placeholder="Ví dụ: Tập trung ôn tập môn Machine Learning vào tối thứ 3 và thứ 5..."
-              className="rounded-xl"
-            />
-
-            {/* Quick Prompt Suggestions */}
-            <div className="mt-3 space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                Gợi ý yêu cầu nhanh (Click để điền):
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  'Tập trung hoàn thành bài tập ưu tiên trước hạn nộp',
-                  'Chỉ xếp lịch học vào các buổi tối (19:00 - 22:00)',
-                  'Dành 2 tiếng mỗi sáng thứ 3 và thứ 5 để học Tiếng Anh & Thuật toán',
-                  'Ưu tiên xếp lịch nhẹ nhàng vào cuối tuần',
-                  'Tự động xếp lịch ôn tập tổng hợp ngay sau các giờ học cố định',
-                ].map((sug, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() =>
-                      setAiPromptText((prev) =>
-                        prev ? `${prev}. ${sug}` : sug
-                      )
-                    }
-                    className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all font-semibold text-left cursor-pointer"
-                  >
-                    {sug}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                disabled={!aiResult}
+                onClick={() => aiResult && setAiStep('preview')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  aiStep === 'preview'
+                    ? 'border-2 border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 shadow-voxel-sm font-extrabold cursor-pointer'
+                    : aiResult
+                    ? 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer'
+                    : 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 text-slate-400 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                <span>Xem Phân Lịch & Duyệt</span>
+              </button>
             </div>
+
+            {aiStep === 'preview' && (
+              <span className="badge-voxel-gold text-[11px] font-bold px-3 py-1">
+                DỰ THẢO (CHƯA LƯU)
+              </span>
+            )}
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsAIModalOpen(false);
-                setAiResult(null);
-              }}
-              className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
-            >
-              Đóng
-            </button>
-            <button
-              disabled={generatingAI}
-              onClick={handleGenerateAIPlan}
-              className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
-            >
-              {generatingAI ? <Spin size="small" /> : <RocketOutlined />}
-              <span>{generatingAI ? 'Đang Tính Toán...' : 'Kích Hoạt AI Lập Lịch'}</span>
-            </button>
-          </div>
-
-          {/* AI Draft Schedule Results Preview */}
-          {aiResult && (
-            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border-2 border-emerald-500/30 space-y-3 mt-4">
-              <div className="flex items-center justify-between">
-                <div className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-2">
-                  <RocketOutlined /> Dự thảo Kế hoạch AI đề xuất (Chưa lưu)
-                </div>
-                <span className="badge-voxel-gold text-xs">
-                  {(aiResult.proposed_tasks || (aiResult.created_tasks as any) || []).length} Buổi học
-                </span>
-              </div>
-
-              <p className="text-slate-700 dark:text-slate-300 m-0 leading-relaxed font-medium text-xs">
-                {aiResult.summary}
+          {/* STEP 1: PROMPT & FOCUS CONFIGURATION */}
+          {aiStep === 'input' && (
+            <div className="space-y-4">
+              <p className="text-slate-600 dark:text-slate-400 m-0 leading-relaxed">
+                AI Companion sẽ tự động phân tích <strong>Lịch học cố định giảng đường</strong>, các <strong>Bài tập sắp tới</strong>, và <strong>Mục tiêu cá nhân</strong> của bạn để đề xuất khung giờ học tối ưu không bị trùng lặp.
               </p>
 
-              {((aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[]).length > 0 && (
-                <div className="space-y-2 pt-1 max-h-60 overflow-y-auto pr-1">
-                  <div className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
-                    Danh sách các buổi học AI xếp lịch:
-                  </div>
-                  {((aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[]).map((t, idx) => (
-                    <div
-                      key={t.id || idx}
-                      className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <div className="font-bold text-slate-900 dark:text-white">{t.title}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          {t.scheduled_date || 'Tuần này'} ({t.start_time || '09:00'} – {t.end_time || '10:30'})
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-md font-bold uppercase text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                        {PRIORITY_CONFIG[t.priority]?.label || t.priority}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Focus Assignment Select */}
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Bài tập cần tập trung ưu tiên (Không bắt buộc / Focus Option):
+                </label>
+                <Select
+                  allowClear
+                  loading={loadingAssignments}
+                  placeholder="-- Chọn bài tập cần AI ưu tiên lập kế hoạch --"
+                  className="w-full rounded-xl"
+                  value={selectedAssignmentId}
+                  onChange={(val) => setSelectedAssignmentId(val)}
+                  options={availableAssignments.map((a) => ({
+                    value: a.id,
+                    label: `${a.title} ${a.course_name ? `(${a.course_name})` : ''} — Hạn: ${a.due_date || 'Chưa định'}`,
+                  }))}
+                />
+              </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-emerald-500/20">
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Yêu cầu hoặc định hướng riêng cho tuần này (Không bắt buộc):
+                </label>
+                <TextArea
+                  rows={3}
+                  value={aiPromptText}
+                  onChange={(e) => setAiPromptText(e.target.value)}
+                  placeholder="Ví dụ: Tập trung ôn tập môn Machine Learning vào tối thứ 3 và thứ 5..."
+                  className="rounded-xl"
+                />
+
+                {/* Quick Prompt Suggestions */}
+                <div className="mt-3 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Gợi ý yêu cầu nhanh (Click để điền):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Tập trung hoàn thành bài tập ưu tiên trước hạn nộp',
+                      'Chỉ xếp lịch học vào các buổi tối (19:00 - 22:00)',
+                      'Dành 2 tiếng mỗi sáng thứ 3 và thứ 5 để học Tiếng Anh & Thuật toán',
+                      'Ưu tiên xếp lịch nhẹ nhàng vào cuối tuần',
+                      'Tự động xếp lịch ôn tập tổng hợp ngay sau các giờ học cố định',
+                    ].map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() =>
+                          setAiPromptText((prev) =>
+                            prev ? `${prev}. ${sug}` : sug
+                          )
+                        }
+                        className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all font-semibold text-left cursor-pointer"
+                      >
+                        {sug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setAiResult(null)}
-                  disabled={applyingAI}
+                  onClick={() => {
+                    setIsAIModalOpen(false);
+                    setAiResult(null);
+                    setAiStep('input');
+                  }}
                   className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
                 >
-                  Bỏ qua
+                  Đóng
                 </button>
                 <button
-                  disabled={applyingAI}
-                  onClick={handleAcceptAIPlan}
+                  disabled={generatingAI}
+                  onClick={handleGenerateAIPlan}
                   className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
                 >
-                  {applyingAI ? <Spin size="small" /> : <CheckCircleOutlined />}
-                  <span>{applyingAI ? 'Đang lưu...' : 'Chấp Nhận & Áp Dụng Kế Hoạch'}</span>
+                  {generatingAI ? <Spin size="small" /> : <RocketOutlined />}
+                  <span>{generatingAI ? 'Đang Tính Toán & Lập Lịch...' : 'Kích Hoạt AI Lập Lịch'}</span>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: SCHEDULE DISTRIBUTION & PREVIEW SCREEN */}
+          {aiStep === 'preview' && aiResult && (
+            <div className="space-y-4">
+              {/* Summary & Strategy Hero Card */}
+              <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-minecraft-grassBorder space-y-3 shadow-voxel-sm">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="font-extrabold text-emerald-900 dark:text-emerald-200 text-sm flex items-center gap-2">
+                    <RocketOutlined className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Chiến lược học tập do AI đề xuất:</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="badge-voxel-gold text-xs font-bold">
+                      {(aiResult.proposed_tasks || (aiResult.created_tasks as any) || []).length} Buổi học đề xuất
+                    </span>
+                    {aiResult.week_start && (
+                      <span className="badge-voxel-green text-xs font-bold font-mono">
+                        {aiResult.week_start} ➔ {aiResult.week_end || currentMonday.add(6, 'day').format('YYYY-MM-DD')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-slate-700 dark:text-slate-200 m-0 leading-relaxed font-medium text-xs">
+                  {aiResult.summary}
+                </p>
+
+                {aiResult.warnings && aiResult.warnings.length > 0 && (
+                  <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs space-y-1 font-semibold">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <WarningOutlined /> <span>Lưu ý & Cảnh báo:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-0.5 pl-1 m-0 text-[11px]">
+                      {aiResult.warnings.map((w, idx) => (
+                        <li key={idx}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* SCHEDULE DISTRIBUTION LIST GROUPED BY DAY */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <CalendarOutlined className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Phân bổ lịch học theo ngày (Kiểm tra & Xóa nếu không thích):</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Nhấn nút xóa để loại bỏ buổi học không muốn xếp lịch
+                  </span>
+                </div>
+
+                {proposedTasksGroupedByDate.length === 0 ? (
+                  <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-center space-y-3">
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 m-0">
+                      Không còn buổi học nào trong danh sách dự thảo.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setAiStep('input')}
+                      className="btn-voxel-gold text-xs px-4 py-2 rounded-xl font-bold inline-flex items-center gap-2 cursor-pointer"
+                    >
+                      <LeftOutlined />
+                      <span>Quay lại tạo lại kế hoạch</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="max-h-[420px] overflow-y-auto space-y-4 pr-1.5">
+                    {proposedTasksGroupedByDate.map((group) => (
+                      <div key={group.dateKey} className="space-y-2.5">
+                        {/* Day Group Header Badge */}
+                        <div className="flex items-center gap-2.5 sticky top-0 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-xs py-1 z-10">
+                          <span className="px-3 py-1 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold text-xs flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 shadow-xs">
+                            <CalendarOutlined className="text-emerald-600 dark:text-emerald-400" />
+                            <span>{group.formattedDate}</span>
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-400">
+                            • {group.tasks.length} buổi học
+                          </span>
+                          <div className="flex-1 border-b border-slate-200 dark:border-slate-800" />
+                        </div>
+
+                        {/* List of Tasks in this Day */}
+                        <div className="space-y-2.5 pl-2">
+                          {group.tasks.map((task: any) => {
+                            const pConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+                            return (
+                              <div
+                                key={task.id || task._originalIndex}
+                                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-sm transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group relative"
+                              >
+                                {/* PROMINENT TIME BLOCK (Nổi bật khung giờ) */}
+                                <div className="flex items-center sm:flex-col justify-center gap-1 p-2.5 sm:py-3 sm:px-4 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 dark:from-amber-500/25 dark:to-amber-500/10 border-2 border-amber-500/40 min-w-[130px] text-center shadow-voxel-sm shrink-0 w-full sm:w-auto">
+                                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-extrabold text-xs">
+                                    <ClockCircleOutlined className="text-amber-600 dark:text-amber-400" />
+                                    <span>Khung giờ</span>
+                                  </div>
+                                  <div className="font-mono text-sm font-black text-amber-950 dark:text-amber-100 tracking-tight">
+                                    {task.start_time || '09:00'} – {task.end_time || '10:30'}
+                                  </div>
+                                  <div className="text-[10px] font-bold text-amber-700/80 dark:text-amber-300/80 font-mono">
+                                    {task.estimated_duration || 90} phút
+                                  </div>
+                                </div>
+
+                                {/* Task Details & Objectives */}
+                                <div className="flex-1 space-y-1.5 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
+                                      {task.title}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase ${pConfig.badgeBg}`}>
+                                      {pConfig.label}
+                                    </span>
+                                    {task.course_name && (
+                                      <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                        {task.course_name}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {task.reason && (
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 m-0 font-medium leading-relaxed">
+                                      <span className="font-semibold text-slate-700 dark:text-slate-300">Mục tiêu:</span> {task.reason}
+                                    </p>
+                                  )}
+
+                                  {task.what_to_study && Array.isArray(task.what_to_study) && task.what_to_study.length > 0 && (
+                                    <div className="pt-0.5 flex items-center gap-1.5 flex-wrap text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                      <span className="font-bold text-slate-700 dark:text-slate-300">Nội dung trọng tâm:</span>
+                                      {task.what_to_study.map((item: string, iIdx: number) => (
+                                        <span key={iIdx} className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                                          • {item}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Delete / Remove Button */}
+                                <div className="shrink-0 self-end sm:self-center">
+                                  <Tooltip title="Loại bỏ buổi học này khỏi dự thảo nếu không thích">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveProposedTask(task._originalIndex)}
+                                      className="p-2 rounded-xl text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border-2 border-rose-200 dark:border-rose-800/80 transition-all active:translate-y-0.5 cursor-pointer flex items-center gap-1 text-xs font-bold"
+                                    >
+                                      <DeleteOutlined className="text-base" />
+                                      <span className="sm:hidden">Xóa</span>
+                                    </button>
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons Footer for Preview Screen */}
+              <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAiStep('input')}
+                  disabled={applyingAI}
+                  className="px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 active:translate-y-0.5 transition-all cursor-pointer"
+                >
+                  <LeftOutlined />
+                  <span>Quay Lại Chỉnh Sửa Yêu Cầu</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAIModalOpen(false);
+                      setAiResult(null);
+                      setAiStep('input');
+                    }}
+                    disabled={applyingAI}
+                    className="px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    Hủy Bỏ
+                  </button>
+
+                  <button
+                    disabled={applyingAI || (aiResult.proposed_tasks || (aiResult.created_tasks as any) || []).length === 0}
+                    onClick={handleAcceptAIPlan}
+                    className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
+                  >
+                    {applyingAI ? <Spin size="small" /> : <CheckCircleOutlined />}
+                    <span>{applyingAI ? 'Đang Lưu Kế Hoạch...' : 'Chấp Nhận & Áp Dụng Kế Hoạch'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1633,3 +1889,5 @@ export const LearningCalendarPage: React.FC = () => {
     </div>
   );
 };
+
+export default LearningCalendarPage;

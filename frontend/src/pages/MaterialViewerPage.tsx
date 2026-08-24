@@ -33,6 +33,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
+import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { materialService } from '../services/materialService';
 import { api, ChatSession, API_BASE_URL } from '../services/api';
 import { CourseMaterial } from '../types/material';
@@ -326,9 +328,7 @@ export const MaterialViewerPage: React.FC = () => {
         {/* Main Body Area */}
         <div className="flex-1 flex overflow-hidden relative">
           {/* Main Viewer Canvas */}
-          <div className={`flex-1 flex flex-col h-full bg-slate-900/40 relative overflow-hidden transition-all duration-300 ${
-            showAiAssistant ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px]' : ''
-          }`}>
+          <div className="flex-1 flex flex-col h-full overflow-hidden relative">
             {isPdf ? (
               <iframe
                 src={streamUrl}
@@ -389,36 +389,19 @@ export const MaterialViewerPage: React.FC = () => {
 
           {/* Floating AI Robot Trigger FAB Button (when chat is closed) */}
           {!showAiAssistant && (
-            <button
-              type="button"
+            <MinecraftAIFloatingButton
               onClick={() => setShowAiAssistant(true)}
-              className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
               title="Mở Trợ Lý AI Học Tập (Hỏi đáp toàn bộ bài giảng)"
-            >
-              {/* Robot Icon */}
-              <div className="w-7 h-7 rounded-lg border-2 border-white flex flex-col items-center justify-center p-1 relative shadow-inner">
-                <div className="flex items-center justify-between w-full px-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-                </div>
-                <div className="w-3 h-0.5 bg-white rounded-full mt-1" />
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-0.5 bg-white rounded-full" />
-              </div>
-              {/* Ping notification dot */}
-              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-white"></span>
-              </span>
-            </button>
+            />
           )}
 
-          {/* AI Study Assistant Floating Card Popup */}
+          {/* AI Study Assistant Docked Side Panel */}
           {showAiAssistant && (
             <aside
-              className={`fixed top-20 right-6 bottom-6 w-[430px] sm:w-[470px] lg:w-[500px] max-w-[calc(100vw-3rem)] z-40 flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${
+              className={`w-[420px] sm:w-[460px] lg:w-[480px] max-w-[50vw] my-3 mr-3 rounded-3xl border-2 shadow-xl flex flex-col shrink-0 z-30 overflow-hidden transition-all duration-300 ${
                 isDark
-                  ? 'bg-[#0F172A]/95 backdrop-blur-md border-slate-800 shadow-black/80'
-                  : 'bg-white/95 backdrop-blur-md border-slate-200/90 shadow-slate-900/15'
+                  ? 'bg-[#0F172A] border-slate-800'
+                  : 'bg-white border-slate-200 shadow-slate-900/10'
               }`}
             >
               {/* Header */}
@@ -426,8 +409,8 @@ export const MaterialViewerPage: React.FC = () => {
                 isDark ? 'bg-[#151F30] border-slate-800' : 'bg-[#FDFBF7] border-amber-900/10'
               }`}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500 border border-amber-600/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                    <RobotOutlined className="text-xl" />
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+                    <BlockyRobotIcon size={24} className="text-white" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -483,7 +466,7 @@ export const MaterialViewerPage: React.FC = () => {
 
               {/* History Drawer */}
               <Drawer
-                title="📜 Lịch sử cuộc hội thoại AI"
+                title="Lịch sử cuộc hội thoại AI"
                 placement="right"
                 onClose={() => setHistoryDrawerOpen(false)}
                 open={historyDrawerOpen}
@@ -541,13 +524,13 @@ export const MaterialViewerPage: React.FC = () => {
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
                           isUser
                             ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
-                            : 'bg-amber-500 text-white border-amber-600 font-bold'
+                            : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined className="text-base" />}
+                        {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
                       </div>
 
                       {/* Content Bubble */}
@@ -576,7 +559,7 @@ export const MaterialViewerPage: React.FC = () => {
                                 key={sIdx}
                                 className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
                               >
-                                📄 {src}
+                                {src}
                               </span>
                             ))}
                           </div>
@@ -606,12 +589,12 @@ export const MaterialViewerPage: React.FC = () => {
                 isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
               }`}>
                 {[
-                  { label: '✨ Tóm tắt bài giảng', query: 'Tóm tắt các ý chính và nội dung quan trọng nhất của bài giảng này giúp tôi.' },
-                  { label: '📖 Giải thích khái niệm khó', query: 'Hãy liệt kê và giải thích chi tiết các thuật ngữ hoặc khái niệm phức tạp trong tài liệu này.' },
-                  { label: '🎯 Điểm cần nhớ để thi', query: 'Những phần nào trong bài giảng này quan trọng nhất cần ghi nhớ cho kỳ thi?' },
-                  { label: '❓ Tạo 3 câu hỏi ôn tập', query: 'Hãy tạo 3 câu hỏi kèm gợi ý trả lời để tôi tự kiểm tra mức độ hiểu bài giảng này.' },
-                  { label: '💡 Cho ví dụ thực tế', query: 'Hãy cho các ví dụ ứng dụng thực tế minh họa cho kiến thức trong bài giảng này.' },
-                  { label: '🔍 Trích xuất công thức', query: 'Hãy tổng hợp tất cả các công thức và quy tắc quan trọng trong tài liệu.' },
+                  { label: 'Tóm tắt bài giảng', query: 'Tóm tắt các ý chính và nội dung quan trọng nhất của bài giảng này giúp tôi.' },
+                  { label: 'Giải thích khái niệm khó', query: 'Hãy liệt kê và giải thích chi tiết các thuật ngữ hoặc khái niệm phức tạp trong tài liệu này.' },
+                  { label: 'Điểm cần nhớ để thi', query: 'Những phần nào trong bài giảng này quan trọng nhất cần ghi nhớ cho kỳ thi?' },
+                  { label: 'Tạo 3 câu hỏi ôn tập', query: 'Hãy tạo 3 câu hỏi kèm gợi ý trả lời để tôi tự kiểm tra mức độ hiểu bài giảng này.' },
+                  { label: 'Cho ví dụ thực tế', query: 'Hãy cho các ví dụ ứng dụng thực tế minh họa cho kiến thức trong bài giảng này.' },
+                  { label: 'Trích xuất công thức', query: 'Hãy tổng hợp tất cả các công thức và quy tắc quan trọng trong tài liệu.' },
                 ].map((chip, idx) => (
                   <button
                     key={idx}
