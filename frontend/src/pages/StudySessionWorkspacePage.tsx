@@ -55,6 +55,8 @@ dayjs.extend(duration);
 
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer, EntityContext } from '../components/MarkdownRenderer';
+import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
+import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -822,12 +824,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
           <div className="flex-1 flex overflow-hidden relative min-w-0">
             {/* Left Area: Either Guide or Material Reader */}
             {knowledgeTab === 'guide' ? (
-            <div className={`flex-1 overflow-y-auto px-6 py-6 flex flex-col min-w-0 transition-all duration-300 ${
-              isKnowledgeChatOpen ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px] items-start' : 'items-center'
-            }`}>
-              <div className={`w-full space-y-6 pb-28 transition-all duration-300 ${
-                isKnowledgeChatOpen ? 'max-w-full' : 'max-w-4xl'
-              }`}>
+            <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col min-w-0 items-center">
+              <div className="w-full space-y-6 pb-28 max-w-4xl">
 
                 {/* Related Assignment Alert */}
                 {relatedAssign && (
@@ -1276,9 +1274,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
             </div>
             ) : (
               /* ─── FULL DOCUMENT / MATERIAL READER TAB ─── */
-              <div className={`flex-1 flex flex-col h-full overflow-hidden bg-slate-900/40 relative transition-all duration-300 ${
-                isKnowledgeChatOpen ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px]' : ''
-              }`}>
+              <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                 {/* Material Subheader */}
                 <div className={`px-6 py-3 border-b flex items-center justify-between z-10 shrink-0 ${
                   isDark ? 'bg-[#151F30] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
@@ -1415,46 +1411,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
             {/* ─── FLOATING AI ASSISTANT TRIGGER BUTTON (When Closed) ─── */}
             {!isKnowledgeChatOpen && (
-              <button
-                type="button"
+              <MinecraftAIFloatingButton
                 onClick={handleOpenKnowledgeChat}
-                className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
                 title="Mở Trợ Lý AI Học Tập"
-              >
-                {/* Robot Icon matching Image 2 */}
-                <div className="w-7 h-7 rounded-lg border-2 border-white flex flex-col items-center justify-center p-1 relative shadow-inner">
-                  {/* Eyes */}
-                  <div className="flex items-center justify-between w-full px-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-                  </div>
-                  {/* Mouth */}
-                  <div className="w-3 h-0.5 bg-white rounded-full mt-1" />
-                  {/* Antenna */}
-                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-0.5 bg-white rounded-full" />
-                </div>
-                {/* Ping notification dot */}
-                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-white"></span>
-                </span>
-              </button>
+              />
             )}
 
-            {/* ─── FLOATING AI CHAT POPUP WINDOW (When Opened) ─── */}
+            {/* ─── DOCKED AI CHAT PANEL (When Opened) ─── */}
             {isKnowledgeChatOpen && (
-              <aside className={`fixed top-20 right-6 bottom-6 w-[430px] sm:w-[470px] lg:w-[500px] max-w-[calc(100vw-3rem)] z-40 flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${
+              <aside className={`w-[420px] sm:w-[460px] lg:w-[480px] max-w-[50vw] my-3 mr-3 rounded-3xl border-2 shadow-xl flex flex-col shrink-0 z-30 overflow-hidden transition-all duration-300 ${
                 isDark
-                  ? 'bg-[#0F172A]/95 backdrop-blur-md border-slate-800 shadow-black/80'
-                  : 'bg-white/95 backdrop-blur-md border-slate-200/90 shadow-slate-900/15'
+                  ? 'bg-[#0F172A] border-slate-800'
+                  : 'bg-white border-slate-200 shadow-slate-900/10'
               }`}>
                 {/* Header (Matching Floating Card Style) */}
                 <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
                   isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
                 }`}>
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500 border border-amber-600/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                      <RobotOutlined className="text-xl" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+                      <BlockyRobotIcon size={24} className="text-white" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1521,13 +1497,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       >
                         {/* Avatar */}
                         <div
-                          className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
                             isUser
                               ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
-                              : 'bg-amber-500 text-white border-amber-600 font-bold'
+                              : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                           }`}
                         >
-                          {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined className="text-base" />}
+                          {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
                         </div>
 
                         {/* Content Bubble */}
@@ -1716,12 +1692,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
         {/* WORKSPACE CONTENT AREA (SPLIT VIEW: EXERCISE + FLOATING AI CHAT) */}
         <div className="flex-1 flex overflow-hidden relative min-w-0">
           {/* LEFT SCROLLABLE CONTENT: ASSIGNMENT & INTERACTIVE QUESTIONS */}
-          <div className={`flex-1 overflow-y-auto p-6 space-y-6 flex flex-col min-w-0 transition-all duration-300 ${
-            isKnowledgeChatOpen ? 'pr-[460px] sm:pr-[500px] lg:pr-[530px] items-start' : 'items-center'
-          }`}>
-            <div className={`w-full space-y-6 pb-20 transition-all duration-300 ${
-              isKnowledgeChatOpen ? 'max-w-full' : 'max-w-4xl'
-            }`}>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col min-w-0 items-center">
+            <div className="w-full space-y-6 pb-20 max-w-4xl">
               {/* COMPLETED SESSION SUMMARY (IF FINISHED) */}
               {isCompleted && (
                 <div className="p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-4 shadow-sm">
@@ -1927,46 +1899,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
           {/* ─── FLOATING AI ASSISTANT TRIGGER BUTTON (When Closed) ─── */}
           {!isKnowledgeChatOpen && (
-            <button
-              type="button"
+            <MinecraftAIFloatingButton
               onClick={handleOpenKnowledgeChat}
-              className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] via-[#F97316] to-[#FB923C] text-white shadow-2xl hover:shadow-orange-500/50 border-2 border-white/60 ring-4 ring-orange-500/20 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95 group"
               title="Mở Trợ Lý AI Học Tập (Gia sư Socratic)"
-            >
-              {/* Robot Icon matching Image 2 */}
-              <div className="w-7 h-7 rounded-lg border-2 border-white flex flex-col items-center justify-center p-1 relative shadow-inner">
-                {/* Eyes */}
-                <div className="flex items-center justify-between w-full px-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-                </div>
-                {/* Mouth */}
-                <div className="w-3 h-0.5 bg-white rounded-full mt-1" />
-                {/* Antenna */}
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-0.5 bg-white rounded-full" />
-              </div>
-              {/* Ping notification dot */}
-              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-white"></span>
-              </span>
-            </button>
+            />
           )}
 
-          {/* ─── FLOATING AI CHAT POPUP WINDOW (When Opened) ─── */}
+          {/* ─── DOCKED AI CHAT PANEL (When Opened) ─── */}
           {isKnowledgeChatOpen && (
-            <aside className={`fixed top-20 right-6 bottom-6 w-[430px] sm:w-[470px] lg:w-[500px] max-w-[calc(100vw-3rem)] z-40 flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${
+            <aside className={`w-[420px] sm:w-[460px] lg:w-[480px] max-w-[50vw] my-3 mr-3 rounded-3xl border-2 shadow-xl flex flex-col shrink-0 z-30 overflow-hidden transition-all duration-300 ${
               isDark
-                ? 'bg-[#0F172A]/95 backdrop-blur-md border-slate-800 shadow-black/80'
-                : 'bg-white/95 backdrop-blur-md border-slate-200/90 shadow-slate-900/15'
+                ? 'bg-[#0F172A] border-slate-800'
+                : 'bg-white border-slate-200 shadow-slate-900/10'
             }`}>
               {/* Header (Matching Floating Card Style) */}
               <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
                 isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
               }`}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500 border border-amber-600/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                    <RobotOutlined className="text-xl" />
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+                    <BlockyRobotIcon size={24} className="text-white" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -2033,13 +1985,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
                           isUser
                             ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
-                            : 'bg-amber-500 text-white border-amber-600 font-bold'
+                            : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined className="text-base" />}
+                        {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
                       </div>
 
                       {/* Content Bubble */}
@@ -2099,12 +2051,12 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
               }`}>
                 {[
-                  { label: '💡 Gợi ý phương pháp giải', query: `Tôi đang làm bài tập "${task?.title || ''}", hãy gợi ý phương pháp tư duy và các bước tiếp cận (không đưa ra đáp án trực tiếp).` },
-                  { label: '📖 Giải thích khái niệm liên quan', query: 'Hãy giải thích các khái niệm và định nghĩa quan trọng xuất hiện trong bài tập này.' },
-                  { label: '❓ Đặt câu hỏi định hướng', query: 'Hãy đặt cho tôi 1 câu hỏi gợi mở để giúp tôi tự tìm ra cách giải bài tập này.' },
-                  { label: '🎯 Nhắc lại lý thuyết cần dùng', query: 'Bài tập này đòi hỏi sử dụng những công thức và kiến thức nền tảng nào?' },
-                  { label: '📚 Môn học của tôi', query: `Tôi đang học môn gì và bài học "${task?.title || ''}" nằm trong chương trình nào?` },
-                  { label: '⏰ Bài tập sắp đến hạn', query: 'Tôi có những bài tập nào sắp đến hạn nộp liên quan đến bài này?' },
+                  { label: 'Gợi ý phương pháp giải', query: `Tôi đang làm bài tập "${task?.title || ''}", hãy gợi ý phương pháp tư duy và các bước tiếp cận (không đưa ra đáp án trực tiếp).` },
+                  { label: 'Giải thích khái niệm liên quan', query: 'Hãy giải thích các khái niệm và định nghĩa quan trọng xuất hiện trong bài tập này.' },
+                  { label: 'Đặt câu hỏi định hướng', query: 'Hãy đặt cho tôi 1 câu hỏi gợi mở để giúp tôi tự tìm ra cách giải bài tập này.' },
+                  { label: 'Nhắc lại lý thuyết cần dùng', query: 'Bài tập này đòi hỏi sử dụng những công thức và kiến thức nền tảng nào?' },
+                  { label: 'Môn học của tôi', query: `Tôi đang học môn gì và bài học "${task?.title || ''}" nằm trong chương trình nào?` },
+                  { label: 'Bài tập sắp đến hạn', query: 'Tôi có những bài tập nào sắp đến hạn nộp liên quan đến bài này?' },
                 ].map((chip, idx) => (
                   <button
                     key={idx}
@@ -2162,9 +2114,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
       {/* REFLECTION MODAL (STEP BEFORE COMPLETION) */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-extrabold text-base">
-            <TrophyOutlined className="text-amber-400 text-xl" />
-            <span>Tự Đánh Giá Phản Hồi (Study Session Reflection)</span>
+          <div className="py-1">
+            <h3 className="text-base font-black text-slate-900 dark:text-white m-0">
+              Tự Đánh Giá Phản Hồi
+            </h3>
+            <p className="text-xs text-slate-400 font-medium m-0">
+              Study Session Reflection &amp; AI Analysis
+            </p>
           </div>
         }
         open={isReflectionModalOpen}
@@ -2172,8 +2128,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
         footer={null}
         destroyOnClose
         centered
-        width={580}
-        className="rounded-2xl overflow-hidden"
+        width={620}
+        className="modal-voxel rounded-3xl overflow-hidden"
       >
         <Form
           form={reflectionForm}
@@ -2181,73 +2137,128 @@ export const StudySessionWorkspacePage: React.FC = () => {
           onFinish={handleSubmitReflection}
           className="space-y-4 py-2 text-xs"
         >
-          <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-slate-700 dark:text-slate-300 font-medium">
-            Hãy dành 1 phút nhìn lại buổi học vừa qua. Phản hồi của bạn giúp AI đưa ra nhận xét cá nhân hóa và tinh chỉnh kế hoạch cho tuần tới.
+          <div className="card-voxel-3d p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 text-slate-700 dark:text-slate-200 font-medium text-xs leading-relaxed">
+            Dành 1 phút nhìn lại buổi học vừa qua. Phản hồi của bạn giúp AI đưa ra nhận xét cá nhân hóa và tinh chỉnh kế hoạch cho tuần tới.
           </div>
 
           <Form.Item
             name="what_learned"
-            label={<span className="font-extrabold text-xs uppercase tracking-wider">1. Hôm nay bạn đã học/nắm được nội dung gì chính?</span>}
+            label={
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                  1
+                </span>
+                <span className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Hôm nay bạn đã học/nắm được nội dung gì chính?
+                </span>
+              </div>
+            }
           >
-            <TextArea rows={2} placeholder="Ví dụ: Đã nắm được định nghĩa Supervised vs Unsupervised learning..." className="rounded-xl border font-medium p-2.5 text-xs" />
+            <TextArea
+              rows={2}
+              placeholder="Ví dụ: Đã nắm được định nghĩa Supervised vs Unsupervised learning..."
+              className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 font-medium p-3 text-xs focus:border-emerald-500"
+            />
           </Form.Item>
 
           <Form.Item
             name="understood_well"
-            label={<span className="font-extrabold text-xs uppercase tracking-wider">2. Phần nào bạn hiểu rõ và tự tin nhất?</span>}
+            label={
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                  2
+                </span>
+                <span className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Phần nào bạn hiểu rõ và tự tin nhất?
+                </span>
+              </div>
+            }
           >
-            <Input placeholder="Ví dụ: Phân biệt bài toán phân loại Classification..." className="rounded-xl border font-medium p-2.5 text-xs" />
+            <Input
+              placeholder="Ví dụ: Phân biệt bài toán phân loại Classification..."
+              className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 font-medium p-2.5 text-xs focus:border-emerald-500"
+            />
           </Form.Item>
 
           <Form.Item
             name="struggling_with"
-            label={<span className="font-extrabold text-xs uppercase tracking-wider">3. Phần nào bạn còn vướng mắc hoặc cần ôn thêm?</span>}
+            label={
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                  3
+                </span>
+                <span className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Phần nào bạn còn vướng mắc hoặc cần ôn thêm?
+                </span>
+              </div>
+            }
           >
-            <Input placeholder="Ví dụ: Cách tính thuật toán Gradient Descent..." className="rounded-xl border font-medium p-2.5 text-xs" />
+            <Input
+              placeholder="Ví dụ: Cách tính thuật toán Gradient Descent..."
+              className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 font-medium p-2.5 text-xs focus:border-emerald-500"
+            />
           </Form.Item>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             <Form.Item
               name="understanding_level"
-              label={<span className="font-extrabold text-xs uppercase tracking-wider">4. Mức độ hiểu bài hôm nay?</span>}
+              label={
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                    4
+                  </span>
+                  <span className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Mức độ hiểu bài hôm nay?
+                  </span>
+                </div>
+              }
             >
-              <Select className="rounded-xl font-semibold">
-                <Select.Option value="fully">🟢 Hiểu hoàn toàn (Fully understood)</Select.Option>
-                <Select.Option value="mostly">🔵 Hiểu hầu hết (Mostly understood)</Select.Option>
-                <Select.Option value="partially">🟡 Hiểu một phần (Partially understood)</Select.Option>
-                <Select.Option value="not_understood">🔴 Chưa hiểu (Not understood)</Select.Option>
+              <Select className="rounded-xl font-bold border-2 border-slate-200 dark:border-slate-700 h-10">
+                <Select.Option value="fully">Hiểu hoàn toàn (Fully understood)</Select.Option>
+                <Select.Option value="mostly">Hiểu hầu hết (Mostly understood)</Select.Option>
+                <Select.Option value="partially">Hiểu một phần (Partially understood)</Select.Option>
+                <Select.Option value="not_understood">Chưa hiểu (Not understood)</Select.Option>
               </Select>
             </Form.Item>
 
             <Form.Item
               name="achieved_goal"
-              label={<span className="font-extrabold text-xs uppercase tracking-wider">5. Đạt mục tiêu buổi học?</span>}
+              label={
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-mono font-black text-[11px] flex items-center justify-center shrink-0">
+                    5
+                  </span>
+                  <span className="font-black text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Đạt mục tiêu buổi học?
+                  </span>
+                </div>
+              }
             >
-              <Select className="rounded-xl font-semibold">
-                <Select.Option value="yes">✅ Đạt hoàn toàn (Yes)</Select.Option>
-                <Select.Option value="partially">🟧 Đạt một phần (Partially)</Select.Option>
-                <Select.Option value="no">❌ Chưa đạt (No)</Select.Option>
+              <Select className="rounded-xl font-bold border-2 border-slate-200 dark:border-slate-700 h-10">
+                <Select.Option value="yes">Đạt hoàn toàn (Yes)</Select.Option>
+                <Select.Option value="partially">Đạt một phần (Partially)</Select.Option>
+                <Select.Option value="no">Chưa đạt (No)</Select.Option>
               </Select>
             </Form.Item>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t">
-            <Button
+          <div className="flex justify-end items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
               disabled={submittingReflection}
               onClick={() => setIsReflectionModalOpen(false)}
-              className="rounded-xl font-bold"
+              className="px-5 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 active:translate-y-0.5 transition-all cursor-pointer"
             >
               Hủy
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={submittingReflection}
-              icon={<CheckCircleOutlined />}
-              className="bg-emerald-600 hover:bg-emerald-500 font-extrabold px-6 rounded-xl"
+            </button>
+            <button
+              type="submit"
+              disabled={submittingReflection}
+              className="btn-voxel-green text-xs px-6 py-2.5 rounded-xl font-black shadow-voxel active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-2"
             >
-              Lưu Reflection & Hoàn thành
-            </Button>
+              {submittingReflection ? <Spin size="small" /> : null}
+              <span>Lưu Reflection & Hoàn thành</span>
+            </button>
           </div>
         </Form>
       </Modal>

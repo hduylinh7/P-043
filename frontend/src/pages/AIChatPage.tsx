@@ -32,6 +32,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer, cleanErrorMessage } from '../components/MarkdownRenderer';
+import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { api, ChatSession, ChatMessage, Citation } from '../services/api';
 import { courseService } from '../services/courseService';
 import { assignmentService } from '../services/assignmentService';
@@ -468,13 +469,13 @@ export const AIChatPage: React.FC = () => {
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border ${
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
                           isUser
                             ? 'bg-emerald-600 text-white border-emerald-700 font-extrabold'
-                            : 'bg-amber-500 text-white border-amber-600 font-bold'
+                            : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-base" /> : <RobotOutlined />}
+                        {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={22} className="text-white" />}
                       </div>
 
                       {/* Content Bubble */}
@@ -546,8 +547,8 @@ export const AIChatPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex items-center gap-3 max-w-4xl mx-auto"
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-minecraft-gold text-slate-900 flex items-center justify-center shadow-voxel-sm border-2 border-minecraft-goldBorder font-bold">
-                    <RobotOutlined className="text-lg animate-spin" />
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center shadow-sm font-bold">
+                    <BlockyRobotIcon size={24} className="animate-pulse text-white" />
                   </div>
                   <div className="card-voxel-3d p-4 rounded-2xl rounded-tl-none text-xs flex items-center gap-3 text-emerald-700 dark:text-emerald-300 font-bold">
                     <Spin size="small" />

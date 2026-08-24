@@ -107,3 +107,37 @@ export const VoxelRedstone: React.FC<MinecraftIconProps> = ({ className = '', si
     <rect x="5" y="4" width="2" height="2" fill="#FFFFFF" />
   </svg>
 );
+
+// Clean White Blocky Minecraft Robot Icon for Floating Button & Avatars
+export const BlockyRobotIcon: React.FC<{ size?: number; className?: string }> = ({ size = 28, className = '' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 28 28"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Blocky Antenna */}
+    <rect x="12" y="1" width="4" height="2" rx="0.5" fill="currentColor" />
+    <rect x="13" y="3" width="2" height="2" fill="currentColor" />
+
+    {/* Head Outline (Blocky with subtle corner chamfer) */}
+    <rect x="3.5" y="5.5" width="21" height="19" rx="3.5" stroke="currentColor" strokeWidth="2.2" />
+
+    {/* Left Square Eye */}
+    <rect x="7.5" y="10.5" width="4" height="4" rx="0.8" fill="currentColor" />
+
+    {/* Right Square Eye */}
+    <rect x="16.5" y="10.5" width="4" height="4" rx="0.8" fill="currentColor" />
+
+    {/* Blocky Smile / Mouth */}
+    <path
+      d="M9 18.5H19"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
