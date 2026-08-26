@@ -915,21 +915,21 @@ export const LearningCalendarPage: React.FC = () => {
                   {/* Real-time Current Time Line Indicator */}
                   {currentTimePos && currentTimePos.isCurrentWeek && (
                     <div
-                      className="absolute left-0 right-0 z-20 pointer-events-none flex items-center transition-all duration-500"
+                      className="absolute left-0 right-0 z-0 pointer-events-none flex items-center transition-all duration-500"
                       style={{ top: `${currentTimePos.percentage}%` }}
                     >
-                      {/* Time Axis Pill */}
-                      <div className="w-[12.5%] pr-3 text-right flex justify-end items-center">
-                        <span className="bg-emerald-600 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-xs border border-emerald-400 flex items-center gap-1">
+                      {/* Time Axis Badge (Google Calendar style) */}
+                      <div className="w-[12.5%] pr-2 text-right flex justify-end items-center">
+                        <span className="bg-emerald-600 dark:bg-emerald-500 text-white font-mono text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                           {currentTimePos.timeStr}
                         </span>
                       </div>
-                      {/* Sleek Line Spanning Day Grid */}
-                      <div className="w-[87.5%] h-[2px] bg-emerald-500/50 shadow-[0_0_4px_rgba(16,185,129,0.25)] relative">
-                        {/* Concentric Modern Dot on Today Column */}
+                      {/* 2px Line Spanning Day Grid */}
+                      <div className="w-[87.5%] h-[2px] bg-emerald-500 dark:bg-emerald-400 relative flex items-center">
+                        {/* Concentric Dot Anchored on Today Column */}
                         <div
-                          className="absolute -top-[4px] w-2.5 h-2.5 rounded-full bg-emerald-600 border-2 border-white dark:border-slate-900 shadow-xs ring-4 ring-emerald-500/20"
+                          className="absolute -top-[5px] -ml-[6px] w-3 h-3 rounded-full bg-emerald-600 dark:bg-emerald-400 border-2 border-white dark:border-slate-900 shadow-md ring-4 ring-emerald-500/20"
                           style={{ left: `calc(${(currentTimePos.todayIdx / 7) * 100}%)` }}
                         />
                       </div>
@@ -953,7 +953,7 @@ export const LearningCalendarPage: React.FC = () => {
                           <div
                             key={dayName}
                             onClick={() => handleOpenCreateTaskForSlot(dayDateStr, slot)}
-                            className="p-1.5 border-r border-slate-200 dark:border-slate-800 last:border-r-0 space-y-1.5 relative group hover:bg-indigo-500/5 transition-colors cursor-pointer"
+                            className="p-1.5 border-r border-slate-200 dark:border-slate-800 last:border-r-0 space-y-1.5 relative z-1 group hover:bg-indigo-500/5 transition-colors cursor-pointer"
                           >
                             {cellEvents.map((ev) => {
                               const isFixed = ev.type === 'FIXED_CLASS';
@@ -971,14 +971,14 @@ export const LearningCalendarPage: React.FC = () => {
                                     handleEventClick(ev);
                                   }}
                                   style={spanInfo.isSpanned ? spanInfo.style : undefined}
-                                  className={`p-2 rounded-2xl border-2 text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between ${
-                                    spanInfo.isSpanned ? 'z-10' : 'min-h-[76px]'
+                                  className={`p-2 rounded-2xl border-2 text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between relative z-10 ${
+                                    spanInfo.isSpanned ? '' : 'min-h-[76px]'
                                   } ${prio.borderLeft} ${
                                     isFixed
-                                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-900 dark:text-emerald-200 hover:border-emerald-500'
+                                      ? 'bg-[#EBFBEE] dark:bg-[#092E1B] border-emerald-500/60 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500'
                                       : isAI
-                                      ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-900 dark:text-indigo-200 hover:border-indigo-500'
-                                      : 'bg-amber-500/15 border-amber-500/40 text-amber-900 dark:text-amber-200 hover:border-amber-500'
+                                      ? 'bg-[#EEF2FF] dark:bg-[#111827] border-indigo-500/60 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500'
+                                      : 'bg-[#FEF8E7] dark:bg-[#231908] border-amber-500/60 text-amber-950 dark:text-amber-100 hover:border-amber-500'
                                   }`}
                                 >
                                   <div className="overflow-hidden min-w-0">
@@ -1052,17 +1052,20 @@ export const LearningCalendarPage: React.FC = () => {
                 {/* Real-time Current Time Line Indicator in Day View */}
                 {currentTimePos && currentTimePos.isTodaySelected && (
                   <div
-                    className="absolute left-0 right-0 z-20 pointer-events-none flex items-center transition-all duration-500"
+                    className="absolute left-0 right-0 z-0 pointer-events-none flex items-center transition-all duration-500"
                     style={{ top: `${currentTimePos.percentage}%` }}
                   >
-                    <div className="w-20 pr-3 text-right flex justify-end items-center">
-                      <span className="bg-emerald-600 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg shadow-xs border border-emerald-400 flex items-center gap-1">
+                    {/* Time Axis Badge (Google Calendar style) */}
+                    <div className="w-20 pr-2 text-right flex justify-end items-center">
+                      <span className="bg-emerald-600 dark:bg-emerald-500 text-white font-mono text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1 shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                         {currentTimePos.timeStr}
                       </span>
                     </div>
-                    <div className="flex-1 h-[2px] bg-emerald-500/50 shadow-[0_0_4px_rgba(16,185,129,0.25)] relative">
-                      <div className="absolute -top-[4px] left-0 w-2.5 h-2.5 rounded-full bg-emerald-600 border-2 border-white dark:border-slate-900 shadow-xs ring-4 ring-emerald-500/20" />
+                    {/* 2px Line Spanning Day Content */}
+                    <div className="flex-1 h-[2px] bg-emerald-500 dark:bg-emerald-400 relative flex items-center">
+                      {/* Circle Dot at Start of Today */}
+                      <div className="absolute -top-[5px] -left-[6px] w-3 h-3 rounded-full bg-emerald-600 dark:bg-emerald-400 border-2 border-white dark:border-slate-900 shadow-md ring-4 ring-emerald-500/20" />
                     </div>
                   </div>
                 )}
@@ -1105,7 +1108,7 @@ export const LearningCalendarPage: React.FC = () => {
                                   e.stopPropagation();
                                   handleEventClick(ev);
                                 }}
-                                className="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md"
+                                className="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md relative z-10 bg-white dark:bg-slate-900"
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 flex-wrap">
