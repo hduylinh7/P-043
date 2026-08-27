@@ -1,4 +1,4 @@
-export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUBMITTED' | 'GRADED';
 export type PriorityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type QuestionType = 'MULTIPLE_CHOICE' | 'ESSAY' | 'SHORT_ANSWER';
 

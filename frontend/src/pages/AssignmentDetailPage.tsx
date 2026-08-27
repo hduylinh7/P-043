@@ -288,7 +288,7 @@ export const AssignmentDetailPage: React.FC = () => {
     );
   };
 
-  const isSubmitted = mySubmission && mySubmission.status !== 'unsubmitted' && mySubmission.status !== 'NOT_SUBMITTED';
+  const isSubmitted = Boolean(mySubmission && mySubmission.status !== 'unsubmitted' && mySubmission.status !== 'NOT_SUBMITTED');
 
   // Compute answered questions count
   const questionsCount = assignment?.questions?.length || 0;
@@ -594,7 +594,7 @@ export const AssignmentDetailPage: React.FC = () => {
                     Nộp bài làm
                   </h2>
 
-                  {isSubmitted ? (
+                  {isSubmitted && mySubmission ? (
                     <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm">
@@ -621,7 +621,7 @@ export const AssignmentDetailPage: React.FC = () => {
                             size="small"
                             type="link"
                             icon={<DownloadOutlined />}
-                            onClick={() => assignmentService.downloadSubmissionFile(mySubmission.id, mySubmission.file_name!)}
+                            onClick={() => mySubmission?.file_name && assignmentService.downloadSubmissionFile(mySubmission.id, mySubmission.file_name)}
                           >
                             Tải về
                           </Button>
@@ -761,7 +761,7 @@ export const AssignmentDetailPage: React.FC = () => {
                       </div>
                     )}
 
-                    {mySubmission?.score !== null && mySubmission?.score !== undefined && (
+                    {mySubmission && mySubmission.score !== null && mySubmission.score !== undefined && (
                       <div>
                         <span className="text-slate-400 block mb-0.5">Điểm số</span>
                         <span className="font-black text-emerald-500 text-sm">{mySubmission.score} điểm</span>
