@@ -31,6 +31,10 @@ export interface TaskReflectionData {
   struggling_with?: string;
   understanding_level?: 'not_understood' | 'partially' | 'mostly' | 'fully' | string;
   achieved_goal?: 'yes' | 'partially' | 'no' | string;
+  practice_summary?: string;
+  overall_assessment?: string;
+  strengths?: string;
+  weaknesses?: string;
 }
 
 export interface LearningObjective {
