@@ -36,7 +36,6 @@ import {
   FileTextOutlined,
   PlayCircleOutlined,
   RocketOutlined,
-  WarningOutlined,
   CheckOutlined,
   FilterOutlined,
   LockOutlined,
@@ -1690,42 +1689,7 @@ export const LearningCalendarPage: React.FC = () => {
           {/* STEP 2: SCHEDULE DISTRIBUTION & PREVIEW SCREEN */}
           {aiStep === 'preview' && aiResult && (
             <div className="space-y-4">
-              {/* Summary & Strategy Hero Card */}
-              <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-minecraft-grassBorder space-y-3 shadow-voxel-sm">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="font-extrabold text-emerald-900 dark:text-emerald-200 text-sm flex items-center gap-2">
-                    <RocketOutlined className="text-emerald-600 dark:text-emerald-400" />
-                    <span>Chiến lược học tập do AI đề xuất:</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="badge-voxel-gold text-xs font-bold">
-                      {(aiResult.proposed_tasks || (aiResult.created_tasks as any) || []).length} Buổi học đề xuất
-                    </span>
-                    {aiResult.week_start && (
-                      <span className="badge-voxel-green text-xs font-bold font-mono">
-                        {aiResult.week_start} ➔ {aiResult.week_end || currentMonday.add(6, 'day').format('YYYY-MM-DD')}
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                <p className="text-slate-700 dark:text-slate-200 m-0 leading-relaxed font-medium text-xs">
-                  {aiResult.summary}
-                </p>
-
-                {aiResult.warnings && aiResult.warnings.length > 0 && (
-                  <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs space-y-1 font-semibold">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <WarningOutlined /> <span>Lưu ý & Cảnh báo:</span>
-                    </div>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 m-0 text-[11px]">
-                      {aiResult.warnings.map((w, idx) => (
-                        <li key={idx}>{w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
 
               {/* SCHEDULE DISTRIBUTION LIST GROUPED BY DAY */}
               <div className="space-y-3">
