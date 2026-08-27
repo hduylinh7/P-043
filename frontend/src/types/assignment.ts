@@ -98,6 +98,8 @@ export interface GradeSubmissionPayload {
 export interface Assignment {
   id: string;
   course_id: string;
+  course_title?: string;
+  course_code?: string;
   title: string;
   description?: string | null;
   available_from?: string | null;

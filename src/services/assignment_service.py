@@ -187,9 +187,15 @@ class AssignmentService:
         completed_checklist_count = progress_data.get("completed_checklist_count", 0) if progress_data else 0
         progress_percentage = progress_data.get("progress_percentage", 0) if progress_data else 0
 
+        course_obj = getattr(assignment, "course", None)
+        course_title = getattr(course_obj, "title", None) if course_obj else None
+        course_code = getattr(course_obj, "code", None) if course_obj else None
+
         return AssignmentResponse(
             id=assignment.id,
             course_id=assignment.course_id,
+            course_title=course_title,
+            course_code=course_code,
             title=assignment.title,
             description=assignment.description,
             available_from=assignment.available_from,
@@ -434,6 +440,22 @@ class AssignmentService:
                 a = item["assignment"]
                 results.append(AssignmentService._build_assignment_response(a, progress_data=item))
             return results
+
+    @staticmethod
+    async def get_all_user_assignments(
+        db: AsyncSession,
+        current_user: UserResponse,
+    ) -> list[AssignmentResponse]:
+        """Fetch all assignments across enrolled or managed courses for current user."""
+        is_instructor = AssignmentService._is_instructor_or_admin(current_user)
+        items = await AssignmentRepository.get_all_assignments_for_user_with_progress(
+            db, user_id=current_user.id, is_instructor=is_instructor
+        )
+        results = []
+        for item in items:
+            a = item["assignment"]
+            results.append(AssignmentService._build_assignment_response(a, progress_data=item))
+        return results
 
     @staticmethod
     async def get_assignment_detail(

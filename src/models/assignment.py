@@ -130,6 +130,8 @@ class AssignmentProgressUpdateRequest(BaseModel):
 class AssignmentResponse(BaseModel):
     id: str
     course_id: str
+    course_title: str | None = None
+    course_code: str | None = None
     title: str
     description: str | None = None
     available_from: datetime | str | None = None
