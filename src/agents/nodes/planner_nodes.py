@@ -10,6 +10,7 @@ from src.agents.planner_state import PlannerAgentState
 from src.agents.tools.planner_tools import PlannerTools
 from src.db.enums import normalize_priority
 from src.services.llm import get_llm
+from src.services.schedule_utils import normalize_day_of_week_index, parse_time_to_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -834,7 +835,14 @@ def check_time_overlap(
     """Check if two time intervals [start1, end1) and [start2, end2) overlap."""
     if not start1 or not end1 or not start2 or not end2:
         return False
-    return start1 < end2 and end1 > start2
+    try:
+        s1 = parse_time_to_minutes(start1)
+        e1 = parse_time_to_minutes(end1)
+        s2 = parse_time_to_minutes(start2)
+        e2 = parse_time_to_minutes(end2)
+        return s1 < e2 and e1 > s2
+    except Exception:
+        return False
 
 
 def resolve_task_time_conflict(
@@ -971,13 +979,13 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
         # Load fixed class schedules and add as occupied slots
         context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
         start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
-        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         for idx in range(7):
             d_curr = start_d + timedelta(days=idx)
             d_str = d_curr.strftime("%Y-%m-%d")
-            d_day_name = day_names[idx]
+            d_day_idx = d_curr.weekday()
             for fs in (context.fixed_course_schedules or []):
-                if fs.day_of_week.strip().lower() == d_day_name.lower():
+                fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
+                if fs_day_idx is not None and fs_day_idx == d_day_idx:
                     existing_tasks.append({
                         "title": f"Lịch học cố định: {fs.course_name}",
                         "scheduled_date": d_str,
@@ -1119,13 +1127,13 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
             # Check fixed course schedules
             context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
             start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
-            day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             for idx in range(7):
                 d_curr = start_d + timedelta(days=idx)
                 d_str = d_curr.strftime("%Y-%m-%d")
-                d_day_name = day_names[idx]
+                d_day_idx = d_curr.weekday()
                 for fs in (context.fixed_course_schedules or []):
-                    if fs.day_of_week.strip().lower() == d_day_name.lower():
+                    fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
+                    if fs_day_idx is not None and fs_day_idx == d_day_idx:
                         existing_tasks.append({
                             "title": f"Lịch học cố định: {fs.course_name}",
                             "scheduled_date": d_str,
