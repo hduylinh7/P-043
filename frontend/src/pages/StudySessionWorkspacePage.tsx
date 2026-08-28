@@ -598,12 +598,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
   }, [task, assignment]);
 
   const knowledgeQuickPrompts = [
-    { label: 'Môn học của tôi', query: `Tôi đang học môn gì và bài học "${task?.title || ''}" nằm trong chương trình nào?` },
-    { label: 'Bài tập sắp đến hạn', query: 'Tôi có những bài tập nào sắp đến hạn nộp liên quan đến bài này?' },
-    { label: 'Mục tiêu cá nhân', query: `Mục tiêu bài học "${task?.title || ''}" là gì và tôi cần đạt được kỹ năng nào?` },
-    { label: 'Điểm số & Đánh giá', query: 'Tôi cần lưu ý gì để đạt điểm cao trong bài kiểm tra thuộc chủ đề này?' },
-    { label: 'Gợi ý ưu tiên bài tập', query: `Hãy gợi ý các bước ôn tập ưu tiên để nắm vững kiến thức bài "${task?.title || ''}"?` },
-    { label: 'Tổng hợp kiến thức trọng tâm', query: `Hãy tổng hợp kiến thức trọng tâm của bài "${task?.title || ''}".` },
+    { label: 'Tóm tắt 1 câu', query: `Tóm tắt ngắn gọn bài học "${task?.title || ''}" trong 1 câu.` },
+    { label: '3 câu hỏi nhanh', query: 'Tạo 3 câu hỏi ngắn để tự ôn tập bài này.' },
+    { label: 'Bài tập sắp hạn', query: 'Bài tập nào liên quan sắp đến hạn nộp?' },
   ];
 
   useEffect(() => {
@@ -1488,34 +1485,34 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   : 'bg-white border-slate-200 shadow-slate-900/10'
               }`}>
                 {/* Header (Matching Floating Card Style) */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+                <div className={`px-4 py-2.5 border-b flex items-center justify-between shrink-0 ${
                   isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
                 }`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                      <BlockyRobotIcon size={24} className="text-white" />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                      <BlockyRobotIcon size={18} className="text-white" />
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-bold text-sm sm:text-base m-0 truncate text-slate-900 dark:text-white">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-xs sm:text-sm m-0 truncate text-slate-900 dark:text-white">
                           Personal Learning Companion
                         </h4>
                         <Badge
                           status="processing"
                           text={
-                            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
                               Learning Companion Agent
                             </span>
                           }
                         />
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                      <p className="text-[10px] text-slate-400 font-medium m-0 truncate leading-tight">
                         Đồng hành theo dõi bài học, hạn nộp, điểm số &amp; mục tiêu cá nhân
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {knowledgeChatMessages.length > 1 && (
                       <Popconfirm
                         title="Xóa đoạn chat này?"
@@ -1529,26 +1526,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                         <Button
                           danger
                           size="small"
-                          icon={<DeleteOutlined />}
-                          className="rounded-xl text-xs font-semibold px-2.5 hidden sm:flex items-center gap-1"
+                          icon={<DeleteOutlined className="text-xs" />}
+                          className="rounded-lg text-[11px] font-medium px-2 h-7 hidden sm:flex items-center gap-1"
                         >
-                          Xóa đoạn chat
+                          Xóa
                         </Button>
                       </Popconfirm>
                     )}
                     <button
                       type="button"
                       onClick={() => setIsKnowledgeChatOpen(false)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                       title="Đóng cửa sổ chat"
                     >
-                      <CloseOutlined className="text-base" />
+                      <CloseOutlined className="text-sm" />
                     </button>
                   </div>
                 </div>
 
                 {/* Messages Body */}
-                <div className={`flex-1 overflow-y-auto p-5 space-y-6 ${
+                <div className={`flex-1 overflow-y-auto p-3.5 space-y-3.5 ${
                   isDark ? 'bg-[#0B1118]' : 'bg-[#FAFAF9]'
                 }`}>
                   {knowledgeChatMessages.map((msg, index) => {
@@ -1556,26 +1553,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     return (
                       <div
                         key={index}
-                        className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                        className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                       >
                         {/* Avatar */}
                         <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs mt-0.5 border ${
                             isUser
-                              ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
+                              ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-xs'
                               : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                           }`}
                         >
-                          {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
+                          {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
                         </div>
 
                         {/* Content Bubble */}
-                        <div className={`space-y-2 max-w-[82%]`}>
+                        <div className={`space-y-1.5 max-w-[85%]`}>
                           <div
                             className={
                               isUser
-                                ? 'p-3.5 px-5 rounded-2xl text-sm leading-snug bg-minecraft-grass text-white font-medium shadow-sm rounded-tr-none'
-                                : 'p-4 sm:p-5 rounded-2xl text-sm leading-relaxed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-tl-none font-sans'
+                                ? 'p-2.5 px-3.5 rounded-xl text-xs sm:text-sm leading-normal bg-minecraft-grass text-white font-medium shadow-xs rounded-tr-none'
+                                : 'p-3 px-4 rounded-xl text-xs sm:text-sm leading-normal bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs rounded-tl-none font-sans'
                             }
                           >
                             <MarkdownRenderer
@@ -1587,14 +1584,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                           {/* Sources list if any */}
                           {!isUser && msg.sources && msg.sources.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-0.5">
-                              <span className="text-[11px] font-medium text-slate-500">
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              <span className="text-[10px] font-medium text-slate-500">
                                 Nguồn tham khảo:
                               </span>
                               {msg.sources.map((src, sIdx) => (
                                 <span
                                   key={sIdx}
-                                  className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+                                  className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700"
                                 >
                                   {src}
                                 </span>
@@ -1607,13 +1604,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   })}
 
                   {knowledgeChatLoading && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-sm">
-                        <RobotOutlined className="animate-spin text-base" />
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                        <RobotOutlined className="animate-spin text-xs" />
                       </div>
-                      <div className="p-4 rounded-2xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="p-2.5 px-3.5 rounded-xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Spin size="small" />
-                        <span className="font-medium">Trợ lý AI đang suy nghĩ và tổng hợp câu trả lời...</span>
+                        <span className="font-medium">AI đang suy nghĩ &amp; tổng hợp câu trả lời...</span>
                       </div>
                     </div>
                   )}
@@ -1621,8 +1618,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   <div ref={knowledgeChatEndRef} />
                 </div>
 
-                {/* Prompt Suggestion Chips (Image 1 Style) */}
-                <div className={`px-4 py-2.5 border-t border-b flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 ${
+                {/* Prompt Suggestion Chips */}
+                <div className={`px-3 py-1.5 border-t border-b flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 ${
                   isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
                   {knowledgeQuickPrompts.map((chip, idx) => (
@@ -1631,21 +1628,21 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       type="button"
                       onClick={() => handleSendKnowledgeChat(chip.query)}
                       disabled={knowledgeChatLoading}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:scale-105 active:scale-95 shadow-2xs"
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-2xs"
                     >
                       {chip.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Input Area (Matching Image 1) */}
-                <div className={`p-4 pt-3 border-t shrink-0 ${
+                {/* Input Area */}
+                <div className={`p-2.5 px-3 border-t shrink-0 ${
                   isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <div className={`flex items-center gap-2 p-2 rounded-2xl border-2 transition-all ${
+                  <div className={`flex items-center gap-2 p-1 px-2 rounded-xl border transition-all ${
                     isDark
                       ? 'bg-slate-900 border-slate-700 focus-within:border-emerald-500'
-                      : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-sm'
+                      : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-2xs'
                   }`}>
                     <input
                       type="text"
@@ -1659,18 +1656,18 @@ export const StudySessionWorkspacePage: React.FC = () => {
                         }
                       }}
                       disabled={knowledgeChatLoading}
-                      className="flex-1 bg-transparent border-0 outline-none text-sm px-2 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
+                      className="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm py-1 px-1.5 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
                     />
                     <button
                       type="button"
                       onClick={() => handleSendKnowledgeChat()}
                       disabled={!knowledgeChatInput.trim() || knowledgeChatLoading}
-                      className="w-10 h-10 rounded-xl bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                      className="w-8 h-8 rounded-lg bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                     >
-                      <SendOutlined className="text-base" />
+                      <SendOutlined className="text-sm" />
                     </button>
                   </div>
-                  <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 m-0 pt-2 truncate">
+                  <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 m-0 pt-1 truncate leading-tight">
                     Trợ lý học tập cá nhân tự động tổng hợp thông tin khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân.
                   </p>
                 </div>
@@ -2150,34 +2147,34 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 : 'bg-white border-slate-200 shadow-slate-900/10'
             }`}>
               {/* Header (Matching Floating Card Style) */}
-              <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+              <div className={`px-4 py-2.5 border-b flex items-center justify-between shrink-0 ${
                 isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
               }`}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                    <BlockyRobotIcon size={24} className="text-white" />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <BlockyRobotIcon size={18} className="text-white" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-sm sm:text-base m-0 truncate text-slate-900 dark:text-white">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-xs sm:text-sm m-0 truncate text-slate-900 dark:text-white">
                         Personal Learning Companion
                       </h4>
                       <Badge
                         status="processing"
                         text={
-                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                          <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
                             Socratic Tutor
                           </span>
                         }
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                    <p className="text-[10px] text-slate-400 font-medium m-0 truncate leading-tight">
                       Gia sư Socratic hướng dẫn phương pháp &amp; tư duy bài tập
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {knowledgeChatMessages.length > 1 && (
                     <Popconfirm
                       title="Xóa đoạn chat này?"
@@ -2191,26 +2188,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       <Button
                         danger
                         size="small"
-                        icon={<DeleteOutlined />}
-                        className="rounded-xl text-xs font-semibold px-2.5 hidden sm:flex items-center gap-1"
+                        icon={<DeleteOutlined className="text-xs" />}
+                        className="rounded-lg text-[11px] font-medium px-2 h-7 hidden sm:flex items-center gap-1"
                       >
-                        Xóa đoạn chat
+                        Xóa
                       </Button>
                     </Popconfirm>
                   )}
                   <button
                     type="button"
                     onClick={() => setIsKnowledgeChatOpen(false)}
-                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     title="Đóng cửa sổ chat"
                   >
-                    <CloseOutlined className="text-base" />
+                    <CloseOutlined className="text-sm" />
                   </button>
                 </div>
               </div>
 
               {/* Messages Body */}
-              <div className={`flex-1 overflow-y-auto p-5 space-y-6 ${
+              <div className={`flex-1 overflow-y-auto p-3.5 space-y-3.5 ${
                 isDark ? 'bg-[#0B1118]' : 'bg-[#FAFAF9]'
               }`}>
                 {knowledgeChatMessages.map((msg, index) => {
@@ -2218,26 +2215,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   return (
                     <div
                       key={index}
-                      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                      className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs mt-0.5 border ${
                           isUser
-                            ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
+                            ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-xs'
                             : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
+                        {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
                       </div>
 
                       {/* Content Bubble */}
-                      <div className={`space-y-2 max-w-[82%]`}>
+                      <div className={`space-y-1.5 max-w-[85%]`}>
                         <div
                           className={
                             isUser
-                              ? 'p-3.5 px-5 rounded-2xl text-sm leading-snug bg-minecraft-grass text-white font-medium shadow-sm rounded-tr-none'
-                              : 'p-4 sm:p-5 rounded-2xl text-sm leading-relaxed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-tl-none font-sans'
+                              ? 'p-2.5 px-3.5 rounded-xl text-xs sm:text-sm leading-normal bg-minecraft-grass text-white font-medium shadow-xs rounded-tr-none'
+                              : 'p-3 px-4 rounded-xl text-xs sm:text-sm leading-normal bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs rounded-tl-none font-sans'
                           }
                         >
                           <MarkdownRenderer
@@ -2249,14 +2246,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                         {/* Sources list if any */}
                         {!isUser && msg.sources && msg.sources.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-0.5">
-                            <span className="text-[11px] font-medium text-slate-500">
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            <span className="text-[10px] font-medium text-slate-500">
                               Nguồn tham khảo:
                             </span>
                             {msg.sources.map((src, sIdx) => (
                               <span
                                 key={sIdx}
-                                className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+                                className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700"
                               >
                                 📄 {src}
                               </span>
@@ -2269,13 +2266,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 })}
 
                 {knowledgeChatLoading && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-sm">
-                      <RobotOutlined className="animate-spin text-base" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                      <RobotOutlined className="animate-spin text-xs" />
                     </div>
-                    <div className="p-4 rounded-2xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="p-2.5 px-3.5 rounded-xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <Spin size="small" />
-                      <span className="font-medium">Trợ lý AI đang suy nghĩ và tổng hợp câu trả lời...</span>
+                      <span className="font-medium">Trợ lý AI đang suy nghĩ &amp; tổng hợp...</span>
                     </div>
                   </div>
                 )}
@@ -2283,38 +2280,35 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 <div ref={knowledgeChatEndRef} />
               </div>
 
-              {/* Prompt Suggestion Chips (Socratic Tutoring & Integrity Focused) */}
-              <div className={`px-4 py-2.5 border-t border-b flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 ${
+              {/* Prompt Suggestion Chips */}
+              <div className={`px-3 py-1.5 border-t border-b flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 ${
                 isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
               }`}>
                 {[
-                  { label: 'Gợi ý phương pháp giải', query: `Tôi đang làm bài tập "${task?.title || ''}", hãy gợi ý phương pháp tư duy và các bước tiếp cận (không đưa ra đáp án trực tiếp).` },
-                  { label: 'Giải thích khái niệm liên quan', query: 'Hãy giải thích các khái niệm và định nghĩa quan trọng xuất hiện trong bài tập này.' },
-                  { label: 'Đặt câu hỏi định hướng', query: 'Hãy đặt cho tôi 1 câu hỏi gợi mở để giúp tôi tự tìm ra cách giải bài tập này.' },
-                  { label: 'Nhắc lại lý thuyết cần dùng', query: 'Bài tập này đòi hỏi sử dụng những công thức và kiến thức nền tảng nào?' },
-                  { label: 'Môn học của tôi', query: `Tôi đang học môn gì và bài học "${task?.title || ''}" nằm trong chương trình nào?` },
-                  { label: 'Bài tập sắp đến hạn', query: 'Tôi có những bài tập nào sắp đến hạn nộp liên quan đến bài này?' },
+                  { label: 'Gợi ý 1 câu', query: `Gợi ý 1 câu hướng dẫn phương pháp giải bài tập "${task?.title || ''}".` },
+                  { label: '3 câu hỏi nhanh', query: 'Đặt 3 câu hỏi ngắn gợi mở để giúp tôi tự tìm cách giải.' },
+                  { label: 'Ý chính bài học', query: 'Ý chính nền tảng của bài tập này là gì?' },
                 ].map((chip, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSendKnowledgeChat(chip.query)}
                     disabled={knowledgeChatLoading}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:scale-105 active:scale-95 shadow-2xs"
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-2xs"
                   >
                     {chip.label}
                   </button>
                 ))}
               </div>
 
-              {/* Input Area (Matching Image 2) */}
-              <div className={`p-4 pt-3 border-t shrink-0 ${
+              {/* Input Area */}
+              <div className={`p-2.5 px-3 border-t shrink-0 ${
                 isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
               }`}>
-                <div className={`flex items-center gap-2 p-2 rounded-2xl border-2 transition-all ${
+                <div className={`flex items-center gap-2 p-1 px-2 rounded-xl border transition-all ${
                   isDark
                     ? 'bg-slate-900 border-slate-700 focus-within:border-emerald-500'
-                    : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-sm'
+                    : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-2xs'
                 }`}>
                   <input
                     type="text"
@@ -2328,18 +2322,18 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       }
                     }}
                     disabled={knowledgeChatLoading}
-                    className="flex-1 bg-transparent border-0 outline-none text-sm px-2 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
+                    className="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm py-1 px-1.5 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
                   />
                   <button
                     type="button"
                     onClick={() => handleSendKnowledgeChat()}
                     disabled={!knowledgeChatInput.trim() || knowledgeChatLoading}
-                    className="w-10 h-10 rounded-xl bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                    className="w-8 h-8 rounded-lg bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                   >
-                    <SendOutlined className="text-base" />
+                    <SendOutlined className="text-sm" />
                   </button>
                 </div>
-                <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 m-0 pt-2 truncate">
+                <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 m-0 pt-1 truncate leading-tight">
                   Trợ lý Socratic chỉ gợi ý phương pháp và giải thích lý thuyết, không cung cấp đáp án trực tiếp.
                 </p>
               </div>
