@@ -25,7 +25,7 @@ from src.models.weekly_plan import (
     WeeklyPlanResponse,
     WeeklyPlanUpdateRequest,
 )
-from src.services.schedule_utils import check_task_conflict_with_fixed_schedules
+from src.services.schedule_utils import check_task_conflict_with_fixed_schedules, parse_time_to_minutes
 
 
 import json
@@ -466,12 +466,22 @@ class WeeklyPlanService:
             target_date = sched_dt.date() if isinstance(sched_dt, datetime) else sched_dt
 
             def check_overlap(st_str: str, et_str: str) -> bool:
+                try:
+                    s_st = parse_time_to_minutes(st_str)
+                    s_et = parse_time_to_minutes(et_str)
+                except Exception:
+                    return False
                 for t in existing_tasks:
                     if t.scheduled_date and t.start_time and t.end_time:
                         t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
                         if t_date == target_date:
-                            if st_str < t.end_time and et_str > t.start_time:
-                                return True
+                            try:
+                                t_st = parse_time_to_minutes(t.start_time)
+                                t_et = parse_time_to_minutes(t.end_time)
+                                if s_st < t_et and s_et > t_st:
+                                    return True
+                            except Exception:
+                                pass
                 return False
 
             if check_overlap(payload.start_time, payload.end_time):
@@ -700,15 +710,28 @@ class WeeklyPlanService:
             existing_tasks = tasks_res.scalars().all()
 
             target_date = eff_date.date() if isinstance(eff_date, datetime) else eff_date
+            try:
+                e_st = parse_time_to_minutes(eff_start)
+                e_et = parse_time_to_minutes(eff_end)
+            except Exception:
+                e_st, e_et = 0, 0
+
             for t in existing_tasks:
                 if t.scheduled_date and t.start_time and t.end_time:
                     t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
                     if t_date == target_date:
-                        if eff_start < t.end_time and eff_end > t.start_time:
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
-                            )
+                        try:
+                            t_st = parse_time_to_minutes(t.start_time)
+                            t_et = parse_time_to_minutes(t.end_time)
+                            if e_st < t_et and e_et > t_st:
+                                raise HTTPException(
+                                    status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
+                                )
+                        except HTTPException:
+                            raise
+                        except Exception:
+                            pass
 
         await db.commit()
         await db.refresh(task)
