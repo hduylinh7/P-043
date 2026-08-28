@@ -17,33 +17,33 @@ export const FeaturesSection: React.FC = () => {
   const features = [
     {
       icon: <RobotOutlined className="text-3xl text-emerald-500" />,
-      title: 'AI Tutor',
-      description: 'Receive step-by-step explanations, instant concept breakdowns, and personalized problem-solving hints anytime.',
+      title: 'Gia Sư AI Cá Nhân Hóa',
+      description: 'Nhận giải thích từng bước, phân tích khái niệm tức thì và gợi ý giải bài tập cá nhân hóa bất cứ lúc nào.',
     },
     {
       icon: <CalendarOutlined className="text-3xl text-amber-500" />,
-      title: 'Smart Study Planner',
-      description: 'Automatically generate balanced study schedules tailored around your university lectures, exams, and personal life.',
+      title: 'Lập Kế Hoạch Học Thông Minh',
+      description: 'Tự động tạo lịch học cân bằng, tối ưu theo thời khóa biểu, lịch thi và mục tiêu cá nhân.',
     },
     {
       icon: <AimOutlined className="text-3xl text-emerald-500" />,
-      title: 'Weekly Goals',
-      description: 'Set manageable target milestones each week with intelligent progress tracking and adaptive push notifications.',
+      title: 'Mục Tiêu Học Tập Tuần',
+      description: 'Thiết lập các mốc mục tiêu khả thi mỗi tuần kèm theo dõi tiến độ thông minh và nhắc nhở đúng lúc.',
     },
     {
       icon: <FileDoneOutlined className="text-3xl text-sky-500" />,
-      title: 'Assignment Tracking',
-      description: 'Stay ahead of deadlines with centralized submission timelines, priority tags, and automated reminder alerts.',
+      title: 'Theo Dõi Hạn Nộp Bài Tập',
+      description: 'Chủ động trước mọi deadline với bảng quản lý bài nộp tập trung, phân loại ưu tiên và cảnh báo tự động.',
     },
     {
       icon: <MessageOutlined className="text-3xl text-sky-500" />,
-      title: 'AI Chat Assistant',
-      description: 'Engage in natural conversations with an AI study buddy that answers course questions and summarizes dense documents.',
+      title: 'Trợ Lý Chat AI Đồng Hành',
+      description: 'Trò chuyện tự nhiên với bạn học AI giúp giải đáp thắc mắc môn học và tóm tắt tài liệu chuyên sâu.',
     },
     {
       icon: <LineChartOutlined className="text-3xl text-amber-500" />,
-      title: 'Learning Analytics',
-      description: 'Gain clear data insights into your study habits, retention metrics, time allocation, and academic performance.',
+      title: 'Phân Tích & Đánh Giá Tiến Bộ',
+      description: 'Nắm bắt số liệu trực quan về thói quen học tập, thời gian phân bổ và hiệu suất học tập toàn diện.',
     },
   ];
 

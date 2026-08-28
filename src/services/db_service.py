@@ -25,6 +25,13 @@ async def get_session(db: AsyncSession, session_id: str) -> ChatSession | None:
     return await ChatRepository.get_session(db, session_id)
 
 
+async def delete_session(
+    db: AsyncSession, session_id: str, user_id: str | None = None
+) -> bool:
+    """Delete a chat session."""
+    return await ChatRepository.delete_session(db, session_id, user_id=user_id)
+
+
 async def list_sessions(
     db: AsyncSession,
     user_id: str = "default_user",

@@ -78,6 +78,74 @@ class PlanTaskReflectionRequest(BaseModel):
     struggling_with: str | None = Field(default=None, description="What are you still struggling with?")
     understanding_level: str | None = Field(default="mostly", description="not_understood, partially, mostly, fully")
     achieved_goal: str | None = Field(default="yes", description="yes, partially, no")
+    practice_summary: str | None = Field(default=None, description="Summary of AI practice exercises completed")
+
+
+class LearningObjectiveItem(BaseModel):
+    id: str
+    text: str
+    checked: bool = False
+
+
+class KeyConceptItem(BaseModel):
+    title: str
+    definition: str
+    main_characteristics: list[str] = Field(default_factory=list)
+    examples: list[str] = Field(default_factory=list)
+
+
+class AIStudyGuideData(BaseModel):
+    key_concepts: list[KeyConceptItem] = Field(default_factory=list)
+    focus_area: str | None = None
+    important_points: list[str] = Field(default_factory=list)
+    sources: list[dict] = Field(default_factory=list)
+
+
+class RelatedAssignmentData(BaseModel):
+    id: str
+    title: str
+    due_date: str | None = None
+    description: str | None = None
+    why_relevant: str | None = None
+
+
+class SelfCheckQuestionItem(BaseModel):
+    id: str
+    question: str
+    type: str = "short_answer"
+    options: list[str] = Field(default_factory=list)
+    hint: str | None = None
+    sample_answer: str | None = None
+    explanation: str | None = None
+
+
+class SelfCheckEvalRequest(BaseModel):
+    question_id: str
+    question_text: str
+    student_answer: str
+
+
+class SelfCheckEvalResponse(BaseModel):
+    question_id: str
+    is_correct: bool | None = None
+    feedback: str
+    explanation: str | None = None
+    suggested_review: str | None = None
+
+
+class ReadingRoadmapData(BaseModel):
+    focus_sections: list[str] = Field(default_factory=list)
+    skim_sections: list[str] = Field(default_factory=list)
+    skip_sections: list[str] = Field(default_factory=list)
+
+
+class StudySessionCompanionResponse(BaseModel):
+    learning_objectives: list[LearningObjectiveItem] = Field(default_factory=list)
+    ai_study_guide: AIStudyGuideData | None = None
+    reading_roadmap: ReadingRoadmapData | None = None
+    related_assignment: RelatedAssignmentData | None = None
+    quick_self_check: list[SelfCheckQuestionItem] = Field(default_factory=list)
+    sources: list[dict] = Field(default_factory=list)
 
 
 class PlanTaskResponse(BaseModel):
@@ -112,6 +180,7 @@ class PlanTaskResponse(BaseModel):
     reflection_data: dict | None = None
     ai_insight: str | None = None
     suggested_next_focus: str | None = None
+    companion_data: StudySessionCompanionResponse | None = None
     created_at: datetime | str
     updated_at: datetime | str
 

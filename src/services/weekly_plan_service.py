@@ -1,12 +1,14 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.db.enums import normalize_priority
+from src.db.enums import EnrollmentRoleEnum, normalize_priority
+from src.db.models.learning.course import Course
+from src.db.models.learning.enrollment import Enrollment
 from src.db.models.planning.task import Task
 from src.db.models.planning.weekly_goal import WeeklyGoal
 from src.models.auth import UserResponse
@@ -16,10 +18,14 @@ from src.models.weekly_plan import (
     PlanTaskResponse,
     PlanTaskStatusUpdateRequest,
     PlanTaskUpdateRequest,
+    SelfCheckEvalRequest,
+    SelfCheckEvalResponse,
+    StudySessionCompanionResponse,
     WeeklyPlanCreateRequest,
     WeeklyPlanResponse,
     WeeklyPlanUpdateRequest,
 )
+from src.services.schedule_utils import check_task_conflict_with_fixed_schedules, parse_time_to_minutes
 
 
 import json
@@ -29,11 +35,56 @@ def parse_datetime(val: datetime | str | None) -> datetime | None:
         return None
     if isinstance(val, datetime):
         return val
+    if isinstance(val, date):
+        return datetime.combine(val, datetime.min.time())
     try:
-        # Handle ISO strings
-        return datetime.fromisoformat(val.replace("Z", "+00:00"))
+        val_clean = str(val).strip()
+        if len(val_clean) == 10 and val_clean.count("-") == 2:
+            d = date.fromisoformat(val_clean)
+            return datetime.combine(d, datetime.min.time())
+        return datetime.fromisoformat(val_clean.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def format_iso_date_clean(val: datetime | date | str | None) -> str | None:
+    if val is None:
+        return None
+    if isinstance(val, str):
+        val_clean = val.strip()
+        if "T" in val_clean:
+            try:
+                dt = datetime.fromisoformat(val_clean.replace("Z", "+00:00"))
+                return format_iso_date_clean(dt)
+            except Exception:
+                return val_clean.split("T")[0]
+        return val_clean
+    if isinstance(val, datetime):
+        if val.tzinfo is not None:
+            offset = val.utcoffset()
+            if offset is not None and offset.total_seconds() == 0 and (val.hour >= 17 or (val.hour == 0 and val.minute == 0)):
+                local_dt = val + timedelta(hours=7)
+                return local_dt.strftime("%Y-%m-%d")
+            elif offset is not None:
+                local_dt = val + offset
+                return local_dt.strftime("%Y-%m-%d")
+        return val.strftime("%Y-%m-%d")
+    if isinstance(val, date):
+        return val.strftime("%Y-%m-%d")
+    return str(val)
+
+
+def normalize_time_str(ts: str | None) -> str | None:
+    if not ts:
+        return ts
+    ts_clean = str(ts).strip()
+    parts = ts_clean.split(":")
+    if len(parts) >= 2:
+        h, m = parts[0], parts[1]
+        if len(h) == 1:
+            h = f"0{h}"
+        return f"{h}:{m[:2]}"
+    return ts_clean
 
 
 def pack_task_description(
@@ -55,11 +106,12 @@ def pack_task_description(
     reflection_data: dict | None = None,
     ai_insight: str | None = None,
     suggested_next_focus: str | None = None,
+    companion_data: dict | None = None,
 ) -> str | None:
     has_meta = any([
         topic, what_to_study, what_to_do, reason, material_id, material_title,
         course_id, course_name, goal_id, goal_title, started_at, completed_at,
-        actual_duration, completed_activities, reflection_data, ai_insight, suggested_next_focus
+        actual_duration, completed_activities, reflection_data, ai_insight, suggested_next_focus, companion_data
     ])
     if not has_meta:
         return description
@@ -83,6 +135,7 @@ def pack_task_description(
         "reflection_data": reflection_data,
         "ai_insight": ai_insight,
         "suggested_next_focus": suggested_next_focus,
+        "companion_data": companion_data,
     }
     return json.dumps(meta, ensure_ascii=False)
 
@@ -100,6 +153,9 @@ def serialize_task(task: Task) -> PlanTaskResponse:
             meta = {}
 
     clean_desc = meta.get("description") if meta else task.description
+    clean_sched_date = format_iso_date_clean(task.scheduled_date)
+
+    companion_val = meta.get("companion_data")
 
     return PlanTaskResponse(
         id=task.id,
@@ -119,7 +175,7 @@ def serialize_task(task: Task) -> PlanTaskResponse:
         goal_title=meta.get("goal_title"),
         priority=priority_val,
         status=status_val,
-        scheduled_date=task.scheduled_date,
+        scheduled_date=clean_sched_date,
         start_time=task.start_time,
         end_time=task.end_time,
         estimated_duration=task.estimated_minutes,
@@ -133,6 +189,7 @@ def serialize_task(task: Task) -> PlanTaskResponse:
         reflection_data=meta.get("reflection_data"),
         ai_insight=meta.get("ai_insight"),
         suggested_next_focus=meta.get("suggested_next_focus"),
+        companion_data=companion_val,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -147,8 +204,8 @@ def serialize_weekly_plan(plan: WeeklyGoal) -> WeeklyPlanResponse:
         student_id=plan.student_id,
         title=plan.title,
         description=plan.description,
-        week_start_date=plan.week_start_date,
-        week_end_date=plan.week_end_date,
+        week_start_date=format_iso_date_clean(plan.week_start_date) or str(plan.week_start_date),
+        week_end_date=format_iso_date_clean(plan.week_end_date) or str(plan.week_end_date),
         status=status_val,
         generated_by_agent=plan.generated_by_agent,
         version=plan.version,
@@ -291,7 +348,12 @@ class WeeklyPlanService:
             plan.status = payload.status
 
         await db.commit()
-        await db.refresh(plan)
+        res = await db.execute(
+            select(WeeklyGoal)
+            .options(selectinload(WeeklyGoal.tasks))
+            .where(WeeklyGoal.id == plan_id)
+        )
+        plan = res.scalar_one()
         return serialize_weekly_plan(plan)
 
     @staticmethod
@@ -368,22 +430,84 @@ class WeeklyPlanService:
                 detail=f"Giờ bắt đầu ({payload.start_time}) phải trước giờ kết thúc ({payload.end_time}).",
             )
 
-        # Check schedule conflict with existing tasks in the same plan
+        # Check schedule conflict with fixed university course schedules and existing plan tasks & auto-shift if overlapped
         if sched_dt and payload.start_time and payload.end_time:
+            # 1. Fixed Course Schedules Conflict Check
+            enroll_stmt = (
+                select(Course)
+                .join(Enrollment, Enrollment.course_id == Course.id)
+                .options(selectinload(Course.schedules))
+                .where(
+                    (Enrollment.user_id == current_user.id)
+                    & (func.lower(Enrollment.role) == "student")
+                    & (Enrollment.status == "active")
+                )
+            )
+            enroll_res = await db.execute(enroll_stmt)
+            enrolled_courses = enroll_res.scalars().all()
+
+            fixed_conflict = check_task_conflict_with_fixed_schedules(
+                scheduled_date=sched_dt,
+                start_time=payload.start_time,
+                end_time=payload.end_time,
+                enrolled_courses=enrolled_courses,
+            )
+            if fixed_conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Trùng lịch! Khung giờ ({payload.start_time} - {payload.end_time}) bị trùng với Lịch học giảng đường cố định môn '{fixed_conflict['course_name']}' ({fixed_conflict['fixed_start_time']} - {fixed_conflict['fixed_end_time']}). Vui lòng chọn khung giờ khác.",
+                )
+
+            # 2. Existing Tasks Conflict Check
             tasks_stmt = select(Task).where(Task.weekly_goal_id == plan.id)
             tasks_res = await db.execute(tasks_stmt)
             existing_tasks = tasks_res.scalars().all()
 
             target_date = sched_dt.date() if isinstance(sched_dt, datetime) else sched_dt
-            for t in existing_tasks:
-                if t.scheduled_date and t.start_time and t.end_time:
-                    t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
-                    if t_date == target_date:
-                        if payload.start_time < t.end_time and payload.end_time > t.start_time:
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"Trùng lịch! Khung giờ ({payload.start_time} - {payload.end_time}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
-                            )
+
+            def check_overlap(st_str: str, et_str: str) -> bool:
+                try:
+                    s_st = parse_time_to_minutes(st_str)
+                    s_et = parse_time_to_minutes(et_str)
+                except Exception:
+                    return False
+                for t in existing_tasks:
+                    if t.scheduled_date and t.start_time and t.end_time:
+                        t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
+                        if t_date == target_date:
+                            try:
+                                t_st = parse_time_to_minutes(t.start_time)
+                                t_et = parse_time_to_minutes(t.end_time)
+                                if s_st < t_et and s_et > t_st:
+                                    return True
+                            except Exception:
+                                pass
+                return False
+
+            if check_overlap(payload.start_time, payload.end_time):
+                try:
+                    t1 = datetime.strptime(payload.start_time, "%H:%M")
+                    t2 = datetime.strptime(payload.end_time, "%H:%M")
+                    duration_mins = int((t2 - t1).total_seconds() / 60)
+                    if duration_mins <= 0:
+                        duration_mins = 120
+                except Exception:
+                    duration_mins = 120
+
+                # Search next available slot starting from 07:00 to 22:00
+                found_slot = False
+                for hour in range(7, 22):
+                    candidate_st = datetime.strptime(f"{hour:02d}:00", "%H:%M")
+                    candidate_et = candidate_st + timedelta(minutes=duration_mins)
+                    if candidate_et.hour >= 23 and candidate_et.minute > 0:
+                        break
+                    st_str = candidate_st.strftime("%H:%M")
+                    et_str = candidate_et.strftime("%H:%M")
+                    if not check_overlap(st_str, et_str):
+                        payload.start_time = st_str
+                        payload.end_time = et_str
+                        found_slot = True
+                        break
 
         packed_desc = pack_task_description(
             description=payload.description,
@@ -551,6 +675,33 @@ class WeeklyPlanService:
             )
 
         if eff_date and eff_start and eff_end:
+            # 1. Fixed Course Schedules Conflict Check
+            enroll_stmt = (
+                select(Course)
+                .join(Enrollment, Enrollment.course_id == Course.id)
+                .options(selectinload(Course.schedules))
+                .where(
+                    (Enrollment.user_id == current_user.id)
+                    & (func.lower(Enrollment.role) == "student")
+                    & (Enrollment.status == "active")
+                )
+            )
+            enroll_res = await db.execute(enroll_stmt)
+            enrolled_courses = enroll_res.scalars().all()
+
+            fixed_conflict = check_task_conflict_with_fixed_schedules(
+                scheduled_date=eff_date,
+                start_time=eff_start,
+                end_time=eff_end,
+                enrolled_courses=enrolled_courses,
+            )
+            if fixed_conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với Lịch học giảng đường cố định môn '{fixed_conflict['course_name']}' ({fixed_conflict['fixed_start_time']} - {fixed_conflict['fixed_end_time']}). Vui lòng chọn khung giờ khác.",
+                )
+
+            # 2. Existing Tasks Conflict Check
             tasks_stmt = select(Task).where(
                 Task.weekly_goal_id == task.weekly_goal_id,
                 Task.id != task.id,
@@ -559,15 +710,28 @@ class WeeklyPlanService:
             existing_tasks = tasks_res.scalars().all()
 
             target_date = eff_date.date() if isinstance(eff_date, datetime) else eff_date
+            try:
+                e_st = parse_time_to_minutes(eff_start)
+                e_et = parse_time_to_minutes(eff_end)
+            except Exception:
+                e_st, e_et = 0, 0
+
             for t in existing_tasks:
                 if t.scheduled_date and t.start_time and t.end_time:
                     t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
                     if t_date == target_date:
-                        if eff_start < t.end_time and eff_end > t.start_time:
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
-                            )
+                        try:
+                            t_st = parse_time_to_minutes(t.start_time)
+                            t_et = parse_time_to_minutes(t.end_time)
+                            if e_st < t_et and e_et > t_st:
+                                raise HTTPException(
+                                    status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
+                                )
+                        except HTTPException:
+                            raise
+                        except Exception:
+                            pass
 
         await db.commit()
         await db.refresh(task)
@@ -695,29 +859,48 @@ class WeeklyPlanService:
             "struggling_with": payload.struggling_with,
             "understanding_level": payload.understanding_level,
             "achieved_goal": payload.achieved_goal,
+            "practice_summary": payload.practice_summary,
         }
 
         topic = existing_meta.get("topic") or task.title
         course_name = existing_meta.get("course_name") or "Khóa học"
+        what_to_study = existing_meta.get("what_to_study") or []
 
-        ai_insight = f"Bạn đã hoàn thành tốt buổi học về '{topic}'. Cần chú ý thêm phần: {payload.struggling_with or 'các khái niệm khó'}."
-        suggested_next_focus = f"Ôn tập và thực hành thêm kiến thức thuộc bài giảng {topic} ({course_name})."
+        ai_insight = f"Bạn đã nắm khá tốt nội dung bài học về '{topic}'. Cần chú ý thêm phần: {payload.struggling_with or 'các khái niệm phức tạp'}."
+        suggested_next_focus = f"Nên ôn lại các phần vướng mắc và làm thêm bài tập luyện tập trước khi chuyển sang chủ đề tiếp theo."
+        strengths = payload.understood_well or f"Khái niệm và lý thuyết cốt lõi của {topic}"
+        weaknesses = payload.struggling_with or "Cần rèn luyện thêm khả năng vận dụng bài tập"
 
         try:
             from src.services.llm import get_llm
             from langchain_core.messages import HumanMessage
             llm = get_llm(temperature=0.3)
             prompt = (
-                f"Dựa trên phản hồi Reflection của sinh viên sau buổi học:\n"
-                f"- Khóa học: {course_name}\n"
-                f"- Chủ đề: {topic}\n"
-                f"- Đã học được: {payload.what_learned or 'Chưa nhập'}\n"
-                f"- Hiểu tốt: {payload.understood_well or 'Chưa nhập'}\n"
-                f"- Vẫn vướng mắc: {payload.struggling_with or 'Chưa nhập'}\n"
-                f"- Mức độ hiểu: {payload.understanding_level}\n"
-                f"- Đạt mục tiêu: {payload.achieved_goal}\n\n"
-                f"Hãy đưa ra 1 nhận xét ngắn gọn (ai_insight - max 2 câu) và 1 gợi ý trọng tâm tiếp theo (suggested_next_focus - max 1 câu) bằng tiếng Việt dưới dạng JSON:\n"
-                f'{{"ai_insight": "...", "suggested_next_focus": "..."}}'
+                f"You are a Personal Learning Companion AI. Analyze the student's completed study session and generate comprehensive AI feedback (Nhận xét tổng quan từ AI) in Vietnamese.\n\n"
+                f"Study Session Context:\n"
+                f"- Course: {course_name}\n"
+                f"- Topic: {topic}\n"
+                f"- Covered items: {', '.join(what_to_study) if what_to_study else topic}\n"
+                f"- AI Practice Results: {payload.practice_summary or 'Đã hoàn thành các câu tự kiểm tra'}\n\n"
+                f"Student Reflection Answers:\n"
+                f"- What they learned: {payload.what_learned or 'Đã xem qua nội dung bài học'}\n"
+                f"- What they understood well: {payload.understood_well or 'Nội dung lý thuyết cơ bản'}\n"
+                f"- Areas still struggling with: {payload.struggling_with or 'Không ghi nhận vướng mắc lớn'}\n"
+                f"- Understanding level: {payload.understanding_level}\n"
+                f"- Achieved goal: {payload.achieved_goal}\n\n"
+                f"INSTRUCTIONS:\n"
+                f"Generate a helpful, empathetic, and actionable feedback in Vietnamese strictly adhering to JSON:\n"
+                f"1. ai_insight: Overall learning assessment summarizing what they did well and highlighting their main knowledge gap (2-3 concise sentences).\n"
+                f"2. suggested_next_focus: Short, practical recommendation for what they should study or practice next (1-2 sentences).\n"
+                f"3. strengths: Concise list/sentence of concepts they understood well.\n"
+                f"4. weaknesses: Concise list/sentence of concepts that still need improvement or review.\n\n"
+                f"Return JSON strictly matching format:\n"
+                f'{{\n'
+                f'  "ai_insight": "Bạn đã nắm khá tốt các khái niệm cơ bản và hoàn thành phần luyện tập...",\n'
+                f'  "suggested_next_focus": "Nên ôn lại phần... và làm thêm câu luyện tập trước khi chuyển bài tiếp.",\n'
+                f'  "strengths": "Nắm vững lý thuyết cơ bản...",\n'
+                f'  "weaknesses": "Còn lúng túng ở phần..."\n'
+                f'}}'
             )
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             text = str(response.content)
@@ -728,8 +911,17 @@ class WeeklyPlanService:
                     ai_insight = parsed.get("ai_insight")
                 if parsed.get("suggested_next_focus"):
                     suggested_next_focus = parsed.get("suggested_next_focus")
+                if parsed.get("strengths"):
+                    strengths = parsed.get("strengths")
+                if parsed.get("weaknesses"):
+                    weaknesses = parsed.get("weaknesses")
         except Exception as e:
-            pass
+            import logging
+            logging.getLogger(__name__).warning(f"LLM Reflection analysis failed: {e}")
+
+        reflection_dict["overall_assessment"] = ai_insight
+        reflection_dict["strengths"] = strengths
+        reflection_dict["weaknesses"] = weaknesses
 
         started_at = existing_meta.get("started_at") or datetime.now(timezone.utc).isoformat()
         completed_at = datetime.now(timezone.utc).isoformat()
@@ -768,3 +960,526 @@ class WeeklyPlanService:
         await db.commit()
         await db.refresh(task)
         return serialize_task(task)
+
+    @staticmethod
+    async def get_study_session_companion_data(
+        db: AsyncSession,
+        task_id: str,
+        current_user: UserResponse,
+    ) -> StudySessionCompanionResponse:
+        """
+        Generate or fetch cached grounded companion data for a Study Session:
+        - Learning Objectives
+        - AI Study Guide (Key Concepts, Focus Areas, Important Points, Sources)
+        - Source Traceability
+        - Related Assignment Info
+        - Quick Self-Check Questions (Non-graded)
+        """
+        WeeklyPlanService._ensure_student(current_user)
+
+        stmt = select(Task).options(selectinload(Task.weekly_goal)).where(Task.id == task_id)
+        res = await db.execute(stmt)
+        task = res.scalar_one_or_none()
+
+        if not task or not task.weekly_goal or task.weekly_goal.student_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or access denied.",
+            )
+
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        # If companion_data is already generated and saved in metadata, return it (unless poor cache)
+        cached_comp = existing_meta.get("companion_data")
+        if cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
+            guide = cached_comp.get("ai_study_guide") or {}
+            concepts = guide.get("key_concepts") or []
+            is_poor = (
+                len(concepts) < 2
+                or any(
+                    c.get("title", "").strip().lower() in ["học và làm", "làm bài tập", "ôn tập", "chuẩn bị", "tự học"]
+                    or "học & làm" in c.get("title", "").strip().lower()
+                    for c in concepts
+                )
+            )
+            if not is_poor:
+                try:
+                    return StudySessionCompanionResponse(**cached_comp)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
+
+        # Retrieve course material chunks via RAGService
+        course_id = existing_meta.get("course_id")
+        material_id = existing_meta.get("material_id")
+        assignment_id = task.assignment_id or existing_meta.get("assignment_id")
+        raw_topic = existing_meta.get("topic") or task.title or "Chủ đề học tập"
+        clean_topic = raw_topic
+        for prefix in ["Học & Làm", "Học và Làm", "học và làm", "học & làm"]:
+            clean_topic = clean_topic.replace(prefix, "")
+        clean_topic = clean_topic.strip(" :-–,.") or raw_topic
+
+        course_name = existing_meta.get("course_name") or "Khóa học"
+        if course_id and course_name == "Khóa học":
+            try:
+                from src.db.models.learning.course import Course
+                c_stmt = select(Course).where(Course.id == course_id)
+                c_res = await db.execute(c_stmt)
+                course_obj = c_res.scalar_one_or_none()
+                if course_obj and course_obj.name:
+                    course_name = course_obj.name
+            except Exception:
+                pass
+
+        what_to_study = existing_meta.get("what_to_study") or []
+        what_to_do = existing_meta.get("what_to_do") or []
+
+        # RAG Search
+        retrieved_chunks = []
+        try:
+            from src.services.rag_service import RAGService
+            query = f"{course_name} {clean_topic} {' '.join(what_to_study)}"
+            retrieved_chunks = RAGService.search_course_materials(
+                course_id=course_id,
+                query=query,
+                material_id=material_id,
+                assignment_id=assignment_id,
+                top_k=5,
+            )
+            if not retrieved_chunks and course_id:
+                retrieved_chunks = RAGService.search_course_materials(
+                    course_id=course_id,
+                    query=f"{course_name} giáo trình bài giảng lý thuyết",
+                    top_k=4,
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"RAG search failed for study session task {task_id}: {e}")
+
+        # Fetch Related Assignment info if assignment_id exists
+        related_assign_dict = None
+        if assignment_id:
+            try:
+                from src.db.models.learning.assignment import Assignment
+                a_stmt = select(Assignment).where(Assignment.id == assignment_id)
+                a_res = await db.execute(a_stmt)
+                assign_obj = a_res.scalar_one_or_none()
+                if assign_obj:
+                    due_str = format_iso_date_clean(assign_obj.due_at)
+                    related_assign_dict = {
+                        "id": assign_obj.id,
+                        "title": assign_obj.title,
+                        "due_date": due_str,
+                        "description": assign_obj.description,
+                        "why_relevant": f"Buổi học này củng cố các kiến thức trọng tâm để chuẩn bị cho bài tập '{assign_obj.title}'.",
+                    }
+            except Exception as a_err:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed fetching assignment details: {a_err}")
+
+        # Build Sources list
+        sources_list = []
+        if material_id and existing_meta.get("material_title"):
+            sources_list.append({
+                "title": existing_meta.get("material_title"),
+                "file_name": existing_meta.get("material_title"),
+                "material_id": material_id,
+                "course_id": course_id,
+            })
+        for chunk in retrieved_chunks:
+            meta = chunk.get("metadata", {})
+            f_name = meta.get("file_name") or meta.get("title")
+            m_id = meta.get("material_id")
+            c_id = meta.get("course_id") or course_id
+            if f_name and not any(s["file_name"] == f_name for s in sources_list):
+                sources_list.append({
+                    "title": meta.get("title") or f_name,
+                    "file_name": f_name,
+                    "material_id": m_id,
+                    "course_id": c_id,
+                })
+
+        context_text = "\n\n".join([
+            f"--- Snippet từ tài liệu '{c.get('metadata', {}).get('file_name', 'Tài liệu')}':\n{c.get('content', '')}"
+            for c in retrieved_chunks
+        ])
+
+        system_instruction = (
+            "You are a Personal Learning Companion AI Assistant for university students.\n"
+            "Your task is to generate a grounded Study Session Companion based on:\n"
+            "- Course\n"
+            "- Study Session Topic\n"
+            "- Topics to Study\n"
+            "- Retrieved Course Materials from RAG\n"
+            "- Related Assignment (if available)\n\n"
+            "STRICT GROUNDING RULES:\n"
+            "1. Ground all academic content strictly in the provided course materials. Retrieved course materials are the primary source of truth.\n"
+            "2. Do not invent concepts, formulas, theories, definitions, examples, or facts that are not supported by the provided materials.\n"
+            "3. Focus only on the current Study Session Topic instead of generating broad content for the entire course.\n"
+            "4. All student-facing content must be written in Vietnamese.\n\n"
+            "KEY CONCEPTS:\n"
+            "1. Generate exactly 3 concrete academic concepts.\n"
+            "2. Each concept MUST be an actual subject-matter concept, theory, algorithm, method, formula, principle, metric, model, or technique.\n"
+            "3. The 3 concepts must be meaningfully different from each other.\n"
+            "4. Concepts must come from or be strongly supported by the retrieved course materials.\n"
+            "5. NEVER use generic activity or workflow titles such as:\n"
+            "   - 'Học và Làm', 'Học & Làm', 'Làm bài tập', 'Ôn tập', 'Chuẩn bị', 'Tự học'\n"
+            "   - 'Lý thuyết & Nguyên lý', 'Phương pháp phân tích & Triển khai', 'Trực quan hóa & Đánh giá kết quả'\n"
+            "6. Do not create generic concepts by simply combining the topic with words such as 'Theory', 'Method', 'Application', or 'Evaluation'.\n"
+            "7. For example, if the material discusses Decision Tree, Random Forest, and Model Evaluation, generate those actual concepts ('Decision Tree', 'Random Forest', 'Model Evaluation') instead of generic categories.\n"
+            "8. Each concept MUST contain:\n"
+            "   - title: Specific academic concept name in Vietnamese.\n"
+            "   - definition: Concise academic definition in Vietnamese.\n"
+            "   - main_characteristics: 2-4 important characteristics/principles/steps supported by the material.\n"
+            "   - examples: 1-3 realistic examples based on the course material.\n\n"
+            "LEARNING OBJECTIVES:\n"
+            "1. Generate 3-4 actionable learning objectives describing what the student should understand or do after the session.\n"
+            "2. Use concrete verbs such as: Giải thích, Phân biệt, Áp dụng, Phân tích, So sánh, Diễn giải...\n"
+            "3. Avoid generic objectives such as 'study the lesson', 'review', or 'do exercises'.\n"
+            "4. Objectives must directly correspond to the actual topic and retrieved materials.\n\n"
+            "FOCUS AREA:\n"
+            "1. Generate exactly 1 concise sentence identifying the most important knowledge or skill for this specific session.\n"
+            "2. Do not generate generic study advice.\n\n"
+            "IMPORTANT POINTS:\n"
+            "1. Generate 3-5 concise key takeaways with meaningful subject-matter knowledge.\n"
+            "2. Do not simply repeat the learning objectives.\n\n"
+            "READING ROADMAP:\n"
+            "- focus_sections: 2-3 concepts/sections that should be studied deeply.\n"
+            "- skim_sections: 1-2 contextual or overview sections.\n"
+            "- skip_sections: 1-2 optional/secondary sections ONLY if such content actually exists in the material.\n"
+            "- NEVER invent section names that are not represented in the retrieved materials.\n\n"
+            "QUICK SELF-CHECK:\n"
+            "1. Generate 3-4 lightweight, non-graded practice questions based directly on the current Study Session Topic and retrieved course materials.\n"
+            "2. DO NOT use fixed question templates. DO NOT repeatedly generate generic questions such as 'What is the core concept?', 'Explain the concept...', 'What should be checked first?' unless genuinely appropriate.\n"
+            "3. Questions must test different aspects of understanding (concept understanding, comparison, application, reasoning, result interpretation, formula/method application, algorithm/process tracing, error identification).\n"
+            "4. For technical/mathematical/programming subjects, prefer concrete technical/code/calculation questions over vague theoretical questions.\n"
+            "5. For multiple_choice: provide exactly 4 plausible options with only 1 correct answer.\n"
+            "6. For short_answer: options MUST be [].\n"
+            "7. Each question MUST contain: id, question, type ('multiple_choice' or 'short_answer'), options, hint, sample_answer, explanation.\n\n"
+            "OUTPUT REQUIREMENTS:\n"
+            "Return valid JSON only. Do not wrap in markdown or return extra text. All student-facing text must be in Vietnamese."
+        )
+
+        assign_info = f"- Related Assignment: {related_assign_dict['title']} (Due: {related_assign_dict['due_date']})" if related_assign_dict else "- Related Assignment: None"
+
+        user_prompt = (
+            f"Study Session Context:\n"
+            f"- Course: {course_name}\n"
+            f"- Topic: {clean_topic}\n"
+            f"- Topics to study: {', '.join(what_to_study) if what_to_study else clean_topic}\n"
+            f"- Activities: {', '.join(what_to_do)}\n"
+            f"{assign_info}\n\n"
+            f"Retrieved Course Material Snippets:\n"
+            f"{context_text if context_text else 'No specific material snippets retrieved. Generate grounded concepts based on the Course and Topic.'}\n\n"
+            f"Expected JSON Schema:\n"
+            f'{{\n'
+            f'  "learning_objectives": [\n'
+            f'    {{"id": "1", "text": "...", "checked": false}}\n'
+            f'  ],\n'
+            f'  "ai_study_guide": {{\n'
+            f'    "key_concepts": [\n'
+            f'      {{"title": "...", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}}\n'
+            f'    ],\n'
+            f'    "focus_area": "...",\n'
+            f'    "important_points": ["..."]\n'
+            f'  }},\n'
+            f'  "reading_roadmap": {{\n'
+            f'    "focus_sections": ["..."],\n'
+            f'    "skim_sections": ["..."],\n'
+            f'    "skip_sections": ["..."]\n'
+            f'  }},\n'
+            f'  "quick_self_check": [\n'
+            f'    {{"id": "...", "question": "...", "type": "...", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
+            f'  ]\n'
+            f'}}'
+        )
+
+        comp_data_dict = {
+            "learning_objectives": [],
+            "ai_study_guide": {
+                "key_concepts": [],
+                "focus_area": "",
+                "important_points": [],
+                "sources": sources_list,
+            },
+            "reading_roadmap": {
+                "focus_sections": [],
+                "skim_sections": [],
+                "skip_sections": [],
+            },
+            "related_assignment": related_assign_dict,
+            "quick_self_check": [],
+            "sources": sources_list,
+        }
+
+        try:
+            from src.services.llm import get_llm
+            from langchain_core.messages import SystemMessage, HumanMessage
+            llm = get_llm(temperature=0.2)
+            res_msg = await llm.ainvoke([
+                SystemMessage(content=system_instruction),
+                HumanMessage(content=user_prompt),
+            ])
+            res_text = str(res_msg.content)
+            if "{" in res_text and "}" in res_text:
+                j_str = res_text[res_text.find("{"):res_text.rfind("}")+1]
+                parsed = json.loads(j_str)
+                if parsed.get("learning_objectives"):
+                    comp_data_dict["learning_objectives"] = parsed["learning_objectives"]
+                if parsed.get("ai_study_guide"):
+                    parsed_guide = parsed["ai_study_guide"]
+                    parsed_guide["sources"] = sources_list
+                    comp_data_dict["ai_study_guide"] = parsed_guide
+                if parsed.get("reading_roadmap"):
+                    comp_data_dict["reading_roadmap"] = parsed["reading_roadmap"]
+                if parsed.get("quick_self_check"):
+                    comp_data_dict["quick_self_check"] = parsed["quick_self_check"]
+        except Exception as llm_err:
+            import logging
+            logging.getLogger(__name__).warning(f"LLM study session companion generation failed: {llm_err}")
+
+        # Save companion_data into task description JSON metadata for instant reload
+        existing_meta["companion_data"] = comp_data_dict
+        task.description = pack_task_description(
+            description=existing_meta.get("description"),
+            topic=existing_meta.get("topic"),
+            what_to_study=existing_meta.get("what_to_study"),
+            what_to_do=existing_meta.get("what_to_do"),
+            reason=existing_meta.get("reason"),
+            material_id=existing_meta.get("material_id"),
+            material_title=existing_meta.get("material_title"),
+            course_id=existing_meta.get("course_id"),
+            course_name=existing_meta.get("course_name"),
+            goal_id=existing_meta.get("goal_id"),
+            goal_title=existing_meta.get("goal_title"),
+            started_at=existing_meta.get("started_at"),
+            completed_at=existing_meta.get("completed_at"),
+            actual_duration=existing_meta.get("actual_duration"),
+            completed_activities=existing_meta.get("completed_activities"),
+            reflection_data=existing_meta.get("reflection_data"),
+            ai_insight=existing_meta.get("ai_insight"),
+            suggested_next_focus=existing_meta.get("suggested_next_focus"),
+            companion_data=comp_data_dict,
+        )
+
+        await db.commit()
+        await db.refresh(task)
+
+        return StudySessionCompanionResponse(**comp_data_dict)
+
+    @staticmethod
+    async def evaluate_self_check_answer(
+        db: AsyncSession,
+        task_id: str,
+        payload: SelfCheckEvalRequest,
+        current_user: UserResponse,
+    ) -> SelfCheckEvalResponse:
+        """
+        Evaluate student's quick self-check answer using AI feedback (non-graded).
+        """
+        WeeklyPlanService._ensure_student(current_user)
+
+        stmt = select(Task).options(selectinload(Task.weekly_goal)).where(Task.id == task_id)
+        res = await db.execute(stmt)
+        task = res.scalar_one_or_none()
+
+        if not task or not task.weekly_goal or task.weekly_goal.student_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or access denied.",
+            )
+
+        existing_meta = {}
+        if task.description and task.description.startswith("{") and task.description.endswith("}"):
+            try:
+                existing_meta = json.loads(task.description)
+            except Exception:
+                existing_meta = {}
+
+        topic = existing_meta.get("topic") or task.title
+        course_name = existing_meta.get("course_name") or "Khóa học"
+
+        feedback = "Câu trả lời của bạn đã thể hiện đúng ý chính cốt lõi!"
+        explanation = "Nhớ kết hợp thêm ví dụ cụ thể để nắm vững hơn."
+        is_correct = True
+
+        try:
+            from src.services.llm import get_llm
+            from langchain_core.messages import HumanMessage
+
+            llm = get_llm(temperature=0.3)
+            prompt = (
+                f"Đánh giá câu trả lời tự kiểm tra (Quick Self-Check) của sinh viên trong buổi học:\n"
+                f"- Môn học: {course_name}\n"
+                f"- Chủ đề: {topic}\n"
+                f"- Câu hỏi: {payload.question_text}\n"
+                f"- Câu trả lời của sinh viên: {payload.student_answer}\n\n"
+                f"Hãy đưa ra đánh giá nhẹ nhàng, mang tính hỗ trợ học tập (không chấm điểm gắt gao).\n"
+                f"Trả về đúng định dạng JSON:\n"
+                f'{{\n'
+                f'  "is_correct": true,\n'
+                f'  "feedback": "Nhận xét động viên 1-2 câu",\n'
+                f'  "explanation": "Giải thích chi tiết 1-2 câu",\n'
+                f'  "suggested_review": "Gợi ý điểm cần chú ý thêm"\n'
+                f'}}'
+            )
+
+            res = await llm.ainvoke([HumanMessage(content=prompt)])
+            text = str(res.content)
+            if "{" in text and "}" in text:
+                parsed = json.loads(text[text.find("{"):text.rfind("}")+1])
+                return SelfCheckEvalResponse(
+                    question_id=payload.question_id,
+                    is_correct=parsed.get("is_correct", True),
+                    feedback=parsed.get("feedback", feedback),
+                    explanation=parsed.get("explanation", explanation),
+                    suggested_review=parsed.get("suggested_review"),
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Self check evaluation LLM failed: {e}")
+
+        return SelfCheckEvalResponse(
+            question_id=payload.question_id,
+            is_correct=is_correct,
+            feedback=feedback,
+            explanation=explanation,
+        )
+
+    @staticmethod
+    async def get_unified_calendar(
+        db: AsyncSession,
+        current_user: UserResponse,
+        week_start: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch unified calendar events for a student (Fixed University Classes, AI Planned, Student Study Sessions).
+        """
+        WeeklyPlanService._ensure_student(current_user)
+        student_id = current_user.id
+
+        # Determine Monday start date
+        today = datetime.now(timezone.utc).date()
+        if week_start:
+            try:
+                parsed_d = date.fromisoformat(week_start.split("T")[0])
+                monday = parsed_d - timedelta(days=parsed_d.weekday())
+            except ValueError:
+                monday = today - timedelta(days=today.weekday())
+        else:
+            monday = today - timedelta(days=today.weekday())
+
+        week_dates = [(monday + timedelta(days=i)) for i in range(7)]
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+        events: list[dict[str, Any]] = []
+
+        # 1. Fetch Enrolled Fixed Course Schedules
+        enroll_stmt = (
+            select(Course)
+            .join(Enrollment, Enrollment.course_id == Course.id)
+            .options(selectinload(Course.schedules))
+            .where(
+                (Enrollment.user_id == student_id)
+                & (func.lower(Enrollment.role) == "student")
+                & (Enrollment.status == "active")
+            )
+        )
+        enroll_res = await db.execute(enroll_stmt)
+        enrolled_courses = enroll_res.scalars().all()
+
+        for c in enrolled_courses:
+            c_start = c.start_date.date() if isinstance(c.start_date, datetime) else c.start_date
+            c_end = c.end_date.date() if isinstance(c.end_date, datetime) else c.end_date
+
+            for s in (c.schedules or []):
+                s_day = s.day_of_week.strip().lower()
+                for idx, w_date in enumerate(week_dates):
+                    w_day_name = day_names[idx]
+                    if s_day == w_day_name.lower():
+                        if c_start and c_end and not (c_start <= w_date <= c_end):
+                            continue
+
+                        events.append({
+                            "id": f"fixed_{c.id}_{s.id}_{w_date.strftime('%Y%m%d')}",
+                            "type": "FIXED_CLASS",
+                            "title": f"{c.code} — {c.name}",
+                            "description": f"Lịch học giảng đường cố định ({c.credits or 3} tín chỉ)",
+                            "course_id": c.id,
+                            "course_code": c.code,
+                            "course_name": c.name,
+                            "day_of_week": s.day_of_week,
+                            "scheduled_date": w_date.strftime("%Y-%m-%d"),
+                            "start_time": s.start_time,
+                            "end_time": s.end_time,
+                            "priority": "HIGH",
+                            "status": "FIXED",
+                            "task_data": None,
+                        })
+
+        # 2. Fetch Weekly Plan Tasks for requested week
+        plans = await WeeklyPlanService.get_weekly_plans(db, current_user)
+        sunday = monday + timedelta(days=6)
+        added_task_ids = set()
+
+        for p in plans:
+            if not p.tasks:
+                continue
+
+            is_plan_ai = p.generated_by_agent is not None
+
+            for t in p.tasks:
+                if t.id in added_task_ids:
+                    continue
+
+                t_dt = parse_datetime(t.scheduled_date) if t.scheduled_date else None
+                task_date = t_dt.date() if t_dt else None
+
+                # Check if task falls within requested week [monday, sunday]
+                if task_date:
+                    if not (monday <= task_date <= sunday):
+                        continue
+                else:
+                    # Fallback to plan date check
+                    p_start = parse_datetime(p.week_start_date)
+                    if p_start and not (monday <= p_start.date() <= sunday):
+                        continue
+
+                d_idx = task_date.weekday() if task_date else 0
+                d_name = day_names[d_idx]
+                date_str = task_date.strftime("%Y-%m-%d") if task_date else monday.strftime("%Y-%m-%d")
+
+                start_time_clean = normalize_time_str(t.start_time) or "09:00"
+                end_time_clean = normalize_time_str(t.end_time) or "10:00"
+
+                s_type = (t.source_type or "MANUAL").upper()
+                is_ai_task = is_plan_ai or (s_type in ["AI_PLAN", "ASSIGNMENT", "GOAL", "AI"])
+                event_type = "AI_STUDY" if is_ai_task else "STUDENT_STUDY"
+
+                task_dto = serialize_task(t)
+                task_dict = task_dto.model_dump() if hasattr(task_dto, "model_dump") else task_dto.dict()
+
+                events.append({
+                    "id": t.id,
+                    "type": event_type,
+                    "title": t.title,
+                    "description": task_dto.description,
+                    "course_id": task_dto.course_id,
+                    "course_name": task_dto.course_name,
+                    "course_code": None,
+                    "day_of_week": d_name,
+                    "scheduled_date": date_str,
+                    "start_time": start_time_clean,
+                    "end_time": end_time_clean,
+                    "priority": str(t.priority.value if hasattr(t.priority, "value") else t.priority),
+                    "status": str(t.status.value if hasattr(t.status, "value") else t.status),
+                    "task_data": task_dict,
+                })
+                added_task_ids.add(t.id)
+
+        return events

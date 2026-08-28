@@ -230,6 +230,7 @@ export const WeeklyPlanPage: React.FC = () => {
   // AI Planning Agent State
   const [isAIModalOpen, setIsAIModalOpen] = useState<boolean>(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState<boolean>(false);
+  const [isApplyingAI, setIsApplyingAI] = useState<boolean>(false);
   const [aiPlanRequest, setAiPlanRequest] = useState<string>('');
   const [aiResultModalOpen, setAiResultModalOpen] = useState<boolean>(false);
   const [aiResultData, setAiResultData] = useState<PlannerAgentResponseResult | null>(null);
@@ -296,6 +297,13 @@ export const WeeklyPlanPage: React.FC = () => {
         }) || plans[0];
       }
 
+      if (matchedPlan && matchedPlan.week_start_date) {
+        const pMonday = dayjs(matchedPlan.week_start_date).startOf('isoWeek');
+        if (!pMonday.isSame(weekStart, 'day')) {
+          setCurrentMonday(pMonday);
+        }
+      }
+
       setActivePlan(matchedPlan || null);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tải Kế hoạch học tập');
@@ -334,7 +342,7 @@ export const WeeklyPlanPage: React.FC = () => {
     }
   };
 
-  // Generate AI Plan
+  // Generate AI Plan Preview
   const handleGenerateAIPlan = async () => {
     setIsGeneratingAI(true);
     try {
@@ -349,12 +357,11 @@ export const WeeklyPlanPage: React.FC = () => {
         payload.end_date = dayjs(targetDueDate).format('YYYY-MM-DD');
       }
       const res = await weeklyPlanService.generateAIPlan(payload);
-      message.success('Tạo Study Plan AI thành công!');
+      message.success('AI đã lập xong dự thảo kế hoạch! Vui lòng đọc kiểm tra và bấm "Chấp nhận" để lưu.');
       setAiResultData(res);
       setIsAIModalOpen(false);
       setAiResultModalOpen(true);
       setAiPlanRequest('');
-      await fetchWeeklyPlans(res.weekly_plan_id || undefined);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tạo Kế hoạch bằng AI. Vui lòng thử lại.');
     } finally {
@@ -362,6 +369,102 @@ export const WeeklyPlanPage: React.FC = () => {
     }
   };
 
+  // Remove individual proposed task from draft preview
+  const handleRemoveProposedTask = (index: number) => {
+    if (!aiResultData) return;
+    const taskList = aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || [];
+    const updated = taskList.filter((_: any, idx: number) => idx !== index);
+    setAiResultData({
+      ...aiResultData,
+      proposed_tasks: updated,
+      created_tasks: updated as any,
+    });
+    message.info('Đã loại bỏ 1 buổi học khỏi dự thảo kế hoạch.');
+  };
+
+  // Group proposed tasks by scheduled date for timeline visualization
+  const proposedTasksGroupedByDate = useMemo(() => {
+    if (!aiResultData) return [];
+    const rawTasks = (aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || []) as any[];
+    
+    const groups: Record<string, any[]> = {};
+    rawTasks.forEach((task, idx) => {
+      const dateKey = task.scheduled_date ? dayjs(task.scheduled_date).format('YYYY-MM-DD') : 'undated';
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push({ ...task, _originalIndex: idx });
+    });
+
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      if (a === 'undated') return 1;
+      if (b === 'undated') return -1;
+      return a.localeCompare(b);
+    });
+
+    const vnDays = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+    return sortedDates.map((dateKey) => {
+      const dayTasks = groups[dateKey];
+      dayTasks.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
+
+      let dayOfWeekName = 'Chưa xác định ngày';
+      let formattedDate = 'Linh hoạt trong tuần';
+      let dateBadge = '';
+
+      if (dateKey !== 'undated') {
+        const d = dayjs(dateKey);
+        const dayIdx = d.day();
+        dayOfWeekName = vnDays[dayIdx];
+        formattedDate = `${vnDays[dayIdx]}, ${d.format('DD/MM/YYYY')}`;
+        dateBadge = d.format('DD/MM');
+      }
+
+      return {
+        dateKey,
+        dayOfWeekName,
+        formattedDate,
+        dateBadge,
+        tasks: dayTasks,
+      };
+    });
+  }, [aiResultData]);
+
+  // Accept and save AI Plan to DB
+  const handleAcceptAIPlan = async () => {
+    if (!aiResultData) return;
+    const tasksToApply = aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || [];
+    if (tasksToApply.length === 0) {
+      message.warning('Danh sách nhiệm vụ đề xuất trống.');
+      return;
+    }
+    setIsApplyingAI(true);
+    try {
+      const applyPayload = {
+        week_start: aiResultData.week_start || weekStart.format('YYYY-MM-DD'),
+        week_end: aiResultData.week_end,
+        plan_title: aiResultData.plan_title || `Kế hoạch học tập ${weekStart.format('YYYY-MM-DD')}`,
+        summary: aiResultData.summary,
+        tasks: tasksToApply,
+      };
+      const res = await weeklyPlanService.applyAIPlan(applyPayload);
+      message.success('Đã chấp nhận và lưu kế hoạch thành công!');
+      setAiResultModalOpen(false);
+      setAiResultData(null);
+      await fetchWeeklyPlans(res.weekly_plan_id || undefined);
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Không thể lưu Kế hoạch AI.');
+    } finally {
+      setIsApplyingAI(false);
+    }
+  };
+
+  // Reject / Cancel AI Plan draft
+  const handleRejectAIPlan = () => {
+    setAiResultModalOpen(false);
+    setAiResultData(null);
+    message.info('Đã hủy kế hoạch dự thảo.');
+  };
 
   // Open Task Modal (Create / Edit)
   const openTaskModal = (task?: PlanTask, defaultDate?: Dayjs, defaultTime?: string) => {
@@ -493,10 +596,11 @@ export const WeeklyPlanPage: React.FC = () => {
       if (task.status === 'todo' || task.status === 'TODO') {
         await weeklyPlanService.startStudySession(task.id);
       }
+    } catch (err: any) {
+      console.warn('Start study session status update:', err);
+    } finally {
       setDetailTask(null);
       navigate(`/study-session/${task.id}`);
-    } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Không thể bắt đầu buổi học');
     }
   };
 
@@ -1297,7 +1401,7 @@ export const WeeklyPlanPage: React.FC = () => {
                 <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
                   <span className="text-[10px] uppercase font-bold text-purple-400 block">Mục tiêu cá nhân (Personal Goal):</span>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs block truncate">
-                    🎯 {detailTask.goal_title}
+                    {detailTask.goal_title}
                   </span>
                 </div>
               )}
@@ -1339,7 +1443,7 @@ export const WeeklyPlanPage: React.FC = () => {
           {/* Assignment Selector for Focused Study Roadmap */}
           <div>
             <label className={`block text-xs font-extrabold mb-1.5 uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              🎯 Chọn Bài tập để lập Lộ trình học tập (Tùy chọn):
+              Chọn Bài tập để lập Lộ trình học tập (Tùy chọn):
             </label>
             <Select
               allowClear
@@ -1351,7 +1455,7 @@ export const WeeklyPlanPage: React.FC = () => {
               options={availableAssignments.map((a) => {
                 const aDue = a.due_date || a.due_at;
                 return {
-                  label: `📚 [${a.course_name || 'Môn học'}] ${a.title} ${aDue ? `(Deadline: ${dayjs(aDue).format('DD/MM/YYYY')})` : ''}`,
+                  label: `[${a.course_name || 'Môn học'}] ${a.title} ${aDue ? `(Deadline: ${dayjs(aDue).format('DD/MM/YYYY')})` : ''}`,
                   value: a.id,
                 };
               })}
@@ -1365,8 +1469,8 @@ export const WeeklyPlanPage: React.FC = () => {
           }`}>
             <div className="flex items-center justify-between text-sm flex-wrap gap-2">
               <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Khoảng thời gian lập lộ trình:</span>
-              <span className="badge-voxel-green text-xs font-extrabold px-3 py-1">
-                📅 {selectedAssignment && (selectedAssignment.due_date || selectedAssignment.due_at)
+              <span className="badge-voxel-green text-xs font-extrabold px-3 py-1 font-mono">
+                {selectedAssignment && (selectedAssignment.due_date || selectedAssignment.due_at)
                   ? `Hôm nay (${dayjs().format('DD/MM')}) ➔ Deadline (${dayjs(selectedAssignment.due_date || selectedAssignment.due_at).format('DD/MM/YYYY')})`
                   : `Tự động linh hoạt theo Hạn nộp Bài tập (Từ hôm nay ${dayjs().format('DD/MM')})`
                 }
@@ -1390,9 +1494,9 @@ export const WeeklyPlanPage: React.FC = () => {
                   key={idx}
                   type="button"
                   onClick={() => setAiPlanRequest(preset)}
-                  className="text-xs font-medium px-3 py-1 rounded-xl border bg-black/5 dark:bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors"
+                  className="text-xs font-medium px-3 py-1 rounded-xl border bg-black/5 dark:bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-colors cursor-pointer"
                 >
-                  ✨ {preset}
+                  {preset}
                 </button>
               ))}
             </div>
@@ -1416,7 +1520,7 @@ export const WeeklyPlanPage: React.FC = () => {
             <div className="p-4 rounded-2xl bg-emerald-500/15 border-2 border-minecraft-grassBorder flex items-center gap-3">
               <Spin size="small" />
               <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                🤖 AI đang phân tích bài tập, tài liệu môn học và tự động lập Study Plan cho bạn...
+                AI đang phân tích bài tập, tài liệu môn học và tự động lập Study Plan cho bạn...
               </span>
             </div>
           )}
@@ -1425,7 +1529,7 @@ export const WeeklyPlanPage: React.FC = () => {
             <button
               onClick={() => setIsAIModalOpen(false)}
               disabled={isGeneratingAI}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
             >
               Hủy
             </button>
@@ -1433,7 +1537,7 @@ export const WeeklyPlanPage: React.FC = () => {
               type="button"
               disabled={isGeneratingAI}
               onClick={handleGenerateAIPlan}
-              className="btn-voxel-gold text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2"
+              className="btn-voxel-gold text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-pointer"
             >
               <RobotOutlined />
               <span>Tạo Study Plan AI</span>
@@ -1442,49 +1546,169 @@ export const WeeklyPlanPage: React.FC = () => {
         </div>
       </Modal>
 
-      {/* AI RESULT SUMMARY MODAL */}
+      {/* AI RESULT PREVIEW & ACCEPT MODAL */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-emerald-500 font-bold text-lg">
-            <CheckCircleOutlined className="text-xl" />
-            <span>Kế hoạch AI đã sẵn sàng!</span>
+          <div className="flex items-center justify-between pr-6">
+            <div className="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300 font-extrabold text-lg">
+              <RocketOutlined className="text-xl text-emerald-600 dark:text-emerald-400" />
+              <span>Dự Thảo Phân Bổ Lịch Học AI — Đọc & Tùy Chỉnh Lịch</span>
+            </div>
+            <span className="badge-voxel-gold text-xs font-bold px-3 py-1">
+              DỰ THẢO (CHƯA LƯU)
+            </span>
           </div>
         }
         open={aiResultModalOpen}
-        onOk={() => setAiResultModalOpen(false)}
-        onCancel={() => setAiResultModalOpen(false)}
-        okText="Đóng"
-        cancelButtonProps={{ style: { display: 'none' } }}
+        onCancel={handleRejectAIPlan}
+        footer={
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 flex-wrap gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Nhấn nút xóa để loại bỏ buổi học không muốn xếp lịch.
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRejectAIPlan}
+                disabled={isApplyingAI}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleAcceptAIPlan}
+                disabled={isApplyingAI || (aiResultData?.proposed_tasks || (aiResultData?.created_tasks as any) || []).length === 0}
+                className="btn-voxel-green text-xs px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-voxel active:translate-y-1 transition-all cursor-pointer"
+              >
+                {isApplyingAI ? <Spin size="small" /> : <CheckCircleOutlined />}
+                <span>{isApplyingAI ? 'Đang lưu kế hoạch...' : 'Chấp nhận & Lưu kế hoạch'}</span>
+              </button>
+            </div>
+          </div>
+        }
+        destroyOnClose
+        centered
+        width={840}
+        className="rounded-3xl overflow-hidden"
       >
         {aiResultData && (
           <div className="space-y-4 py-2 text-xs">
-            <p className="text-sm font-semibold text-slate-300">{aiResultData.summary}</p>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                <span className="block text-lg font-bold text-emerald-400">
-                  {aiResultData.created_tasks?.length || 0}
-                </span>
-                <span className="text-slate-400">Nhiệm vụ được tạo</span>
-              </div>
-              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
-                <span className="block text-lg font-bold text-blue-400">
-                  {aiResultData.skipped_items?.length || 0}
-                </span>
-                <span className="text-slate-400">Mục đã hoãn/bỏ qua</span>
-              </div>
-            </div>
 
-            {aiResultData.warnings?.length > 0 && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
-                <span className="font-bold text-amber-400">Lưu ý & Đánh đổi:</span>
-                <ul className="list-disc list-inside text-slate-300">
-                  {aiResultData.warnings.map((w, idx) => (
-                    <li key={idx}>{w}</li>
+            {/* Proposed Tasks Interactive Review List Grouped by Day */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <CalendarOutlined className="text-emerald-600 dark:text-emerald-400" />
+                  <span>Phân bổ lịch học theo ngày (Kiểm tra & Xóa nếu không thích):</span>
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Nhấn nút xóa để loại bỏ buổi học
+                </span>
+              </div>
+
+              {proposedTasksGroupedByDate.length === 0 ? (
+                <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-center space-y-3">
+                  <p className="text-sm font-bold text-slate-500 dark:text-slate-400 m-0">
+                    Không còn buổi học nào trong danh sách dự thảo.
+                  </p>
+                </div>
+              ) : (
+                <div className="max-h-[420px] overflow-y-auto space-y-4 pr-1.5">
+                  {proposedTasksGroupedByDate.map((group) => (
+                    <div key={group.dateKey} className="space-y-2.5">
+                      {/* Day Group Header Badge */}
+                      <div className="flex items-center gap-2.5 sticky top-0 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-xs py-1 z-10">
+                        <span className="px-3 py-1 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold text-xs flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 shadow-xs">
+                          <CalendarOutlined className="text-emerald-600 dark:text-emerald-400" />
+                          <span>{group.formattedDate}</span>
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">
+                          • {group.tasks.length} buổi học
+                        </span>
+                        <div className="flex-1 border-b border-slate-200 dark:border-slate-800" />
+                      </div>
+
+                      {/* List of Tasks in this Day */}
+                      <div className="space-y-2.5 pl-2">
+                        {group.tasks.map((task: any) => {
+                          const priorityCfg = PRIORITY_CONFIG[task.priority?.toLowerCase()] || PRIORITY_CONFIG.medium;
+                          return (
+                            <div
+                              key={task.id || task._originalIndex}
+                              className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-sm transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group relative"
+                            >
+                              {/* PROMINENT TIME BLOCK */}
+                              <div className="flex items-center sm:flex-col justify-center gap-1 p-2.5 sm:py-3 sm:px-4 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 dark:from-amber-500/25 dark:to-amber-500/10 border-2 border-amber-500/40 min-w-[130px] text-center shadow-voxel-sm shrink-0 w-full sm:w-auto">
+                                <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-extrabold text-xs">
+                                  <ClockCircleOutlined className="text-amber-600 dark:text-amber-400" />
+                                  <span>Khung giờ</span>
+                                </div>
+                                <div className="font-mono text-sm font-black text-amber-950 dark:text-amber-100 tracking-tight">
+                                  {task.start_time || '09:00'} – {task.end_time || '10:30'}
+                                </div>
+                                <div className="text-[10px] font-bold text-amber-700/80 dark:text-amber-300/80 font-mono">
+                                  {task.estimated_duration || 90} phút
+                                </div>
+                              </div>
+
+                              {/* Task Details */}
+                              <div className="flex-1 space-y-1.5 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
+                                    {task.title}
+                                  </span>
+                                  <Tag color={priorityCfg.color} className="rounded-md font-bold text-[10px] m-0">
+                                    {priorityCfg.label}
+                                  </Tag>
+                                  {task.course_name && (
+                                    <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                      {task.course_name}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {task.reason && (
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 m-0 font-medium leading-relaxed">
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">Mục tiêu:</span> {task.reason}
+                                  </p>
+                                )}
+
+                                {task.what_to_study && task.what_to_study.length > 0 && (
+                                  <div className="pt-0.5 flex items-center gap-1.5 flex-wrap text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">Nội dung trọng tâm:</span>
+                                    {task.what_to_study.map((item: string, iIdx: number) => (
+                                      <span key={iIdx} className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                                        • {item}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Remove Task Button */}
+                              <div className="shrink-0 self-end sm:self-center">
+                                <Tooltip title="Loại bỏ buổi học này khỏi dự thảo nếu không thích">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveProposedTask(task._originalIndex)}
+                                    className="p-2 rounded-xl text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border-2 border-rose-200 dark:border-rose-800/80 transition-all active:translate-y-0.5 cursor-pointer flex items-center gap-1 text-xs font-bold"
+                                  >
+                                    <DeleteOutlined className="text-base" />
+                                    <span className="sm:hidden">Xóa</span>
+                                  </button>
+                                </Tooltip>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
-                </ul>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>

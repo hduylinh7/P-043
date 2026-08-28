@@ -17,8 +17,8 @@ class Document(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_type: Mapped[DocumentSourceTypeEnum] = mapped_column(
-        SQLEnum(DocumentSourceTypeEnum, native_enum=False),
+    source_type: Mapped[str] = mapped_column(
+        String(50),
         default=DocumentSourceTypeEnum.USER_UPLOAD,
         nullable=False,
     )

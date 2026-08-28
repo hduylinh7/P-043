@@ -31,17 +31,14 @@ export const LandingFooter: React.FC = () => {
             <h5 className={`text-sm font-bold uppercase tracking-wider mb-4 ${
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
-              Product
+              Sản Phẩm
             </h5>
             <ul className="space-y-2.5 text-sm list-none p-0">
               <li>
-                <a href="#features" className="hover:text-emerald-600 transition-colors">Features</a>
+                <a href="#features" className="hover:text-emerald-600 transition-colors">Tính Năng</a>
               </li>
               <li>
-                <a href="#how-it-works" className="hover:text-emerald-600 transition-colors">How It Works</a>
-              </li>
-              <li>
-                <a href="#testimonials" className="hover:text-emerald-600 transition-colors">Testimonials</a>
+                <a href="#how-it-works" className="hover:text-emerald-600 transition-colors">Cách Hoạt Động</a>
               </li>
             </ul>
           </div>
@@ -51,17 +48,17 @@ export const LandingFooter: React.FC = () => {
             <h5 className={`text-sm font-bold uppercase tracking-wider mb-4 ${
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
-              Company & Legal
+              Thông Tin &amp; Điều Khoản
             </h5>
             <ul className="space-y-2.5 text-sm list-none p-0">
               <li>
-                <a href="#about" className="hover:text-emerald-600 transition-colors">About Us</a>
+                <a href="#about" className="hover:text-emerald-600 transition-colors">Về Chúng Tôi</a>
               </li>
               <li>
-                <a href="#privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</a>
+                <a href="#privacy" className="hover:text-emerald-600 transition-colors">Chính Sách Bảo Mật</a>
               </li>
               <li>
-                <a href="#terms" className="hover:text-emerald-600 transition-colors">Terms of Service</a>
+                <a href="#terms" className="hover:text-emerald-600 transition-colors">Điều Khoản Sử Dụng</a>
               </li>
             </ul>
           </div>
@@ -71,7 +68,7 @@ export const LandingFooter: React.FC = () => {
             <h5 className={`text-sm font-bold uppercase tracking-wider mb-4 ${
               themeMode === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
-              Connect
+              Liên Hệ &amp; Kết Nối
             </h5>
             <ul className="space-y-3 text-sm list-none p-0">
               <li>
@@ -82,12 +79,12 @@ export const LandingFooter: React.FC = () => {
                   className="flex items-center gap-2 hover:text-emerald-600 transition-colors"
                 >
                   <GithubOutlined className="text-lg" />
-                  <span>GitHub Repository</span>
+                  <span>Mã nguồn GitHub</span>
                 </a>
               </li>
               <li>
                 <a href="mailto:support@ailearningcompanion.com" className="hover:text-emerald-600 transition-colors">
-                  Contact Support
+                  Hỗ Trợ Người Dùng
                 </a>
               </li>
             </ul>
@@ -98,10 +95,10 @@ export const LandingFooter: React.FC = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
           <p className="m-0">
-            © {new Date().getFullYear()} Lita Learning. All rights reserved.
+            © {new Date().getFullYear()} Lita Learning. Bản quyền đã được bảo lưu.
           </p>
           <p className="m-0 flex items-center gap-1">
-            Built with <HeartFilled className="text-emerald-500" /> for university students.
+            Được xây dựng với <HeartFilled className="text-emerald-500" /> dành cho sinh viên &amp; người học.
           </p>
         </div>
 

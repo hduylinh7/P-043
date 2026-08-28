@@ -15,7 +15,17 @@ async def retrieve_context_node(state: AgentState) -> dict[str, Any]:
     query = state.get("query", "")
     course_id = state.get("course_id")
     material_id = state.get("material_id")
+    assignment_id = state.get("assignment_id")
     messages = state.get("messages", [])
+
+    study_session_ctx = state.get("study_session_context")
+    if isinstance(study_session_ctx, dict):
+        if not material_id and study_session_ctx.get("material_id"):
+            material_id = study_session_ctx.get("material_id")
+        if not course_id and study_session_ctx.get("course_id"):
+            course_id = study_session_ctx.get("course_id")
+        if not assignment_id and study_session_ctx.get("assignment_id"):
+            assignment_id = study_session_ctx.get("assignment_id")
 
     if not query and messages:
         last_msg = messages[-1]
@@ -32,7 +42,10 @@ async def retrieve_context_node(state: AgentState) -> dict[str, Any]:
 
     try:
         retrieved = RAGService.search_course_materials(
-            course_id=course_id, query=query, material_id=material_id
+            course_id=course_id,
+            query=query,
+            material_id=material_id,
+            assignment_id=assignment_id,
         )
     except Exception as e:
         logger.error(f"Error during RAG context retrieval: {e}")
@@ -101,7 +114,8 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
         "4. ABSENCE OF CONTEXT: If an academic or course topic question cannot be answered using the provided course context, clearly state in the user's language that the uploaded course materials do not contain sufficient information to answer.\n"
         "5. NO FABRICATION: Do NOT invent, speculate, or fabricate academic facts not supported by the context.\n"
         "6. ACADEMIC INTEGRITY: DO NOT solve or give final answers to graded homework/assignments. If asked for assignment answers, explain concepts, give hints, ask guiding questions, and provide similar examples to help the student learn.\n"
-        "7. TONE: Maintain an encouraging, clear, and academically supportive tone."
+        "7. TONE: Maintain an encouraging, clear, and academically supportive tone.\n"
+        "8. MARKDOWN FORMATTING: Format all structured output using clean standard GitHub Flavored Markdown (bullet points, clear headers, standard Markdown tables). Always put a blank newline BEFORE and AFTER any table. Do NOT use HTML tags like <br> or double pipes || inside tables."
     )
 
 
@@ -122,7 +136,18 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
     try:
         llm = get_llm()
         ai_msg = await llm.ainvoke(prompt_messages)
-        response_text = str(ai_msg.content)
+        if isinstance(ai_msg.content, list):
+            texts = []
+            for part in ai_msg.content:
+                if isinstance(part, dict) and "text" in part:
+                    texts.append(part["text"])
+                elif isinstance(part, str):
+                    texts.append(part)
+                else:
+                    texts.append(str(part))
+            response_text = "".join(texts)
+        else:
+            response_text = str(ai_msg.content)
     except Exception as e:
         logger.error(f"Error calling LLM provider: {e}")
         err_str = str(e)

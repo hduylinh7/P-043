@@ -11,10 +11,10 @@ import {
   Mail,
   User as UserIcon,
   Loader2,
-  AlertCircle,
   Send,
   ShieldCheck,
 } from 'lucide-react';
+import { VoxelRedstone, VoxelEmerald, VoxelGold } from '../components/common/MinecraftIcons';
 
 export const RegisterPage: React.FC = () => {
   const { register, loginWithGoogle } = useAuth();
@@ -46,7 +46,7 @@ export const RegisterPage: React.FC = () => {
         if (!res.user.roles || res.user.roles.length === 0) {
           navigate('/onboarding/role-select', { replace: true });
         } else {
-          navigate('/dashboard', { replace: true });
+          navigate('/courses', { replace: true });
         }
       }, 500);
     } catch (err: any) {
@@ -121,23 +121,24 @@ export const RegisterPage: React.FC = () => {
       <AuthLayout
         title="Đăng ký thành công!"
         subtitle="Vui lòng kiểm tra hộp thư email của bạn"
+        badgeText="QUEST COMPLETED"
       >
         <div className="text-center">
-          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500">
-            <Send className="w-8 h-8" />
+          <div className="w-16 h-16 bg-emerald-500/10 border-2 border-minecraft-grassBorder rounded-2xl flex items-center justify-center mx-auto mb-6 text-emerald-500 shadow-voxel-sm shadow-minecraft-grassBorder">
+            <Send className="w-8 h-8 text-emerald-500" />
           </div>
 
           <p className={`text-sm leading-relaxed mb-6 ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
             Hệ thống đã gửi mã OTP xác thực 6 chữ số tới địa chỉ{' '}
-            <strong className="text-emerald-600 dark:text-emerald-400">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
+            <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{email}</strong>. Vui lòng kiểm tra hộp thư để hoàn tất xác thực.
           </p>
 
-          <div className={`p-4 rounded-xl border text-xs mb-6 flex items-center gap-2.5 ${
+          <div className={`p-4 rounded-2xl border-2 text-xs mb-6 flex items-center gap-2.5 ${
             isDark
-              ? 'bg-slate-950 border-slate-800 text-slate-400'
-              : 'bg-slate-100 border-slate-200 text-slate-600'
+              ? 'bg-slate-950 border-minecraft-obsidianBorder text-slate-400'
+              : 'bg-amber-50/50 border-amber-900/15 text-slate-600'
           }`}>
             <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>Mật khẩu của bạn đã được mã hóa an toàn bằng Bcrypt.</span>
@@ -145,9 +146,9 @@ export const RegisterPage: React.FC = () => {
 
           <button
             onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-            className="w-full btn-voxel-green py-3.5 text-base rounded-xl"
+            className="w-full btn-voxel-green py-3.5 text-base rounded-2xl font-bold tracking-wide"
           >
-            Nhập mã OTP xác thực
+            Nhập mã OTP xác thực →
           </button>
         </div>
       </AuthLayout>
@@ -156,86 +157,71 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <AuthLayout
-      title="Tạo tài khoản"
-      subtitle="Bắt đầu trải nghiệm học tập cùng AI Companion"
+      title="Đăng ký tài khoản"
+      subtitle="Bắt đầu hành trình thám hiểm tri thức cùng AI Companion"
+      badgeText="NEW PLAYER"
     >
       {error && (
-        <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 text-sm animate-fade-in ${
-          isDark
-            ? 'bg-amber-950/60 border-amber-800/80 text-amber-200'
-            : 'bg-amber-50 border-amber-200 text-amber-900'
-        }`}>
-          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="mb-6 alert-voxel-red animate-fade-in">
+          <VoxelRedstone className="shrink-0 mt-0.5" size={22} />
+          <span className="font-bold">{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+          <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
             isDark ? 'text-slate-300' : 'text-slate-700'
           }`}>
             Họ và tên
           </label>
           <div className="relative">
-            <UserIcon className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <UserIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Nguyễn Văn A"
               required
-              className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
-                isDark
-                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
-              }`}
+              className="input-voxel"
             />
           </div>
         </div>
 
         <div>
-          <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+          <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
             isDark ? 'text-slate-300' : 'text-slate-700'
           }`}>
-            Email
+            Địa chỉ Email
           </label>
           <div className="relative">
-            <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Mail className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
               required
-              className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
-                isDark
-                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
-              }`}
+              className="input-voxel"
             />
           </div>
         </div>
 
         <div>
-          <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+          <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
             isDark ? 'text-slate-300' : 'text-slate-700'
           }`}>
             Mật khẩu
           </label>
           <div className="relative">
-            <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Lock className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Ít nhất 6 ký tự"
               required
-              className={`w-full rounded-xl pl-11 pr-11 py-3 text-sm font-medium transition-all outline-none border ${
-                isDark
-                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
-              }`}
+              className="input-voxel pr-11"
             />
             <button
               type="button"
@@ -251,9 +237,9 @@ export const RegisterPage: React.FC = () => {
             <div className="mt-2 space-y-1">
               <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
                 <span>Độ mạnh mật khẩu:</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">{strength.label}</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">{strength.label}</span>
               </div>
-              <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300 dark:border-slate-700">
                 <div
                   className={`h-full ${strength.color} transition-all duration-300`}
                   style={{ width: `${(strength.score / 5) * 100}%` }}
@@ -264,24 +250,20 @@ export const RegisterPage: React.FC = () => {
         </div>
 
         <div>
-          <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${
+          <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
             isDark ? 'text-slate-300' : 'text-slate-700'
           }`}>
             Xác nhận mật khẩu
           </label>
           <div className="relative">
-            <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Lock className="w-5 h-5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Nhập lại mật khẩu"
               required
-              className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm font-medium transition-all outline-none border ${
-                isDark
-                  ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                  : 'bg-white border-amber-900/15 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm'
-              }`}
+              className="input-voxel"
             />
           </div>
         </div>
@@ -289,7 +271,7 @@ export const RegisterPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full btn-voxel-green text-base py-3.5 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          className="w-full btn-voxel-green text-base py-3.5 rounded-2xl shadow-voxel shadow-minecraft-grassBorder active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 font-bold tracking-wide"
         >
           {isLoading ? (
             <>
@@ -297,26 +279,32 @@ export const RegisterPage: React.FC = () => {
               <span>Đang khởi tạo tài khoản...</span>
             </>
           ) : (
-            <span>Đăng ký</span>
+            <span>Đăng ký tài khoản</span>
           )}
         </button>
       </form>
 
-      {/* Divider */}
+      {/* Minecraft Voxel Divider */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
-          <div className={`w-full border-t ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/10'}`}></div>
+          <div className={`w-full border-t-2 ${isDark ? 'border-minecraft-obsidianBorder' : 'border-amber-900/15'}`}></div>
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className={`px-3 font-semibold ${isDark ? 'bg-minecraft-obsidianCard text-slate-500' : 'bg-white text-slate-400'
-            }`}>
-            Hoặc đăng ký bằng
+        <div className="relative flex justify-center text-xs uppercase tracking-wider">
+          <span className={`px-3 font-extrabold flex items-center gap-1.5 ${
+            isDark ? 'bg-[#162218] text-slate-400' : 'bg-white text-slate-500'
+          }`}>
+            <VoxelGold size={14} />
+            <span>HOẶC ĐĂNG KÝ BẰNG</span>
           </span>
         </div>
       </div>
 
-      {/* Google Login Button */}
-      <div className="flex justify-center w-full">
+      {/* Google Login Button Container */}
+      <div className={`p-2 rounded-2xl border-2 transition-all flex justify-center ${
+        isDark
+          ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder shadow-voxel-sm shadow-black/30 hover:border-emerald-500/50'
+          : 'bg-white border-amber-900/15 shadow-voxel-sm shadow-amber-900/10 hover:border-emerald-500/50'
+      }`}>
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
           onError={() => setError('Đăng ký bằng Google không thành công')}
@@ -328,14 +316,16 @@ export const RegisterPage: React.FC = () => {
         />
       </div>
 
-      <div className={`mt-8 text-center border-t pt-6 text-sm ${
-        isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-500'
+      {/* Footer link to Login */}
+      <div className={`mt-7 text-center border-t-2 pt-5 text-sm font-medium ${
+        isDark ? 'border-minecraft-obsidianBorder text-slate-400' : 'border-amber-900/10 text-slate-600'
       }`}>
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
+        <Link to="/login" className="font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline tracking-wide">
           Đăng nhập
         </Link>
       </div>
     </AuthLayout>
   );
 };
+

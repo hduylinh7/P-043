@@ -3,10 +3,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.db.enums import EnrollmentRoleEnum, SubmissionStatusEnum
+from src.db.enums import EnrollmentRoleEnum, ProgressStatusEnum, SubmissionStatusEnum
 from src.db.models.identity.user import User
 from src.db.models.learning.assignment import Assignment
 from src.db.models.learning.assignment_checklist import AssignmentChecklist
+from src.db.models.learning.course import Course
 from src.db.models.learning.enrollment import Enrollment
 from src.db.models.learning.question import AssignmentQuestion, QuestionOption
 from src.db.models.learning.student_assignment_progress import StudentAssignmentProgress
@@ -161,6 +162,105 @@ class AssignmentRepository:
                 "checklists": checklists_with_progress,
             })
         return items
+
+    @staticmethod
+    async def get_all_assignments_for_user_with_progress(
+        db: AsyncSession, user_id: str, is_instructor: bool = False
+    ) -> list[dict]:
+        """Fetch all assignments across enrolled or managed courses for a user, including course details and student progress."""
+        if is_instructor:
+            stmt = (
+                select(Assignment)
+                .options(
+                    selectinload(Assignment.course),
+                    selectinload(Assignment.checklists),
+                    selectinload(Assignment.questions).selectinload(AssignmentQuestion.options),
+                )
+                .join(Course, Assignment.course_id == Course.id)
+                .where(Course.instructor_id == user_id)
+                .order_by(Assignment.created_at.desc())
+            )
+            result = await db.execute(stmt)
+            assignments = list(result.scalars().all())
+            return [
+                {
+                    "assignment": a,
+                    "progress_status": None,
+                    "checklist_count": len(getattr(a, "checklists", []) or []),
+                    "completed_checklist_count": 0,
+                    "progress_percentage": 0,
+                }
+                for a in assignments
+            ]
+        else:
+            enroll_stmt = select(Enrollment.course_id).where(Enrollment.user_id == user_id)
+            enroll_res = await db.execute(enroll_stmt)
+            course_ids = list(set(enroll_res.scalars().all()))
+            if not course_ids:
+                return []
+
+            stmt = (
+                select(Assignment)
+                .options(
+                    selectinload(Assignment.course),
+                    selectinload(Assignment.checklists),
+                    selectinload(Assignment.questions).selectinload(AssignmentQuestion.options),
+                )
+                .where((Assignment.course_id.in_(course_ids)) & (Assignment.status != "DRAFT"))
+                .order_by(Assignment.due_at.asc().nulls_last(), Assignment.created_at.desc())
+            )
+            result = await db.execute(stmt)
+            assignments = list(result.scalars().all())
+
+            items = []
+            for assignment in assignments:
+                checklists_with_progress = await AssignmentRepository.get_checklists_by_assignment_with_student_progress(
+                    db, assignment_id=assignment.id, student_id=user_id
+                )
+
+                total_checklists = len(checklists_with_progress)
+                completed_checklists = sum(1 for c in checklists_with_progress if c["completed"])
+                progress_pct = (
+                    round((completed_checklists / total_checklists) * 100) if total_checklists > 0 else 0
+                )
+
+                sub_stmt = select(Submission).where(
+                    (Submission.assignment_id == assignment.id)
+                    & (Submission.student_id == user_id)
+                )
+                sub_res = await db.execute(sub_stmt)
+                sub_obj = sub_res.scalar_one_or_none()
+
+                prog_stmt = select(StudentAssignmentProgress.progress_status).where(
+                    (StudentAssignmentProgress.assignment_id == assignment.id)
+                    & (StudentAssignmentProgress.student_id == user_id)
+                )
+                prog_res = await db.execute(prog_stmt)
+                prog_val = prog_res.scalar_one_or_none()
+
+                if sub_obj and sub_obj.status in (
+                    SubmissionStatusEnum.SUBMITTED,
+                    SubmissionStatusEnum.GRADED,
+                    "SUBMITTED",
+                    "GRADED",
+                    "submitted",
+                    "graded",
+                ):
+                    status_val = "COMPLETED"
+                elif prog_val:
+                    status_val = str(prog_val.value) if hasattr(prog_val, "value") else str(prog_val)
+                else:
+                    status_val = "NOT_STARTED"
+
+                items.append({
+                    "assignment": assignment,
+                    "progress_status": status_val,
+                    "checklist_count": total_checklists,
+                    "completed_checklist_count": completed_checklists,
+                    "progress_percentage": progress_pct,
+                    "checklists": checklists_with_progress,
+                })
+            return items
 
     @classmethod
     async def update_assignment(
@@ -590,7 +690,7 @@ class AssignmentRepository:
             .join(Enrollment, User.id == Enrollment.user_id)
             .where(
                 (Enrollment.course_id == assignment.course_id)
-                & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                & (func.lower(Enrollment.role) == "student")
             )
         )
         enroll_res = await db.execute(enroll_stmt)

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -8,6 +8,8 @@ import {
   Input,
   Tooltip,
   Drawer,
+  Badge,
+  Popconfirm,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -23,14 +25,18 @@ import {
   HistoryOutlined,
   PlusOutlined,
   MessageOutlined,
+  CloseOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
+import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { materialService } from '../services/materialService';
-import { api, ChatSession } from '../services/api';
+import { api, ChatSession, API_BASE_URL } from '../services/api';
 import { CourseMaterial } from '../types/material';
 
 
@@ -51,18 +57,19 @@ export const MaterialViewerPage: React.FC = () => {
   const [currentMaterial, setCurrentMaterial] = useState<CourseMaterial | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
-  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(true);
+  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [extractedContent, setExtractedContent] = useState<string | null>(null);
 
   // AI Assistant Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       sender: 'ai',
-      text: 'Xin chào! Tôi là Trợ Lý AI Học Tập. Bạn có câu hỏi nào về bài giảng này không? Tôi có thể giúp bạn tóm tắt, trích xuất điểm chính hoặc giải thích các khái niệm khó!',
+      text: 'Xin chào! Tôi là Trợ Lý AI Học Tập. Bạn có câu hỏi nào về bài giảng này không? Tôi có thể giúp bạn tóm tắt, trích xuất điểm chính, giải thích các khái niệm khó hoặc đưa ra ví dụ thực tế!',
     },
   ]);
   const [inputQuestion, setInputQuestion] = useState<string>('');
   const [aiThinking, setAiThinking] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isDark = themeMode === 'dark';
 
@@ -151,6 +158,10 @@ export const MaterialViewerPage: React.FC = () => {
     loadData();
     loadChatHistory();
   }, [courseId, materialId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, aiThinking]);
 
 
   const handleDownload = async () => {
@@ -252,7 +263,7 @@ export const MaterialViewerPage: React.FC = () => {
   }
 
   const token = localStorage.getItem('access_token');
-  const streamUrl = `/api/v1/courses/${courseId}/materials/${currentMaterial.id}/download?inline=true&token=${token}`;
+  const streamUrl = `${API_BASE_URL}/courses/${courseId}/materials/${currentMaterial.id}/download?inline=true&token=${token}`;
   const ext = currentMaterial.file_name.split('.').pop()?.toLowerCase() || '';
   const isPdf = ext === 'pdf';
   const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
@@ -314,10 +325,10 @@ export const MaterialViewerPage: React.FC = () => {
           </div>
         </header>
 
-        {/* Main Split Body Area */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Main Body Area */}
+        <div className="flex-1 flex overflow-hidden relative">
           {/* Main Viewer Canvas */}
-          <div className="flex-1 flex flex-col h-full bg-slate-900/40 relative overflow-hidden">
+          <div className="flex-1 flex flex-col h-full overflow-hidden relative">
             {isPdf ? (
               <iframe
                 src={streamUrl}
@@ -376,63 +387,90 @@ export const MaterialViewerPage: React.FC = () => {
             )}
           </div>
 
-          {/* AI Study Assistant Side Panel */}
+          {/* Floating AI Robot Trigger FAB Button (when chat is closed) */}
+          {!showAiAssistant && (
+            <MinecraftAIFloatingButton
+              onClick={() => setShowAiAssistant(true)}
+              title="Mở Trợ Lý AI Học Tập (Hỏi đáp toàn bộ bài giảng)"
+            />
+          )}
+
+          {/* AI Study Assistant Docked Side Panel */}
           {showAiAssistant && (
-            <motion.aside
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 380, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`border-l flex flex-col h-full z-10 shrink-0 ${
-                isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+            <aside
+              className={`w-[420px] sm:w-[460px] lg:w-[480px] max-w-[50vw] my-3 mr-3 rounded-3xl border-2 shadow-xl flex flex-col shrink-0 z-30 overflow-hidden transition-all duration-300 ${
+                isDark
+                  ? 'bg-[#0F172A] border-slate-800'
+                  : 'bg-white border-slate-200 shadow-slate-900/10'
               }`}
             >
-              {/* AI Header */}
-              <div className={`p-3.5 border-b flex items-center justify-between ${
-                isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'
+              {/* Header */}
+              <div className={`px-4 py-2.5 border-b flex items-center justify-between shrink-0 ${
+                isDark ? 'bg-[#151F30] border-slate-800' : 'bg-[#FDFBF7] border-amber-900/10'
               }`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-minecraft-grass flex items-center justify-center text-white font-bold shadow-md">
-                    <ThunderboltOutlined className="text-sm" />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <BlockyRobotIcon size={18} className="text-white" />
                   </div>
-                  <div>
-                    <div className="font-bold text-sm leading-none">Trợ Lý AI Học Tập</div>
-                    <div className="text-[11px] text-slate-400 mt-1">Đồng hành cùng bài giảng</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-xs sm:text-sm m-0 truncate text-slate-900 dark:text-white">
+                        Trợ Lý AI Học Tập
+                      </h4>
+                      <Badge
+                        status="processing"
+                        text={
+                          <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                            Material RAG
+                          </span>
+                        }
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium m-0 truncate leading-tight">
+                      Hỏi đáp toàn diện nội dung, công thức &amp; bài giảng
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <Tooltip title="Xem các phiên hội thoại cũ">
+                <div className="flex items-center gap-1 shrink-0">
+                  <Tooltip title="Lịch sử hội thoại">
                     <Button
                       size="small"
-                      icon={<HistoryOutlined />}
+                      icon={<HistoryOutlined className="text-xs" />}
                       onClick={() => setHistoryDrawerOpen(true)}
-                      className="rounded-lg text-xs"
+                      className="rounded-lg text-[11px] font-medium px-2 h-7 flex items-center gap-1"
                     >
                       Lịch sử
                     </Button>
                   </Tooltip>
-                  <Tooltip title="Tạo cuộc hội thoại mới">
+                  <Tooltip title="Bắt đầu hội thoại mới">
                     <Button
                       size="small"
-                      type="primary"
-                      icon={<PlusOutlined />}
+                      icon={<PlusOutlined className="text-xs" />}
                       onClick={handleNewChatSession}
-                      className="rounded-lg text-xs bg-minecraft-grass hover:bg-emerald-600 text-white"
+                      className="rounded-lg text-[11px] font-medium px-2 h-7 flex items-center gap-1 bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500 hover:text-white"
                     >
                       Mới
                     </Button>
                   </Tooltip>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiAssistant(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Đóng cửa sổ chat"
+                  >
+                    <CloseOutlined className="text-sm" />
+                  </button>
                 </div>
               </div>
 
               {/* History Drawer */}
               <Drawer
-                title="📜 Lịch sử cuộc hội thoại AI"
+                title="Lịch sử cuộc hội thoại AI"
                 placement="right"
                 onClose={() => setHistoryDrawerOpen(false)}
                 open={historyDrawerOpen}
-                width={320}
+                width={340}
               >
                 <div className="space-y-2">
                   <Button
@@ -440,7 +478,7 @@ export const MaterialViewerPage: React.FC = () => {
                     block
                     icon={<PlusOutlined />}
                     onClick={handleNewChatSession}
-                    className="mb-4 bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white rounded-xl"
+                    className="mb-4 bg-emerald-600 hover:bg-emerald-500 border border-emerald-700 text-white rounded-xl font-bold"
                   >
                     Bắt đầu cuộc trò chuyện mới
                   </Button>
@@ -452,17 +490,17 @@ export const MaterialViewerPage: React.FC = () => {
                       <button
                         key={s.id}
                         onClick={() => switchSession(s.id)}
-                        className={`w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
+                        className={`w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between cursor-pointer ${
                           sessionId === s.id
-                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 font-semibold'
+                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-semibold'
                             : isDark
                             ? 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
                             : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <MessageOutlined className="text-emerald-400" />
-                          <span className="truncate">{s.title || 'Untitled Chat'}</span>
+                          <MessageOutlined className="text-emerald-500" />
+                          <span className="truncate">{s.title || 'Đoạn chat bài giảng'}</span>
                         </div>
                         {sessionId === s.id && (
                           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
@@ -473,98 +511,137 @@ export const MaterialViewerPage: React.FC = () => {
                 </div>
               </Drawer>
 
-
-
-              {/* Quick AI Prompts */}
-              <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex gap-2 overflow-x-auto">
-                <Button
-                  size="small"
-                  onClick={() => handleAskAi('Tóm tắt bài giảng này giúp tôi')}
-                  className="rounded-full text-xs font-medium"
-                >
-                  ✨ Tóm tắt bài giảng
-                </Button>
-                <Button
-                  size="small"
-                  onClick={() => handleAskAi('Tạo 3 câu hỏi ôn tập')}
-                  className="rounded-full text-xs font-medium"
-                >
-                  ❓ Câu hỏi ôn tập
-                </Button>
-              </div>
-
-              {/* Chat Message Stream */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                {chatMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-2.5 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
-                  >
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
-                      msg.sender === 'user' ? 'bg-minecraft-grass text-white' : 'bg-minecraft-gold text-slate-900 font-bold'
-                    }`}>
-                      {msg.sender === 'user' ? <UserOutlined /> : <RobotOutlined />}
-                    </div>
-                    <div className="flex flex-col gap-1 max-w-[80%]">
+              {/* Messages Body */}
+              <div className={`flex-1 overflow-y-auto p-3.5 space-y-3.5 ${
+                isDark ? 'bg-[#0B1118]' : 'bg-[#FAFAF9]'
+              }`}>
+                {chatMessages.map((msg, index) => {
+                  const isUser = msg.sender === 'user';
+                  return (
+                    <div
+                      key={index}
+                      className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      {/* Avatar */}
                       <div
-                        className={`p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
-                          msg.sender === 'user'
-                            ? 'bg-minecraft-grass text-white rounded-tr-none'
-                            : isDark
-                            ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs mt-0.5 border ${
+                          isUser
+                            ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-xs'
+                            : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        <MarkdownRenderer content={msg.text} isUser={msg.sender === 'user'} />
+                        {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
                       </div>
 
-                      {msg.sender === 'ai' && msg.sources && msg.sources.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap text-[10px] text-slate-400 pl-1">
-                          <span className="font-semibold text-emerald-400">📚 Tài liệu:</span>
-                          {msg.sources.map((src, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className="bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded"
-                            >
-                              {src}
-                            </span>
-                          ))}
+                      {/* Content Bubble */}
+                      <div className="space-y-1.5 max-w-[85%]">
+                        <div
+                          className={
+                            isUser
+                              ? 'p-2.5 px-3.5 rounded-xl text-xs sm:text-sm leading-normal bg-minecraft-grass text-white font-medium shadow-xs rounded-tr-none'
+                              : 'p-3 px-4 rounded-xl text-xs sm:text-sm leading-normal bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs rounded-tl-none font-sans'
+                          }
+                        >
+                          <MarkdownRenderer
+                            content={msg.text}
+                            isUser={isUser}
+                          />
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
 
+                        {/* Sources list if any */}
+                        {!isUser && msg.sources && msg.sources.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            <span className="text-[10px] font-medium text-slate-500">
+                              Trích xuất từ:
+                            </span>
+                            {msg.sources.map((src, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700"
+                              >
+                                {src}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {aiThinking && (
-                  <div className="flex items-center gap-2 text-xs text-amber-500">
-                    <Spin size="small" />
-                    <span>AI đang suy nghĩ...</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                      <RobotOutlined className="animate-spin text-xs" />
+                    </div>
+                    <div className="p-2.5 px-3.5 rounded-xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <Spin size="small" />
+                      <span className="font-medium">AI đang tra cứu tài liệu &amp; tổng hợp...</span>
+                    </div>
                   </div>
                 )}
+
+                <div ref={messagesEndRef} />
               </div>
 
-              {/* Chat Input */}
-              <div className="p-3 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Hỏi AI về nội dung bài giảng..."
+              {/* Quick Prompt Chips */}
+              <div className={`px-3 py-1.5 border-t border-b flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 ${
+                isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                {[
+                  { label: 'Tóm tắt 1 câu', query: 'Tóm tắt ngắn gọn bài giảng này trong 1 câu.' },
+                  { label: '3 câu hỏi nhanh', query: 'Tạo 3 câu hỏi ngắn để tự ôn tập.' },
+                  { label: 'Chủ đề chính', query: 'Bài giảng này nói về chủ đề chính nào?' },
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleAskAi(chip.query)}
+                    disabled={aiThinking}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-2xs"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input Area */}
+              <div className={`p-2.5 px-3 border-t shrink-0 ${
+                isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <div className={`flex items-center gap-2 p-1 px-2 rounded-xl border transition-all ${
+                  isDark
+                    ? 'bg-slate-900 border-slate-700 focus-within:border-emerald-500'
+                    : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-2xs'
+                }`}>
+                  <input
+                    type="text"
+                    placeholder="Hỏi AI bất kỳ câu hỏi nào về bài giảng này..."
                     value={inputQuestion}
                     onChange={(e) => setInputQuestion(e.target.value)}
-                    onPressEnter={() => handleAskAi()}
-                    size="large"
-                    className="rounded-xl text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleAskAi();
+                      }
+                    }}
+                    disabled={aiThinking}
+                    className="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm py-1 px-1.5 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
                   />
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
+                  <button
+                    type="button"
                     onClick={() => handleAskAi()}
-                    size="large"
-                    className="rounded-xl bg-minecraft-grass hover:bg-emerald-600 border border-minecraft-grassBorder text-white"
-                  />
+                    disabled={!inputQuestion.trim() || aiThinking}
+                    className="w-8 h-8 rounded-lg bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    <SendOutlined className="text-sm" />
+                  </button>
                 </div>
+                <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 m-0 pt-1 truncate leading-tight">
+                  Trợ lý bài giảng hỗ trợ giải thích, tóm tắt và hỏi đáp đầy đủ toàn bộ tài liệu học tập.
+                </p>
               </div>
-            </motion.aside>
+            </aside>
           )}
         </div>
       </div>

@@ -23,8 +23,8 @@ class Notification(Base, TimestampMixin):
     task_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    notification_type: Mapped[NotificationTypeEnum] = mapped_column(
-        SQLEnum(NotificationTypeEnum, native_enum=False),
+    notification_type: Mapped[str] = mapped_column(
+        String(50),
         default=NotificationTypeEnum.CUSTOM,
         nullable=False,
     )

@@ -1,11 +1,12 @@
 from datetime import datetime
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.enums import EnrollmentRoleEnum
 from src.db.models.identity.user import User
 from src.db.models.learning.course import Course
+from src.db.models.learning.course_schedule import CourseSchedule
 from src.db.models.learning.enrollment import Enrollment
 
 
@@ -18,13 +19,16 @@ class CourseRepository:
         instructor_id: str,
         start_date: datetime,
         end_date: datetime,
+        credits: int = 3,
         description: str | None = None,
         term: str | None = None,
+        schedules_data: list[dict] | None = None,
     ) -> Course:
-        """Create and persist a new Course instance."""
+        """Create and persist a new Course instance with schedules."""
         course = Course(
             name=name.strip(),
             code=code.upper().strip(),
+            credits=credits,
             description=description.strip() if description else None,
             term=term.strip() if term else None,
             start_date=start_date,
@@ -32,9 +36,21 @@ class CourseRepository:
             instructor_id=instructor_id,
         )
         db.add(course)
+        await db.flush()
+
+        if schedules_data:
+            for s in schedules_data:
+                schedule = CourseSchedule(
+                    course_id=course.id,
+                    day_of_week=s["day_of_week"],
+                    start_time=s["start_time"],
+                    end_time=s["end_time"],
+                    room=s.get("room"),
+                )
+                db.add(schedule)
+
         await db.commit()
-        await db.refresh(course)
-        return course
+        return await CourseRepository.get_by_id(db, course.id)  # type: ignore
 
     @staticmethod
     async def update_course(
@@ -42,12 +58,14 @@ class CourseRepository:
         course_id: str,
         name: str | None = None,
         code: str | None = None,
+        credits: int | None = None,
         description: str | None = None,
         term: str | None = None,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
+        schedules_data: list[dict] | None = None,
     ) -> Course | None:
-        """Update fields of an existing course."""
+        """Update fields of an existing course and its schedules."""
         course = await CourseRepository.get_by_id(db, course_id)
         if not course:
             return None
@@ -55,6 +73,8 @@ class CourseRepository:
             course.name = name.strip()
         if code is not None:
             course.code = code.upper().strip()
+        if credits is not None:
+            course.credits = credits
         if description is not None:
             course.description = description.strip() if description else None
         if term is not None:
@@ -64,17 +84,42 @@ class CourseRepository:
         if end_date is not None:
             course.end_date = end_date
 
-        await db.commit()
-        await db.refresh(course)
-        return course
+        if schedules_data is not None:
+            # Delete existing schedules
+            await db.execute(delete(CourseSchedule).where(CourseSchedule.course_id == course_id))
+            for s in schedules_data:
+                schedule = CourseSchedule(
+                    course_id=course.id,
+                    day_of_week=s["day_of_week"],
+                    start_time=s["start_time"],
+                    end_time=s["end_time"],
+                    room=s.get("room"),
+                )
+                db.add(schedule)
+            db.expire(course, ["schedules"])
 
+        await db.commit()
+        return await CourseRepository.get_by_id(db, course_id)
+
+    @staticmethod
+    async def delete_course(db: AsyncSession, course_id: str) -> bool:
+        """Delete course by ID."""
+        course = await CourseRepository.get_by_id(db, course_id)
+        if not course:
+            return False
+        await db.delete(course)
+        await db.commit()
+        return True
 
     @staticmethod
     async def get_by_id(db: AsyncSession, course_id: str) -> Course | None:
-        """Fetch course by ID with instructor relationship."""
+        """Fetch course by ID with instructor and schedules relationships."""
         stmt = (
             select(Course)
-            .options(selectinload(Course.instructor))
+            .options(
+                selectinload(Course.instructor),
+                selectinload(Course.schedules),
+            )
             .where(Course.id == course_id)
         )
         result = await db.execute(stmt)
@@ -88,7 +133,11 @@ class CourseRepository:
                 Course,
                 func.count(Enrollment.id).label("student_count")
             )
-            .outerjoin(Enrollment, (Enrollment.course_id == Course.id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT))
+            .options(
+                selectinload(Course.instructor),
+                selectinload(Course.schedules),
+            )
+            .outerjoin(Enrollment, (Enrollment.course_id == Course.id) & (func.lower(Enrollment.role) == "student"))
             .where(Course.instructor_id == instructor_id)
             .group_by(Course.id)
             .order_by(Course.created_at.desc())
@@ -105,30 +154,25 @@ class CourseRepository:
     @staticmethod
     async def get_available_courses(db: AsyncSession, student_id: str | None = None) -> list[dict]:
         """Fetch available courses for students with instructor details and enrollment status."""
-        # Subquery for enrolled student count per course
         count_subq = (
             select(
                 Enrollment.course_id,
                 func.count(Enrollment.id).label("student_count")
             )
-            .where(Enrollment.role == EnrollmentRoleEnum.STUDENT)
+            .where(func.lower(Enrollment.role) == "student")
             .group_by(Enrollment.course_id)
             .subquery()
         )
-
-        # Subquery for current student's enrollment check
-        if student_id:
-            user_enrollment_subq = (
-                select(Enrollment.course_id)
-                .where((Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT))
-                .subquery()
-            )
 
         stmt = (
             select(
                 Course,
                 User,
                 func.coalesce(count_subq.c.student_count, 0).label("student_count"),
+            )
+            .options(
+                selectinload(Course.instructor),
+                selectinload(Course.schedules),
             )
             .outerjoin(User, Course.instructor_id == User.id)
             .outerjoin(count_subq, Course.id == count_subq.c.course_id)
@@ -141,7 +185,7 @@ class CourseRepository:
         enrolled_course_ids = set()
         if student_id:
             enroll_stmt = select(Enrollment.course_id).where(
-                (Enrollment.user_id == student_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.user_id == student_id) & (func.lower(Enrollment.role) == "student")
             )
             enroll_res = await db.execute(enroll_stmt)
             enrolled_course_ids = set(enroll_res.scalars().all())
@@ -165,9 +209,13 @@ class CourseRepository:
                 User,
                 Enrollment
             )
+            .options(
+                selectinload(Course.instructor),
+                selectinload(Course.schedules),
+            )
             .join(Enrollment, (Enrollment.course_id == Course.id) & (Enrollment.user_id == student_id))
             .outerjoin(User, Course.instructor_id == User.id)
-            .where(Enrollment.role == EnrollmentRoleEnum.STUDENT)
+            .where(func.lower(Enrollment.role) == "student")
             .order_by(Enrollment.created_at.desc())
         )
         result = await db.execute(stmt)
@@ -175,9 +223,8 @@ class CourseRepository:
 
         items = []
         for course, instructor, _ in rows:
-            # Count enrolled students for each course
             count_stmt = select(func.count(Enrollment.id)).where(
-                (Enrollment.course_id == course.id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.course_id == course.id) & (func.lower(Enrollment.role) == "student")
             )
             cnt_res = await db.execute(count_stmt)
             student_count = cnt_res.scalar() or 0
@@ -205,7 +252,7 @@ class CourseRepository:
         enrollment = Enrollment(
             user_id=student_id,
             course_id=course_id,
-            role=EnrollmentRoleEnum.STUDENT,
+            role="student",
             status="active",
         )
         db.add(enrollment)
@@ -214,13 +261,27 @@ class CourseRepository:
         return enrollment
 
     @staticmethod
+    async def leave_course(db: AsyncSession, student_id: str, course_id: str) -> bool:
+        """Remove student enrollment for a course (drop course)."""
+        stmt = select(Enrollment).where(
+            (Enrollment.user_id == student_id) & (Enrollment.course_id == course_id)
+        )
+        res = await db.execute(stmt)
+        enrollment = res.scalar_one_or_none()
+        if not enrollment:
+            return False
+        await db.delete(enrollment)
+        await db.commit()
+        return True
+
+    @staticmethod
     async def get_enrolled_students(db: AsyncSession, course_id: str) -> list[dict]:
         """Fetch list of enrolled students for a course."""
         stmt = (
             select(User, Enrollment)
             .join(Enrollment, User.id == Enrollment.user_id)
             .where(
-                (Enrollment.course_id == course_id) & (Enrollment.role == EnrollmentRoleEnum.STUDENT)
+                (Enrollment.course_id == course_id) & (func.lower(Enrollment.role) == "student")
             )
             .order_by(Enrollment.created_at.desc())
         )

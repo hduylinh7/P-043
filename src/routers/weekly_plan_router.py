@@ -11,6 +11,9 @@ from src.models.weekly_plan import (
     PlanTaskResponse,
     PlanTaskStatusUpdateRequest,
     PlanTaskUpdateRequest,
+    SelfCheckEvalRequest,
+    SelfCheckEvalResponse,
+    StudySessionCompanionResponse,
     WeeklyPlanCreateRequest,
     WeeklyPlanResponse,
     WeeklyPlanUpdateRequest,
@@ -19,6 +22,16 @@ from src.routers.auth_router import get_current_user
 from src.services.weekly_plan_service import WeeklyPlanService
 
 router = APIRouter(tags=["Weekly Plans"])
+
+
+@router.get("/weekly-plans/unified-calendar")
+async def get_unified_calendar(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    week_start: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch unified student calendar events (Fixed Classes, AI Planned, Student Study Sessions)."""
+    return await WeeklyPlanService.get_unified_calendar(db, current_user, week_start=week_start)
 
 
 # 1. Weekly Plan APIs
@@ -145,3 +158,25 @@ async def save_task_reflection(
 ):
     """Submit study session reflection and generate AI learning insights."""
     return await WeeklyPlanService.save_task_reflection(db, id, payload, current_user)
+
+
+@router.get("/tasks/{id}/study-companion", response_model=StudySessionCompanionResponse)
+async def get_study_session_companion_data(
+    id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch grounded Learning Objectives, AI Study Guide, Sources, Related Assignment, and Quick Self-Check questions for a study session."""
+    return await WeeklyPlanService.get_study_session_companion_data(db, id, current_user)
+
+
+@router.post("/tasks/{id}/self-check/evaluate", response_model=SelfCheckEvalResponse)
+async def evaluate_self_check_answer(
+    id: str,
+    payload: SelfCheckEvalRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Evaluate student's quick self-check response and return instant non-graded AI feedback."""
+    return await WeeklyPlanService.evaluate_self_check_answer(db, id, payload, current_user)
+

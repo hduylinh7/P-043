@@ -9,27 +9,27 @@ export const TestimonialsSection: React.FC = () => {
 
   const testimonials = [
     {
-      name: 'Nguyen Hoang Linh',
-      role: 'Computer Science Major @ VinUniversity',
+      name: 'Nguyễn Hoàng Linh',
+      role: 'Sinh viên Khoa học Máy tính',
       avatarBg: 'bg-emerald-600',
       initials: 'HL',
-      content: 'Lita Learning completely restructured how I prepare for exams. The AI tutor breaks down complex algorithms in seconds!',
+      content: 'Lita Learning đã thay đổi hoàn toàn cách mình ôn thi. Trợ lý AI giải thích các thuật toán phức tạp chỉ trong vài giây!',
       rating: 5,
     },
     {
-      name: 'Sarah Jenkins',
-      role: 'Business Administration Senior',
+      name: 'Trần Minh Quân',
+      role: 'Sinh viên Khoa học Dữ liệu & AI',
       avatarBg: 'bg-amber-500',
-      initials: 'SJ',
-      content: 'The smart study planner keeps me on track with 5 courses simultaneously. My GPA went from 3.2 to 3.8 in just one semester.',
+      initials: 'MQ',
+      content: 'Kế hoạch học tập thông minh giúp mình quản lý cùng lúc 5 môn học mà không bị quá tải. Điểm GPA của mình đã tăng từ 3.2 lên 3.8.',
       rating: 5,
     },
     {
-      name: 'Minh Quan Tran',
-      role: 'Data Science & AI Student',
+      name: 'Lê Thu Hà',
+      role: 'Sinh viên Quản trị Kinh doanh',
       avatarBg: 'bg-emerald-600',
-      initials: 'MQ',
-      content: 'I love the weekly goal tracking feature. The interactive prompts and instant assignment alerts saved me from missing crucial deadlines.',
+      initials: 'TH',
+      content: 'Mình rất thích tính năng theo dõi mục tiêu tuần và nhắc nhở bài tập. Các câu hỏi tương tác giúp mình ghi nhớ bài giảng sâu sắc hơn.',
       rating: 5,
     },
   ];
@@ -40,18 +40,18 @@ export const TestimonialsSection: React.FC = () => {
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3">
-            STUDENT SUCCESS
+          <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3 font-pixel">
+            CÂU CHUYỆN THÀNH CÔNG
           </h2>
           <h3 className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
             themeMode === 'dark' ? 'text-white' : 'text-slate-900'
           }`}>
-            Loved by Students Worldwide
+            Được Sinh Viên &amp; Người Học Tin Dùng
           </h3>
           <p className={`mt-4 text-base sm:text-lg ${
             themeMode === 'dark' ? 'text-slate-400' : 'text-slate-600'
           }`}>
-            Discover how students are achieving academic excellence with their AI companion.
+            Khám phá cách người học nâng cao thành tích học tập vượt trội cùng trợ lý AI.
           </p>
         </div>
 

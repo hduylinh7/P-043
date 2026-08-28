@@ -15,7 +15,9 @@ import {
   BookOpen,
   Target,
   Calendar,
+  Clock,
   Settings,
+  CheckSquare,
   LucideIcon,
 } from 'lucide-react';
 import { LitaLogo } from './common/LitaLogo';
@@ -35,7 +37,8 @@ export const Sidebar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { themeMode, toggleTheme } = useTheme();
 
-  const isStudent = user?.roles?.includes('student') || false;
+  const isInstructor = user?.roles?.some(r => ['instructor', 'admin', 'ta'].includes(r.toLowerCase())) || false;
+  const isStudent = !isInstructor || (user?.roles?.some(r => r.toLowerCase() === 'student') ?? true);
   const isDark = themeMode === 'dark';
   const isHomePage = location.pathname === '/';
 
@@ -55,9 +58,15 @@ export const Sidebar: React.FC = () => {
     ...(isStudent
       ? [
           {
-            id: 'weekly-plan',
-            name: 'Study Plan (Kế hoạch học tập)',
-            path: '/weekly-plan',
+            id: 'assignments',
+            name: 'Bài tập',
+            path: '/assignments',
+            icon: CheckSquare,
+          },
+          {
+            id: 'calendar',
+            name: 'Lịch học cá nhân',
+            path: '/calendar',
             icon: Calendar,
           },
           {
@@ -71,7 +80,7 @@ export const Sidebar: React.FC = () => {
 
     {
       id: 'chat',
-      name: 'AI Chat Assistant',
+      name: 'Trợ Lý Chat AI',
       path: '/ai-chat',
       icon: MessageSquare,
       badge: 'RAG',
@@ -93,7 +102,7 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       <aside
-        className={`relative flex flex-col h-screen transition-all duration-300 ease-in-out z-40 border-r ${
+        className={`sticky top-0 h-screen shrink-0 flex flex-col transition-all duration-300 ease-in-out z-40 border-r ${
           isDark
             ? 'bg-[#0F1710] border-minecraft-obsidianBorder text-slate-200'
             : 'bg-[#FDFBF7] border-amber-900/10 text-slate-800 shadow-md'
@@ -164,7 +173,7 @@ export const Sidebar: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-minecraft-grass/20 text-emerald-600 dark:text-emerald-400 border border-minecraft-grass/30 truncate">
-                      ✨ {user.account_tier || (isStudent ? 'PRO Student' : 'VIP Instructor')}
+                      ✨ {user.account_tier || (isStudent ? 'Sinh viên PRO' : 'Giảng viên VIP')}
                     </span>
                   </div>
                 </div>

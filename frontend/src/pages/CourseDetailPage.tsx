@@ -59,6 +59,7 @@ import {
   FilterOutlined,
   SaveOutlined,
   LockOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 
 import { motion } from 'framer-motion';
@@ -69,7 +70,7 @@ import { Sidebar } from '../components/Sidebar';
 import { courseService } from '../services/courseService';
 import { materialService } from '../services/materialService';
 import { assignmentService } from '../services/assignmentService';
-import { CourseDetail, EnrolledStudent } from '../types/course';
+import { CourseDetail, EnrolledStudent, ScheduleConflictInfo } from '../types/course';
 import { CourseMaterial } from '../types/material';
 import {
   Assignment,
@@ -96,6 +97,53 @@ export const CourseDetailPage: React.FC = () => {
 
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Join / Leave / Conflict State
+  const [joiningCourse, setJoiningCourse] = useState<boolean>(false);
+  const [leavingCourse, setLeavingCourse] = useState<boolean>(false);
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState<boolean>(false);
+  const [conflictInfo, setConflictInfo] = useState<{ targetCourseName: string; conflict: ScheduleConflictInfo } | null>(null);
+
+  const handleJoinCourseDetail = async () => {
+    if (!courseId || !detail?.course) return;
+    setJoiningCourse(true);
+    try {
+      await courseService.joinCourse(courseId);
+      message.success(`Đã tham gia thành công môn ${detail.course.name}!`);
+      fetchDetail();
+    } catch (err: any) {
+      console.error('Join course error:', err);
+      if (err.response?.status === 409 && err.response?.data?.detail?.conflict) {
+        setConflictInfo({
+          targetCourseName: detail.course.name,
+          conflict: err.response.data.detail.conflict,
+        });
+        setIsConflictModalOpen(true);
+      } else {
+        const detailMsg = typeof err.response?.data?.detail === 'string'
+          ? err.response.data.detail
+          : err.response?.data?.detail?.message || 'Không thể tham gia khóa học.';
+        message.error(detailMsg);
+      }
+    } finally {
+      setJoiningCourse(false);
+    }
+  };
+
+  const handleLeaveCourseDetail = async () => {
+    if (!courseId) return;
+    setLeavingCourse(true);
+    try {
+      await courseService.leaveCourse(courseId);
+      message.success('Đã rời khỏi khóa học.');
+      fetchDetail();
+    } catch (err: any) {
+      console.error('Leave course error:', err);
+      message.error(err.response?.data?.detail || 'Không thể rời khóa học.');
+    } finally {
+      setLeavingCourse(false);
+    }
+  };
 
   // Materials State
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
@@ -296,30 +344,47 @@ export const CourseDetailPage: React.FC = () => {
         return result;
       };
 
-      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
       const parsedQuestions: AssignmentQuestionPayload[] = [];
+
+      const getOptVal = (r: Record<string, string>, idx: number) => {
+        const char = String.fromCharCode(97 + idx); // 'a', 'b', 'c', 'd'
+        const num = idx + 1; // 1, 2, 3, 4
+        return (
+          r[`option_${num}`] || r[`option${num}`] || r[`opt_${num}`] || r[`opt${num}`] ||
+          r[`option_${char}`] || r[`option${char}`] || r[`opt_${char}`] || r[`opt${char}`] ||
+          r[char] || r[`${num}`] || ''
+        );
+      };
 
       for (let i = 1; i < lines.length; i++) {
         const cols = parseCsvLine(lines[i]);
-        if (cols.length === 0 || !cols[0]) continue;
+        if (cols.length === 0 || !cols.some((c) => c && c.trim().length > 0)) continue;
 
         const row: Record<string, string> = {};
         headers.forEach((h, idx) => {
           row[h] = cols[idx] || '';
         });
 
-        let qTypeRaw = (row['question_type'] || row['type'] || 'SHORT_ANSWER').toUpperCase().replace(/[\s-]/g, '_');
-        let qType: QuestionType = qTypeRaw as QuestionType;
-        if (!['MULTIPLE_CHOICE', 'ESSAY', 'SHORT_ANSWER'].includes(qType)) {
-          qType = row['option_1'] ? 'MULTIPLE_CHOICE' : 'SHORT_ANSWER';
+        let qTypeRaw = (row['question_type'] || row['type'] || '').toUpperCase().replace(/[\s-]/g, '_');
+        let qType: QuestionType = 'SHORT_ANSWER';
+        if (['MULTIPLE_CHOICE', 'ESSAY', 'SHORT_ANSWER'].includes(qTypeRaw)) {
+          qType = qTypeRaw as QuestionType;
+        } else if (qTypeRaw.includes('TRAC_NGHIEM') || qTypeRaw.includes('MCQ') || getOptVal(row, 0)) {
+          qType = 'MULTIPLE_CHOICE';
+        } else if (qTypeRaw.includes('TU_LUAN')) {
+          qType = 'ESSAY';
         }
-        const qText = row['question_text'] || row['question'] || row['text'] || cols[0];
+
+        const qText = (row['question_text'] || row['question'] || row['text'] || cols[0] || '').trim();
+        if (!qText) continue;
+
         const pts = parseFloat(row['points'] || '1.0') || 1.0;
-        const expAns = row['expected_answer'] || row['answer'] || row['rubric'] || '';
+        const expAns = (row['expected_answer'] || row['answer'] || row['rubric'] || '').trim();
 
         const opts: any[] = [];
         if (qType === 'MULTIPLE_CHOICE') {
-          const rawCorrect = (row['correct_option'] || row['correct'] || '').toString().trim();
+          const rawCorrect = (row['correct_option'] || row['correct'] || row['dap_an'] || '').toString().trim();
           let correctIdx = -1;
 
           if (/^\d+$/.test(rawCorrect)) {
@@ -331,16 +396,16 @@ export const CourseDetailPage: React.FC = () => {
             correctIdx = rawCorrect.toUpperCase().charCodeAt(0) - 65;
           }
 
-          for (let o = 1; o <= 6; o++) {
-            const optVal = row[`option_${o}`] || row[`option${o}`];
+          for (let o = 0; o < 6; o++) {
+            const optVal = getOptVal(row, o);
             if (optVal && optVal.trim()) {
               const trimmedOpt = optVal.trim();
-              const isCorr = (correctIdx >= 0 && o - 1 === correctIdx) ||
+              const isCorr = (correctIdx >= 0 && o === correctIdx) ||
                              (rawCorrect.length > 0 && rawCorrect.toLowerCase() === trimmedOpt.toLowerCase());
               opts.push({
                 option_text: trimmedOpt,
                 is_correct: isCorr,
-                display_order: o - 1,
+                display_order: o,
               });
             }
           }
@@ -351,7 +416,7 @@ export const CourseDetailPage: React.FC = () => {
           question_text: qText,
           points: pts,
           display_order: questions.length + parsedQuestions.length,
-          expected_answer: expAns,
+          expected_answer: expAns || null,
           options: opts.length > 0 ? opts : undefined,
         });
       }
@@ -516,21 +581,56 @@ export const CourseDetailPage: React.FC = () => {
     }
   };
 
+  // Helper to clean questions payload and prevent Pydantic 422 validation errors
+  const sanitizeQuestionsForPayload = (rawQuestions: AssignmentQuestionPayload[]): AssignmentQuestionPayload[] => {
+    return (rawQuestions || [])
+      .filter((q) => q && q.question_text && q.question_text.trim().length > 0)
+      .map((q, idx) => {
+        let validQType: QuestionType = 'SHORT_ANSWER';
+        const rawType = (q.question_type || '').toUpperCase();
+        if (rawType === 'MULTIPLE_CHOICE' || rawType === 'ESSAY' || rawType === 'SHORT_ANSWER') {
+          validQType = rawType as QuestionType;
+        } else if (rawType.includes('TRAC_NGHIEM') || rawType.includes('MCQ') || (q.options && q.options.length > 0)) {
+          validQType = 'MULTIPLE_CHOICE';
+        }
+
+        const rawOpts = q.options || [];
+        const cleanOpts = rawOpts
+          .filter((opt) => opt && opt.option_text && opt.option_text.trim().length > 0)
+          .map((opt, optIdx) => ({
+            option_text: opt.option_text.trim(),
+            is_correct: Boolean(opt.is_correct),
+            display_order: opt.display_order ?? optIdx,
+          }));
+
+        return {
+          question_type: validQType,
+          question_text: q.question_text.trim(),
+          points: Math.max(0, Number(q.points) || 1.0),
+          display_order: q.display_order ?? idx,
+          expected_answer: q.expected_answer?.trim() || null,
+          options: validQType === 'MULTIPLE_CHOICE' ? cleanOpts : [],
+        };
+      });
+  };
+
   // Assignment Actions
   const handleCreateAssignment = async (values: any, statusOverride?: string) => {
     if (!courseId) return;
     setSubmittingAssignment(true);
     try {
       const finalStatus = statusOverride || values.status || 'ACTIVE';
+      const cleanQuestions = sanitizeQuestionsForPayload(questions);
+
       const newAssignment = await assignmentService.createAssignment(courseId, {
-        title: values.title,
-        description: values.description,
+        title: values.title?.trim() || 'Bài tập trắc nghiệm',
+        description: values.description?.trim() || undefined,
         available_from: values.available_from ? new Date(values.available_from).toISOString() : undefined,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : undefined,
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
         status: finalStatus,
         priority: values.priority || 'MEDIUM',
-        questions: questions,
+        questions: cleanQuestions,
       });
 
       // Upload reference file if attached
@@ -589,15 +689,17 @@ export const CourseDetailPage: React.FC = () => {
     setSubmittingAssignment(true);
     try {
       const finalStatus = statusOverride || values.status || editingAssignment.status || 'ACTIVE';
+      const cleanQuestions = sanitizeQuestionsForPayload(questions);
+
       await assignmentService.updateAssignment(editingAssignment.id, {
-        title: values.title,
-        description: values.description,
+        title: values.title?.trim(),
+        description: values.description?.trim(),
         available_from: values.available_from ? new Date(values.available_from).toISOString() : undefined,
         due_date: values.due_date ? new Date(values.due_date).toISOString() : undefined,
         estimated_hours: values.estimated_hours ? Number(values.estimated_hours) : undefined,
         status: finalStatus,
         priority: values.priority,
-        questions: questions,
+        questions: cleanQuestions,
       });
 
       // Upload reference file if attached
@@ -631,6 +733,19 @@ export const CourseDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Delete assignment error:', err);
       message.error(err.response?.data?.detail || 'Không thể xóa bài tập.');
+    }
+  };
+
+  const handlePublishAssignmentDirectly = async (assignment: Assignment) => {
+    try {
+      await assignmentService.updateAssignment(assignment.id, {
+        status: 'ACTIVE',
+      });
+      message.success(`Đã phát hành bài tập "${assignment.title}" thành công! Sinh viên giờ đây có thể làm bài.`);
+      fetchAssignments();
+    } catch (err: any) {
+      console.error('Publish assignment error:', err);
+      message.error(err.response?.data?.detail || 'Không thể phát hành bài tập.');
     }
   };
 
@@ -1602,15 +1717,72 @@ export const CourseDetailPage: React.FC = () => {
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                  Môn Học Lita Learning
-                </span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="badge-voxel-green text-xs font-mono tracking-wider">
+                    {course.code}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                    {course.credits || 3} Tín chỉ
+                  </span>
+                </div>
                 <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {course.name}
                 </h2>
-                <p className={`text-sm max-w-2xl leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p className={`text-sm max-w-2xl leading-relaxed mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   {course.description || 'Chưa có thông tin mô tả chi tiết cho môn học này.'}
                 </p>
+
+                {/* Official Class Schedule Display */}
+                <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 space-y-2 max-w-2xl">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                    <ClockCircleOutlined /> Lịch Học Giảng Đường Cố Định:
+                  </div>
+                  {course.schedules && course.schedules.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {course.schedules.map((s, idx) => (
+                        <span key={idx} className="text-xs font-bold px-3 py-1 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm">
+                          📅 {s.day_of_week}: {s.start_time} – {s.end_time}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Chưa xếp lịch học giảng đường chính thức</span>
+                  )}
+                </div>
+
+                {/* Join / Leave Actions for Student */}
+                {!isInstructor && (
+                  <div className="mt-4 flex items-center gap-3">
+                    {course.is_enrolled ? (
+                      <>
+                        <span className="badge-voxel-green text-xs">
+                          <CheckCircleOutlined /> Bạn Đã Tham Gia Môn Học Này
+                        </span>
+                        <Popconfirm
+                          title="Hủy đăng ký môn học"
+                          description="Bạn có chắc chắn muốn rời khỏi môn học này?"
+                          onConfirm={handleLeaveCourseDetail}
+                          okText="Rời khỏi"
+                          cancelText="Hủy"
+                          okButtonProps={{ danger: true }}
+                        >
+                          <Button danger loading={leavingCourse} size="small" className="rounded-xl text-xs font-semibold">
+                            Rời Môn Học
+                          </Button>
+                        </Popconfirm>
+                      </>
+                    ) : (
+                      <button
+                        disabled={joiningCourse}
+                        onClick={handleJoinCourseDetail}
+                        className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold flex items-center gap-2"
+                      >
+                        <PlusOutlined />
+                        <span>Đăng Ký Tham Gia Môn Học</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Metadata Badges */}
@@ -1640,6 +1812,67 @@ export const CourseDetailPage: React.FC = () => {
               </div>
             </div>
           </motion.div>
+
+          {/* Schedule Conflict Warning Modal */}
+          <Modal
+            open={isConflictModalOpen}
+            onCancel={() => setIsConflictModalOpen(false)}
+            footer={null}
+            centered
+            className="rounded-2xl overflow-hidden"
+          >
+            <div className="text-center p-2 space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-full bg-rose-500/15 border-2 border-rose-500/30 text-rose-500 flex items-center justify-center text-2xl shadow-voxel-sm">
+                <WarningOutlined />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-extrabold text-rose-600 dark:text-rose-400 m-0">
+                  ⚠ Schedule Conflict (Xung Đột Thời Khóa Biểu)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 m-0">
+                  Bạn không thể đăng ký khóa học <strong>{conflictInfo?.targetCourseName}</strong> do trùng giờ học cố định với môn học bạn đã tham gia.
+                </p>
+              </div>
+
+              {conflictInfo?.conflict && (
+                <div className="bg-rose-500/10 dark:bg-rose-950/40 p-4 rounded-2xl border-2 border-rose-500/30 text-left space-y-3 text-xs">
+                  <div className="flex items-center justify-between font-bold text-rose-700 dark:text-rose-300 pb-2 border-b border-rose-500/20">
+                    <span>Môn học đã đăng ký:</span>
+                    <span className="font-mono text-xs">{conflictInfo.conflict.conflicting_course_code} — {conflictInfo.conflict.conflicting_course_name}</span>
+                  </div>
+
+                  <div className="space-y-1.5 text-slate-700 dark:text-slate-200">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Ngày trong tuần:</span>
+                      <span className="font-bold">{conflictInfo.conflict.day_of_week}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Khung giờ môn đã đăng ký:</span>
+                      <span className="font-mono font-bold">{conflictInfo.conflict.existing_start_time} – {conflictInfo.conflict.existing_end_time}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Khung giờ môn muốn đăng ký:</span>
+                      <span className="font-mono font-bold text-rose-500">{conflictInfo.conflict.new_start_time} – {conflictInfo.conflict.new_end_time}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-rose-500/20 font-bold text-rose-600 dark:text-rose-400">
+                      <span>Thời gian bị trùng lắp:</span>
+                      <span className="font-mono">{conflictInfo.conflict.overlap_start_time} – {conflictInfo.conflict.overlap_end_time}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setIsConflictModalOpen(false)}
+                  className="btn-voxel-green text-xs px-5 py-2 rounded-xl"
+                >
+                  Đã Hiểu / Đóng
+                </button>
+              </div>
+            </div>
+          </Modal>
 
           {/* Roster, Materials & Assignments Tabs */}
           <Tabs
@@ -1788,6 +2021,17 @@ export const CourseDetailPage: React.FC = () => {
                               <div className="flex items-center gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-800 flex-wrap">
                                 {isCourseOwner && (
                                   <>
+                                    {isDraft && (
+                                      <Button
+                                        type="primary"
+                                        icon={<SendOutlined />}
+                                        onClick={() => handlePublishAssignmentDirectly(item)}
+                                        className="rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white border-0 shadow-sm"
+                                      >
+                                        Phát Hành
+                                      </Button>
+                                    )}
+
                                     <Button
                                       type="default"
                                       icon={<FolderOpenOutlined />}
@@ -2401,7 +2645,18 @@ export const CourseDetailPage: React.FC = () => {
                 loading={submittingAssignment}
                 className="rounded-xl border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
               >
-                Chuyển về Bản Nháp (Draft)
+                Lưu Thành Bản Nháp (Draft)
+              </Button>
+              <Button
+                htmlType="button"
+                onClick={() => {
+                  const vals = editAssignmentForm.getFieldsValue();
+                  handleEditAssignment(vals, 'ACTIVE');
+                }}
+                loading={submittingAssignment}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold border-0"
+              >
+                🚀 Phát Hành Bài Tập (Active)
               </Button>
               <Button
                 type="primary"

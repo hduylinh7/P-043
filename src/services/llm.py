@@ -25,9 +25,9 @@ def get_llm(
             or "dummy-key-for-test"
         ).strip()
 
-        g_model = model_name or settings.model_name or "llama-3.3-70b-versatile"
+        g_model = model_name or settings.model_name or "openai/gpt-oss-120b"
         if "gemini" in g_model:
-            g_model = "llama-3.3-70b-versatile"
+            g_model = "openai/gpt-oss-120b"
 
         try:
             from langchain_groq import ChatGroq
@@ -50,17 +50,17 @@ def get_llm(
             settings.openrouter_api_key
             or os.getenv("OPENROUTER_API_KEY")
             or "dummy-key-for-test"
-        )
-        target_model = model_name or settings.model_name or "google/gemini-2.5-flash"
+        ).strip().strip('"\'')
+        target_model = (model_name or settings.model_name or "meta-llama/llama-3.3-70b-instruct").strip().strip('"\'')
+        base_url = (settings.openrouter_base_url or os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1").strip().strip('"\'')
         return ChatOpenAI(
             model=target_model,
             api_key=api_key,
-            base_url=settings.openrouter_base_url or "https://openrouter.ai/api/v1",
+            base_url=base_url,
             temperature=temp,
             max_tokens=2000,
             default_headers={
                 "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "AI20K Learning Companion",
             },
         )
 
@@ -92,13 +92,13 @@ def get_llm(
     try:
         from langchain_groq import ChatGroq
         return ChatGroq(
-            model=model_name or "llama-3.3-70b-versatile",
+            model=model_name or "openai/gpt-oss-120b",
             groq_api_key=api_key,
             temperature=temp,
         )
     except Exception:
         return ChatOpenAI(
-            model=model_name or "llama-3.3-70b-versatile",
+            model=model_name or "openai/gpt-oss-120b",
             api_key=api_key,
             base_url="https://api.groq.com/openai/v1",
             temperature=temp,

@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -37,6 +38,10 @@ class AssignmentContextDTO(BaseModel):
     priority: str = "MEDIUM"
     estimated_hours: float | None = None
     status: str = "ACTIVE"
+    attachment_file_name: str | None = None
+    questions: list[dict[str, Any]] = Field(default_factory=list)
+    checklists: list[dict[str, Any]] = Field(default_factory=list)
+    embedded_chunks: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,12 +95,26 @@ class CurrentWeeklyPlanContextDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class FixedCourseScheduleDTO(BaseModel):
+    course_id: str
+    course_code: str
+    course_name: str
+    day_of_week: str
+    start_time: str
+    end_time: str
+    start_date: str | None = None
+    end_date: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PlannerContext(BaseModel):
     student: StudentContextDTO
     planning_period: PlanningPeriodDTO
     goals: list[GoalContextDTO] = Field(default_factory=list)
     assignments: list[AssignmentContextDTO] = Field(default_factory=list)
     course_materials: list[CourseMaterialContextDTO] = Field(default_factory=list)
+    fixed_course_schedules: list[FixedCourseScheduleDTO] = Field(default_factory=list)
     current_weekly_plan: CurrentWeeklyPlanContextDTO | None = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -3,6 +3,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import httpx
+
 from src.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -12,7 +14,36 @@ settings = get_settings()
 class EmailService:
     @staticmethod
     async def send_email(to_email: str, subject: str, body_html: str, body_text: str = ""):
-        """Send email via SMTP if configured, else log to output for dev environment."""
+        """Send email via Brevo REST API or SMTP if configured, else log to output for dev environment."""
+        # Option 1: Brevo REST API (HTTPS Port 443 - Bypasses all cloud/firewall SMTP port blocks)
+        if settings.brevo_api_key:
+            try:
+                url = "https://api.brevo.com/v3/smtp/email"
+                headers = {
+                    "accept": "application/json",
+                    "api-key": settings.brevo_api_key,
+                    "content-type": "application/json",
+                }
+                payload = {
+                    "sender": {"name": settings.app_name, "email": settings.smtp_from},
+                    "to": [{"email": to_email}],
+                    "subject": subject,
+                    "htmlContent": body_html,
+                    "textContent": body_text or body_html,
+                }
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.post(url, headers=headers, json=payload)
+                    if response.status_code in (200, 201, 202):
+                        logger.info(f"Email sent successfully via Brevo REST API to {to_email}")
+                        return True
+                    else:
+                        logger.error(f"Brevo API error ({response.status_code}): {response.text}")
+                        return False
+            except Exception as e:
+                logger.error(f"Failed to send email via Brevo API to {to_email}: {e}")
+                return False
+
+        # Option 2: Standard SMTP
         if not settings.smtp_user or not settings.smtp_password:
             logger.info(
                 f"[EMAIL DEV MODE] To: {to_email}\nSubject: {subject}\nBody: {body_text or body_html}\n"
@@ -72,7 +103,7 @@ class EmailService:
         </div>
         """
         text_content = f"Xin chào {full_name}!\nMã xác thực OTP 6 chữ số của bạn là: {code} (Hiệu lực 15 phút)."
-        await EmailService.send_email(to_email, subject, html_content, text_content)
+        return await EmailService.send_email(to_email, subject, html_content, text_content)
 
     @staticmethod
     async def send_reset_password_email(to_email: str, code: str):
@@ -96,4 +127,4 @@ class EmailService:
         </div>
         """
         text_content = f"Yêu cầu đặt lại mật khẩu cho {to_email}.\nMã OTP 6 chữ số của bạn là: {code} (Hiệu lực 15 phút)."
-        await EmailService.send_email(to_email, subject, html_content, text_content)
+        return await EmailService.send_email(to_email, subject, html_content, text_content)

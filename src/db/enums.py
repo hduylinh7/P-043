@@ -22,6 +22,12 @@ class SubmissionStatusEnum(enum.StrEnum):
     MISSING = "missing"
 
 
+class ProgressStatusEnum(enum.StrEnum):
+    NOT_STARTED = "NOT_STARTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+
 class GoalStatusEnum(enum.StrEnum):
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"

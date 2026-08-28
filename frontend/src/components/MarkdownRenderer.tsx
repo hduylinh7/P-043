@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Link } from 'react-router-dom';
-import { ExportOutlined, BookOutlined, AimOutlined } from '@ant-design/icons';
+import { ExportOutlined } from '@ant-design/icons';
 
 export interface EntityAssignment {
   id: string;
@@ -33,9 +34,64 @@ interface MarkdownRendererProps {
   entityContext?: EntityContext;
 }
 
+export const cleanErrorMessage = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  // Only intercept if the text matches explicit backend error wrapper signatures or exception dumps
+  const isBackendErrorWrapper =
+    text.startsWith('Xin lỗi, tôi gặp sự cố khi xử lý câu hỏi:') ||
+    text.includes('Error code: 429') ||
+    text.includes('rate_limit_exceeded') ||
+    text.includes("{'error':") ||
+    text.includes('{"error":');
+
+  if (!isBackendErrorWrapper) {
+    return text;
+  }
+
+  // 1. Quota / Rate limit error (HTTP 429)
+  if (text.includes('429') || text.includes('rate_limit_exceeded') || text.includes('TPD') || text.includes('tokens')) {
+    const timeMatch = text.match(/try again in ([0-9]+[m|s|h|\.|\s]+[0-9]*[s]?)/i);
+    if (timeMatch) {
+      let timeStr = timeMatch[1].trim();
+      timeStr = timeStr.replace(/([0-9]+)m/g, '$1 phút ').replace(/([0-9]+(?:\.[0-9]+)?)s/g, '$1 giây');
+      return `⚠️ Trợ lý AI đang xử lý quá nhiều câu hỏi cùng lúc.\n\n⏱️ Vui lòng quay lại đặt câu hỏi sau khoảng **${timeStr}** bạn nhé!`;
+    }
+    return '⚠️ Trợ lý AI hiện đang tạm thời quá tải lượt phản hồi trong ngày. Vui lòng quay lại đặt câu hỏi sau ít phút bạn nhé!';
+  }
+
+  // 2. System configuration / Authentication failure
+  if (text.includes('invalid_api_key') || text.includes('GROQ_API_KEY') || text.includes('401')) {
+    return '⚠️ Trợ lý AI hiện chưa thể kết nối. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên!';
+  }
+
+  // 3. General backend exception dump
+  return '⚠️ Trợ lý AI gặp sự cố gián đoạn tạm thời. Vui lòng gửi lại câu hỏi sau giây lát bạn nhé!';
+};
+
+export const preprocessMarkdown = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+
+  let cleaned = text;
+
+  // 1. Replace HTML line breaks <br>, <br/>, <br /> with actual newlines
+  cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n');
+
+  // 2. Fix malformed double/triple pipes in markdown tables e.g. "||----------||" -> "|----------|"
+  cleaned = cleaned.replace(/\|{2,}/g, '|');
+
+  // 3. Ensure markdown tables have a newline before header line | ... |
+  cleaned = cleaned.replace(/([^\n])\s*(\|[\s\S]+?\|[\r\n]+\|[-:\s|]+\|)/g, '$1\n\n$2');
+
+  return cleaned;
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isUser, entityContext }) => {
+  const cleanedContent = cleanErrorMessage(content || '');
+  const displayContent = preprocessMarkdown(cleanedContent);
+
   if (isUser) {
-    return <p className="whitespace-pre-wrap m-0 font-sans">{content}</p>;
+    return <p className="m-0 font-sans leading-relaxed text-white whitespace-pre-wrap">{displayContent}</p>;
   }
 
   // Lookup helper to match entity name against authenticated student's data
@@ -101,10 +157,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
   };
 
   return (
-    <div className="markdown-content text-sm leading-relaxed font-sans space-y-2">
+    <div className="markdown-content text-sm leading-relaxed text-slate-900 dark:text-slate-100 font-sans space-y-1 overflow-hidden">
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="m-0 mb-2 last:mb-0 leading-relaxed">{children}</p>,
+          p: ({ children }) => <p className="m-0 mb-1.5 last:mb-0 leading-relaxed text-slate-900 dark:text-slate-100">{children}</p>,
           a: ({ href, children }) => {
             const linkStr = href || '';
             const isInternal = linkStr.startsWith('/') || linkStr.includes('/courses/') || linkStr.includes('/goals');
@@ -116,19 +173,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
             }
 
             if (isInternal) {
-              const isAssignment = targetPath.includes('assignment=') || targetPath.includes('assignmentId=');
               return (
                 <Link
                   to={targetPath}
-                  className={`font-bold px-2 py-0.5 rounded cursor-pointer transition-colors inline-flex items-center gap-1 border no-underline ${
-                    isAssignment
-                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800/80'
-                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/80 border-blue-200 dark:border-blue-800/80'
-                  }`}
+                  className="text-blue-600 dark:text-blue-400 font-semibold hover:underline inline-flex items-center gap-0.5 no-underline"
                   title="Bấm để xem chi tiết"
                 >
                   <span>{children}</span>
-                  {isAssignment ? <ExportOutlined className="text-[10px] shrink-0" /> : <BookOutlined className="text-[10px] shrink-0" />}
+                  <ExportOutlined className="text-[10px] shrink-0" />
                 </Link>
               );
             }
@@ -138,7 +190,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-500 font-medium"
+                className="text-blue-600 dark:text-blue-400 font-medium underline hover:text-blue-500"
               >
                 {children}
               </a>
@@ -149,58 +201,82 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isU
             const match = matchEntity(rawStr);
 
             if (match) {
-              let badgeStyle = '';
-              let icon = null;
-
-              if (match.type === 'assignment') {
-                badgeStyle =
-                  'font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 px-1.5 py-0.5 rounded cursor-pointer transition-colors inline-flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/80 no-underline';
-                icon = <ExportOutlined className="text-[10px] shrink-0" />;
-              } else if (match.type === 'course') {
-                badgeStyle =
-                  'font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/80 px-1.5 py-0.5 rounded cursor-pointer transition-colors inline-flex items-center gap-1 border border-blue-200 dark:border-blue-800/80 no-underline';
-                icon = <BookOutlined className="text-[10px] shrink-0" />;
-              } else if (match.type === 'goal') {
-                badgeStyle =
-                  'font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/80 px-1.5 py-0.5 rounded cursor-pointer transition-colors inline-flex items-center gap-1 border border-purple-200 dark:border-purple-800/80 no-underline';
-                icon = <AimOutlined className="text-[10px] shrink-0" />;
-              }
-
               return (
-                <Link to={match.link} className={badgeStyle} title={`Xem chi tiết ${rawStr}`}>
+                <Link
+                  to={match.link}
+                  className="text-blue-600 dark:text-blue-400 font-semibold hover:underline inline-flex items-center gap-0.5 no-underline"
+                  title={`Xem chi tiết ${rawStr}`}
+                >
                   <span>{children}</span>
-                  {icon}
+                  <ExportOutlined className="text-[10px] shrink-0" />
                 </Link>
               );
             }
 
             return (
-              <strong className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.5 rounded">
+              <strong className="font-bold text-slate-900 dark:text-white">
                 {children}
               </strong>
             );
           },
           em: ({ children }) => <em className="italic">{children}</em>,
-          ul: ({ children }) => <ul className="list-disc pl-5 my-2 space-y-1 text-slate-800 dark:text-slate-200">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-5 my-2 space-y-1 text-slate-800 dark:text-slate-200">{children}</ol>,
-          li: ({ children }) => <li className="leading-snug">{children}</li>,
-          h1: ({ children }) => <h1 className="text-lg font-extrabold my-2 text-slate-900 dark:text-white pb-1 border-b border-slate-200 dark:border-slate-800">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-base font-bold my-2 text-slate-900 dark:text-white">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-sm font-bold my-1 text-slate-900 dark:text-white">{children}</h3>,
+          ul: ({ children }) => <ul className="list-disc pl-5 my-1.5 space-y-1 text-slate-900 dark:text-slate-100">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 my-1.5 space-y-1 text-slate-900 dark:text-slate-100">{children}</ol>,
+          li: ({ children }) => (
+            <li className="leading-relaxed my-0.5 [&>p]:inline [&>p]:m-0 text-slate-900 dark:text-slate-100">
+              {children}
+            </li>
+          ),
+          h1: ({ children }) => <h1 className="text-base font-bold my-2 text-slate-900 dark:text-white pb-1 border-b border-slate-200 dark:border-slate-800">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-bold my-1.5 text-slate-900 dark:text-white">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-xs font-bold my-1 text-slate-900 dark:text-white">{children}</h3>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-emerald-500 pl-3 my-2 italic text-slate-600 dark:text-slate-400 bg-emerald-50/50 dark:bg-emerald-950/20 py-1 rounded-r-lg">
+            <blockquote className="border-l-3 border-emerald-500 pl-3 my-2 italic text-slate-700 dark:text-slate-300 bg-emerald-500/5 py-1 rounded-r-md">
               {children}
             </blockquote>
           ),
           code: ({ children }) => (
-            <code className="font-mono text-xs bg-slate-200/70 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400">
+            <code className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-pink-600 dark:text-pink-400 font-medium">
               {children}
             </code>
           ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-950">
+              <table className="w-full text-xs text-left border-collapse">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-800">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900/30">
+              {children}
+            </tbody>
+          ),
+          tr: ({ children }) => (
+            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+              {children}
+            </tr>
+          ),
+          th: ({ children }) => (
+            <th className="px-3.5 py-2.5 font-semibold text-slate-900 dark:text-slate-100 border-r last:border-r-0 border-slate-200 dark:border-slate-800">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3.5 py-2 text-slate-700 dark:text-slate-300 border-r last:border-r-0 border-slate-100 dark:border-slate-800/60 leading-normal">
+              {children}
+            </td>
+          ),
         }}
       >
-        {content}
+        {displayContent}
       </ReactMarkdown>
     </div>
   );
 };
+

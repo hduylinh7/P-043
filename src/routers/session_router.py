@@ -52,3 +52,19 @@ async def get_messages(
     """Get chat history for a session."""
     messages = await get_session_messages(db, session_id=session_id)
     return messages
+
+
+@router.delete("/{session_id}")
+async def delete_user_session(
+    session_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a chat session."""
+    from fastapi import HTTPException
+    from src.services.db_service import delete_session
+    success = await delete_session(db, session_id=session_id, user_id=current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"message": "Session deleted successfully"}
+

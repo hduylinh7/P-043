@@ -15,8 +15,8 @@ class SyncLog(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     source: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g. 'canvas'
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    status: Mapped[SyncStatusEnum] = mapped_column(
-        SQLEnum(SyncStatusEnum, native_enum=False),
+    status: Mapped[str] = mapped_column(
+        String(50),
         default=SyncStatusEnum.PENDING,
         nullable=False,
     )
