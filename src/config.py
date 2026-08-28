@@ -35,6 +35,10 @@ class Settings(BaseSettings):
 
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     rag_top_k: int = Field(default=4, ge=1, le=20, validation_alias="RAG_TOP_K")
+    rag_min_score: float = Field(default=0.50, ge=0.0, le=1.0, validation_alias="RAG_MIN_SCORE")
+    enable_reranker: bool = Field(default=True, validation_alias="ENABLE_RERANKER")
+    rag_rerank_fetch_k: int = Field(default=15, ge=1, le=50, validation_alias="RAG_RERANK_FETCH_K")
+    reranker_model_name: str = Field(default="ms-marco-TinyBERT-L-2-v2", validation_alias="RERANKER_MODEL_NAME")
     chat_history_limit: int = Field(default=10, ge=1, le=50, validation_alias="CHAT_HISTORY_LIMIT")
 
     # Database (PostgreSQL default, falls back to SQLite if sqlite specified)

@@ -1,11 +1,11 @@
 --- TEST 1: search_course_materials with material_id & course_id ---
 Results count: 9
- - Content length: 618, score: 0.5145657
- - Content length: 859, score: 0.50369704
- - Content length: 967, score: 0.5024578
- - Content length: 976, score: 0.49878287
- - Content length: 801, score: 0.49831557
- - Content length: 631, score: 1.0
+ - Content length: 382, score: -0.0039500585
+ - Content length: 987, score: -0.006502982
+ - Content length: 833, score: -0.008013084
+ - Content length: 747, score: -0.010565778
+ - Content length: 631, score: -0.010840375
+ - Content length: 859, score: 1.0
  - Content length: 842, score: 1.0
  - Content length: 949, score: 1.0
  - Content length: 864, score: 1.0
