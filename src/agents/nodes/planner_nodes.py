@@ -14,16 +14,33 @@ from src.services.llm import get_llm
 logger = logging.getLogger(__name__)
 
 WEEKDAY_MAP = {
-    "thứ 2": 0, "thứ hai": 0, "mon": 0, "monday": 0, "t2": 0,
-    "thứ 3": 1, "thứ ba": 1, "tue": 1, "tuesday": 1, "t3": 1,
-    "thứ 4": 2, "thứ tư": 2, "wed": 2, "wednesday": 2, "t4": 2,
-    "thứ 5": 3, "thứ năm": 3, "thu": 3, "thursday": 3, "t5": 3,
-    "thứ 6": 4, "thứ sáu": 4, "fri": 4, "friday": 4, "t6": 4,
-    "thứ 7": 5, "thứ bảy": 5, "sat": 5, "saturday": 5, "t7": 5,
-    "chủ nhật": 6, "cn": 6, "sun": 6, "sunday": 6,
-    "cuối tuần": 5, "weekend": 5,
-    "đầu tuần": 0,
-    "giữa tuần": 2,
+    "thứ 2": 0, "thứ hai": 0, "mon": 0, "monday": 0, "t2": 0, "thu 2": 0, "thu hai": 0,
+    "thứ 3": 1, "thứ ba": 1, "tue": 1, "tuesday": 1, "t3": 1, "thu 3": 1, "thu ba": 1,
+    "thứ 4": 2, "thứ tư": 2, "wed": 2, "wednesday": 2, "t4": 2, "thu 4": 2, "thu tư": 2, "thu tu": 2,
+    "thứ 5": 3, "thứ năm": 3, "thu": 3, "thursday": 3, "t5": 3, "thu 5": 3, "thu nam": 3,
+    "thứ 6": 4, "thứ sáu": 4, "fri": 4, "friday": 4, "t6": 4, "thu 6": 4, "thu sau": 4,
+    "thứ 7": 5, "thứ bảy": 5, "sat": 5, "saturday": 5, "t7": 5, "thu 7": 5, "thu bay": 5,
+    "chủ nhật": 6, "cn": 6, "sun": 6, "sunday": 6, "chu nhat": 6,
+    "cuối tuần": 5, "weekend": 5, "cuoi tuan": 5,
+    "đầu tuần": 0, "dau tuan": 0,
+    "giữa tuần": 2, "giua tuan": 2,
+}
+
+COURSE_SYNONYMS = {
+    "cv": ["thị giác máy tính", "computer vision", "tgmt", "tgmt01"],
+    "tgmt": ["thị giác máy tính", "computer vision", "cv", "tgmt01"],
+    "tgmt01": ["thị giác máy tính", "computer vision", "cv", "tgmt"],
+    "thị giác máy tính": ["computer vision", "cv", "tgmt", "tgmt01"],
+    "computer vision": ["thị giác máy tính", "cv", "tgmt", "tgmt01"],
+    "kpdl": ["khai phá dữ liệu", "data mining", "kpdl01"],
+    "kpdl01": ["khai phá dữ liệu", "data mining", "kpdl"],
+    "khai phá dữ liệu": ["data mining", "kpdl", "kpdl01"],
+    "data mining": ["khai phá dữ liệu", "kpdl", "kpdl01"],
+    "ptdl": ["phân tích dữ liệu", "data analysis", "business analytics"],
+    "phân tích dữ liệu": ["data analysis", "ptdl"],
+    "data analysis": ["phân tích dữ liệu", "ptdl"],
+    "ai": ["trí tuệ nhân tạo", "artificial intelligence", "môn ai"],
+    "dsa": ["cấu trúc dữ liệu", "data structures"],
 }
 
 
@@ -68,36 +85,61 @@ def parse_task_datetime_from_text(
 
     combined_text = f"{text} {req_text}"
 
-    # 2. Match Explicit Start Time (e.g. "20h", "20:00", "20h30", "8h tối", "8pm", "8h")
-    explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', text) or re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', req_text)
-    if explicit_time:
+    # 2. Match Explicit Time Range first (e.g. "từ 08:00 đến 10:30", "08:00 - 10:30", "8h đến 10h30", "from 8 to 10")
+    range_match = re.search(r'(?:từ|from)?\s*(\d{1,2})(?:h|:(\d{2}))?\s*(?:đến|tới|to|-)\s*(\d{1,2})(?:h|:(\d{2}))?', combined_text)
+    if range_match:
         try:
-            h_val = int(explicit_time.group(1))
-            m_val = int(explicit_time.group(2)) if explicit_time.group(2) else 0
-            if ("tối" in combined_text or "pm" in combined_text) and h_val < 12:
-                h_val += 12
-            if 0 <= h_val <= 23:
-                target_start_time = f"{h_val:02d}:{m_val:02d}"
-                end_h = h_val + 1 if h_val < 23 else 23
-                end_m = (m_val + 30) % 60
-                if m_val + 30 >= 60 and end_h < 23:
-                    end_h += 1
-                target_end_time = f"{end_h:02d}:{end_m:02d}"
+            sh_val = int(range_match.group(1))
+            sm_val = int(range_match.group(2)) if range_match.group(2) else 0
+            eh_val = int(range_match.group(3))
+            em_val = int(range_match.group(4)) if range_match.group(4) else 0
+            if (re.search(r'\b(?:buổi\s+)?(?:tối|toi)(?!\s*(?:ưu|đa|thiểu|mật|hậu|thượng|uu|da|thieu))\b', combined_text) or "pm" in combined_text) and sh_val < 12:
+                sh_val += 12
+                if eh_val < 12:
+                    eh_val += 12
+            # Handle inverted range (e.g. 22:00 to 20:00 -> swap to 20:00 to 22:00)
+            if sh_val * 60 + sm_val > eh_val * 60 + em_val:
+                sh_val, eh_val = eh_val, sh_val
+                sm_val, em_val = em_val, sm_val
+            elif sh_val * 60 + sm_val == eh_val * 60 + em_val:
+                eh_val = min(23, sh_val + 1)
+            if 0 <= sh_val <= 23 and 0 <= eh_val <= 23:
+                target_start_time = f"{sh_val:02d}:{sm_val:02d}"
+                target_end_time = f"{eh_val:02d}:{em_val:02d}"
         except Exception:
             pass
 
-    # 3. Fallback to Period of Day if no explicit digits were found (e.g. "buổi tối", "tối", "chiều", "sáng", "trưa")
+    # 3. Match Single Explicit Start Time (e.g. "20h", "20:00", "20h30", "8h tối", "8pm", "after 8pm")
     if target_start_time is None:
-        if re.search(r'\b(?:buổi\s*)?tối\b', combined_text) or "evening" in combined_text or "night" in combined_text:
+        explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', text) or re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', req_text)
+        if explicit_time:
+            try:
+                h_val = int(explicit_time.group(1))
+                m_val = int(explicit_time.group(2)) if explicit_time.group(2) else 0
+                if (re.search(r'\b(?:buổi\s+)?(?:tối|toi)(?!\s*(?:ưu|đa|thiểu|mật|hậu|thượng|uu|da|thieu))\b', combined_text) or "pm" in combined_text) and h_val < 12:
+                    h_val += 12
+                if 0 <= h_val <= 23:
+                    target_start_time = f"{h_val:02d}:{m_val:02d}"
+                    end_h = h_val + 1 if h_val < 23 else 23
+                    end_m = (m_val + 30) % 60
+                    if m_val + 30 >= 60 and end_h < 23:
+                        end_h += 1
+                    target_end_time = f"{end_h:02d}:{end_m:02d}"
+            except Exception:
+                pass
+
+    # 4. Fallback to Period of Day if no explicit digits were found
+    if target_start_time is None:
+        if re.search(r'\b(?:buổi\s+)?(?:tối|toi)(?!\s*(?:ưu|đa|thiểu|mật|hậu|thượng|uu|da|thieu))\b', combined_text) or "evening" in combined_text or "night" in combined_text:
             target_start_time = "20:00"
             target_end_time = "21:30"
-        elif re.search(r'\b(?:buổi\s*)?chiều\b', combined_text) or "afternoon" in combined_text:
+        elif re.search(r'\b(?:buổi\s+)?chiều\b', combined_text) or "afternoon" in combined_text:
             target_start_time = "14:00"
             target_end_time = "15:30"
-        elif re.search(r'\b(?:buổi\s*)?trưa\b', combined_text) or "noon" in combined_text or "lunch" in combined_text:
+        elif re.search(r'\b(?:buổi\s+)?trưa\b', combined_text) or "noon" in combined_text or "lunch" in combined_text:
             target_start_time = "12:00"
             target_end_time = "13:00"
-        elif re.search(r'\b(?:buổi\s*)?sáng\b', combined_text) or "morning" in combined_text:
+        elif re.search(r'\b(?:buổi\s+)?sáng\b', combined_text) or "morning" in combined_text:
             target_start_time = "09:00"
             target_end_time = "10:30"
 
@@ -107,31 +149,31 @@ def parse_task_datetime_from_text(
 def parse_user_time_and_days(
     user_request: str | None,
     week_start_str: str,
-) -> tuple[list[str], str | None, str | None]:
+) -> tuple[list[str], str | None, str | None, int | None]:
     """
-    Extract requested days of week and time of day (sáng/chiều/tối/giờ cụ thể) from user prompt.
-    Returns (target_dates_list, target_start_time, target_end_time).
+    Extract requested days of week, time of day, and custom duration from user prompt.
+    Returns (target_dates_list, target_start_time, target_end_time, custom_duration_mins).
     """
     if not user_request or not user_request.strip():
-        return [], None, None
+        return [], None, None, None
 
     req_text = user_request.lower()
     try:
         start_date = datetime.strptime(week_start_str, "%Y-%m-%d").date()
     except Exception:
-        return [], None, None
+        return [], None, None, None
 
     target_dates: list[str] = []
 
     # Map days of the week in planning week
     day_matches = [
-        (["thứ 2", "thứ hai", "t2", "monday", "mon"], 0),
-        (["thứ 3", "thứ ba", "t3", "tuesday", "tue"], 1),
-        (["thứ 4", "thứ tư", "t4", "wednesday", "wed"], 2),
-        (["thứ 5", "thứ năm", "t5", "thursday", "thu"], 3),
-        (["thứ 6", "thứ sáu", "t6", "friday", "fri"], 4),
-        (["thứ 7", "thứ bảy", "t7", "saturday", "sat"], 5),
-        (["chủ nhật", "cn", "sunday", "sun"], 6),
+        (["thứ 2", "thứ hai", "t2", "monday", "mon", "thu 2", "thu hai"], 0),
+        (["thứ 3", "thứ ba", "t3", "tuesday", "tue", "thu 3", "thu ba"], 1),
+        (["thứ 4", "thứ tư", "t4", "wednesday", "wed", "thu 4", "thu tu"], 2),
+        (["thứ 5", "thứ năm", "t5", "thursday", "thu", "thu 5", "thu nam"], 3),
+        (["thứ 6", "thứ sáu", "t6", "friday", "fri", "thu 6", "thu sau"], 4),
+        (["thứ 7", "thứ bảy", "t7", "saturday", "sat", "thu 7", "thu bay"], 5),
+        (["chủ nhật", "cn", "sunday", "sun", "chu nhat"], 6),
     ]
 
     for patterns, day_idx in day_matches:
@@ -142,113 +184,150 @@ def parse_user_time_and_days(
                     target_dates.append(d_str)
                 break
 
-    if ("cuối tuần" in req_text or "weekend" in req_text) and not target_dates:
+    if ("cuối tuần" in req_text or "weekend" in req_text or "cuoi tuan" in req_text) and not target_dates:
         target_dates.append((start_date + timedelta(days=5)).strftime("%Y-%m-%d"))
         target_dates.append((start_date + timedelta(days=6)).strftime("%Y-%m-%d"))
+
+    # Duration parsing (e.g. "mỗi ngày 30 phút", "mỗi buổi 2 tiếng", "15 phút", "1 tiếng")
+    custom_duration = None
+    dur_match = re.search(r'(\d+)\s*(?:tiếng|giờ|hour|hours|h\b)', req_text)
+    if dur_match:
+        try:
+            custom_duration = int(dur_match.group(1)) * 60
+        except Exception:
+            pass
+    if custom_duration is None:
+        min_match = re.search(r'(\d+)\s*(?:phút|min|mins|p\b)', req_text)
+        if min_match:
+            try:
+                custom_duration = int(min_match.group(1))
+            except Exception:
+                pass
+
+    # Psychological / Light workload cues
+    if custom_duration is None and any(w in req_text for w in ["nhẹ nhàng", "lười", "stress", "học ít", "it ma hieu qua", "pass môn", "vừa đủ", "it ma", "ngợp", "mệt"]):
+        custom_duration = 30
 
     # Time of day detection
     target_start = None
     target_end = None
 
-    explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', req_text)
-    if explicit_time:
+    # Check explicit range first
+    range_match = re.search(r'(?:từ|from)?\s*(\d{1,2})(?:h|:(\d{2}))?\s*(?:đến|tới|to|-)\s*(\d{1,2})(?:h|:(\d{2}))?', req_text)
+    if range_match:
         try:
-            h_val = int(explicit_time.group(1))
-            m_val = int(explicit_time.group(2)) if explicit_time.group(2) else 0
-            if ("tối" in req_text or "pm" in req_text) and h_val < 12:
-                h_val += 12
-            if 0 <= h_val <= 23:
-                target_start = f"{h_val:02d}:{m_val:02d}"
-                end_h = h_val + 1 if h_val < 23 else 23
-                target_end = f"{end_h:02d}:{m_val:02d}"
+            sh_val = int(range_match.group(1))
+            sm_val = int(range_match.group(2)) if range_match.group(2) else 0
+            eh_val = int(range_match.group(3))
+            em_val = int(range_match.group(4)) if range_match.group(4) else 0
+            if (re.search(r'\b(?:buổi\s+)?(?:tối|toi)(?!\s*(?:ưu|đa|thiểu|mật|hậu|thượng|uu|da|thieu))\b', req_text) or "pm" in req_text) and sh_val < 12:
+                sh_val += 12
+                if eh_val < 12:
+                    eh_val += 12
+            # Handle inverted range
+            if sh_val * 60 + sm_val > eh_val * 60 + em_val:
+                sh_val, eh_val = eh_val, sh_val
+                sm_val, em_val = em_val, sm_val
+            elif sh_val * 60 + sm_val == eh_val * 60 + em_val:
+                eh_val = min(23, sh_val + 1)
+            if 0 <= sh_val <= 23 and 0 <= eh_val <= 23:
+                target_start = f"{sh_val:02d}:{sm_val:02d}"
+                target_end = f"{eh_val:02d}:{em_val:02d}"
+                custom_duration = (eh_val * 60 + em_val) - (sh_val * 60 + sm_val)
         except Exception:
             pass
 
-    if target_start is None:
-        if re.search(r'\b(?:buổi\s*)?sáng\b', req_text) or "morning" in req_text:
-            target_start = "09:00"
-            target_end = "10:30"
-        elif re.search(r'\b(?:buổi\s*)?chiều\b', req_text) or "afternoon" in req_text:
-            target_start = "14:00"
-            target_end = "15:30"
-        elif re.search(r'\b(?:buổi\s*)?tối\b', req_text) or "evening" in req_text or "night" in req_text:
-            target_start = "20:00"
-            target_end = "21:30"
+    if custom_duration is not None:
+        custom_duration = max(15, min(custom_duration, 240))
 
-    return target_dates, target_start, target_end
+    if target_start is None:
+        explicit_time = re.search(r'(\d{1,2})\s*(?:h|:(\d{2})|giờ|pm)', req_text)
+        if explicit_time:
+            try:
+                h_val = int(explicit_time.group(1))
+                m_val = int(explicit_time.group(2)) if explicit_time.group(2) else 0
+                if (re.search(r'\b(?:buổi\s+)?(?:tối|toi)(?!\s*(?:ưu|đa|thiểu|mật|hậu|thượng|uu|da|thieu))\b', req_text) or "pm" in req_text) and h_val < 12:
+                    h_val += 12
+                if 0 <= h_val <= 23:
+                    target_start = f"{h_val:02d}:{m_val:02d}"
+                    dur = custom_duration or 90
+                    end_min_total = h_val * 60 + m_val + dur
+                    end_h = min(23, end_min_total // 60)
+                    end_m = end_min_total % 60
+                    target_end = f"{end_h:02d}:{end_m:02d}"
+            except Exception:
+                pass
+
+    if target_start is None:
+        if re.search(r'\b(?:buổi\s+)?sáng\b', req_text) or "morning" in req_text:
+            target_start = "09:00"
+            dur = custom_duration or 90
+            end_h = 9 + (dur // 60)
+            end_m = dur % 60
+            target_end = f"{min(23, end_h):02d}:{end_m:02d}"
+        elif re.search(r'\b(?:buổi\s+)?chiều\b', req_text) or "afternoon" in req_text:
+            target_start = "14:00"
+            dur = custom_duration or 90
+            end_h = 14 + (dur // 60)
+            end_m = dur % 60
+            target_end = f"{min(23, end_h):02d}:{end_m:02d}"
+        elif re.search(r'\b(?:buổi\s+)?(?:tối|toi)(?!\s*(?:ưu|đa|thiểu|mật|hậu|thượng|uu|da|thieu))\b', req_text) or "evening" in req_text or "night" in req_text:
+            target_start = "20:00"
+            dur = custom_duration or 90
+            end_h = 20 + (dur // 60)
+            end_m = dur % 60
+            target_end = f"{min(23, end_h):02d}:{end_m:02d}"
+
+    return target_dates, target_start, target_end, custom_duration
 
 
 PLANNER_SYSTEM_PROMPT = """
 You are an expert AI Student Study Planner for the Learning Companion.
 
 YOUR OBJECTIVE:
-You are an intelligent agent that creates custom, realistic Study Plans. Follow this 3-step reasoning workflow for EVERY request:
+You are an intelligent agent that creates custom, realistic Study Plans. You must handle all kinds of student requests, including short/blunt prompts, detailed schedules, tight time constraints, reschedules/cancellations, stress/low motivation requests, Vietnamese slang/teencode (e.g. "xep lich", "k ranh toi t3"), and English-Vietnamese mix (e.g. "make schedule", "focus lab").
+
+Follow this 3-step reasoning workflow for EVERY request:
 
 STEP 1: UNDERSTAND STUDENT INTENT & CONSTRAINTS (HIGHEST PRIORITY)
-Read the `STUDENT REQUEST` carefully to extract the student's exact goal and constraints:
-1. Target Course / Subject Focus: Did the student ask for specific courses or subjects? (e.g., "Machine Learning", "Kỹ nghệ tri thức").
-2. Session Count & Workload: Did the student specify a limited number of study sessions? (e.g., "chỉ 1 buổi", "chỉ tạo 1 buổi học", "ko cần tạo buổi nào khác").
-3. Target Dates & Days: Did the student specify target days or times? (e.g., "thứ 7 tuần này", "cuối tuần").
+Read the `STUDENT REQUEST` carefully to extract:
+1. Target Course / Subject Focus: Did the student ask for specific courses or abbreviations? (e.g., "CV", "TGMT", "Data Mining", "KPDL", "PTDL", "Machine Learning").
+2. Session Count & Workload / Psychological State:
+   - If student asks for 1 session (e.g. "chỉ 1 buổi", "ko cần tạo buổi nào khác"), output EXACTLY 1 task in `tasks`.
+   - If student is stressed/lazy ("lười", "stress", "học ít", "nhẹ nhàng"), schedule shorter 30-45 min sessions, encourage them in `summary`.
+   - If student specifies duration ("mỗi buổi 2 tiếng", "mỗi ngày 30 phút"), adjust `estimated_duration` and end_time accordingly!
+3. Target Dates & Days & Times: (e.g., "sau 20h", "chỉ rảnh sáng thứ 7", "cuối tuần", "bù cho buổi tối qua").
 
 STEP 2: MATCH DATABASE CONTEXT WITH STUDENT INTENT
 Inspect the provided `assignments`, `courses`, and `course_materials` in `PLANNER CONTEXT`:
 - Match the student's requested subject/course with the corresponding real course and assignment in the context.
-- IF STEP 1 identified a specific Target Course/Subject (regardless of whether a session limit was given):
+- IF STEP 1 identified a specific Target Course/Subject:
   * You MUST select ONLY assignments, course materials, and tasks belonging to that exact target course.
-  * Strictly forbid mixing in tasks, assignments, or materials from any other courses. Mixing courses when a specific target course was requested is a CRITICAL ERROR.
-- IF a session count limit was also given (e.g., "chỉ 1 buổi"):
-  * Additionally cap the total number of tasks in the `tasks` JSON array strictly to that limit.
-- IF no specific target course/subject was identified in STEP 1:
-  * It is acceptable to consider all courses in context.
+  * Strictly forbid mixing in tasks, assignments, or materials from any other courses.
+- IF no specific target course/subject was identified:
+  * Distribute tasks logically across active courses with upcoming deadlines.
 
 STEP 3: GENERATE THE TAILORED STUDY PLAN
-- Create tasks that satisfy the student's request.
-- If the student requested 1 session (e.g. "chỉ 1 buổi", "ko cần tạo buổi nào khác"), output EXACTLY 1 task in the `tasks` JSON array.
-- Schedule the task on the student's requested date (e.g., Saturday of the planning week using the Weekday Date Mapping below).
-- Ground the study session details (`what_to_study`, `what_to_do`, `material_title`) in the real course materials and assignment specs provided in context.
+- Ground study session details (`what_to_study`, `what_to_do`, `material_title`) in the real course materials and assignment specs.
+- If student requests reschedule / cancellation ("dời lịch sang cuối tuần", "hủy buổi tối nay"), move tasks to the requested days and note it in `summary`.
 
 CRITICAL GROUNDING & NO-HALLUCINATION RULES:
-1. Each assignment contains real questions, checklists, and embedded specification chunks. Ground study tasks strictly in real context.
-2. Include exact `material_id` and `material_title` if a matching material exists. Otherwise set `material_id: null` and `material_title: "No matching course material was found."`.
-3. NEVER invent fake courses, materials, or assignment titles not present in context.
-
-STUDY SESSION DETAIL REQUIREMENTS:
-For EACH study session, provide:
-- `title`: Short title (e.g., "Random Forest Review")
-- `topic`: Topic name (e.g., "Random Forest")
-- `what_to_study`: List of specific concepts/items to review
-- `what_to_do`: Step-by-step actionable activities
-- `reason`: Clear explanation of why this session is recommended
-- `course_id`: Real course ID from context
-- `course_name`: Course name
-- `material_id`: Matching material ID or null
-- `material_title`: Matching material title or "No matching course material was found."
-- `assignment_id`: Related assignment ID or null
-- `assignment_title`: Related assignment title or null
-- `scheduled_date`: YYYY-MM-DD (must match student requested day if specified)
-- `start_time`, `end_time`: e.g., "19:00" to "20:30"
-- `priority`: "low", "medium", "high", or "urgent"
-- `estimated_duration`: duration in minutes (e.g. 90)
-
-ACADEMIC INTEGRITY RULES:
-1. You are a PLANNING assistant only. You MUST NOT complete, write, or solve graded assignments directly.
-2. If the user asks to "do my assignment", convert it into study and preparation sessions.
+1. Ground study tasks strictly in real context. Include exact `material_id` and `material_title` if matching material exists.
+2. NEVER invent fake courses, materials, or assignment titles not present in context.
 
 DATE & TIME CONSTRAINTS:
-1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER generate or schedule an AI Study Session during hours occupied by a fixed university class lecture! Choose free open hours (e.g. evening 19:00 - 20:30).
-2. If a task has a non-null `assignment_id` or relates to an assignment with a due date/time (e.g. "2026-08-24 10:25:00"), its `scheduled_date` and `end_time` MUST be strictly BEFORE that assignment's deadline — never at the same time or after! If the deadline is in the morning/noon (e.g. 10:25 AM), NEVER schedule study sessions in the evening of that day or after 10:25 AM! Schedule study sessions 1 to 2 days BEFORE the deadline date, or in early morning (08:00 - 09:30) before the deadline time.
-
+1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER schedule during hours occupied by a fixed university class!
+2. If a task has an assignment deadline, its `scheduled_date` and `end_time` MUST be strictly BEFORE that deadline!
 3. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
 4. priority MUST be strictly one of: "low", "medium", "high", "urgent".
-5. Ensure start_time < end_time (e.g. "19:00" to "20:30").
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
 {{
   "plan_title": "Kế hoạch học tập ({week_start} đến {week_end})",
   "summary": "Tóm tắt ngắn gọn mục tiêu và định hướng kế hoạch theo yêu cầu học sinh...",
-  "warnings": ["Cảnh báo hoặc lưu ý..."],
+  "warnings": ["Cảnh báo hoặc lưu ý nếu có yêu cầu mâu thuẫn..."],
   "skipped_items": [{{"title": "Mục hoãn", "reason": "Lý do..."}}],
   "tasks": [
     {{
@@ -345,10 +424,24 @@ def try_match_target_course(user_request: str, context_dict: dict[str, Any]) -> 
 
         for name in possible_names:
             name_lower = name.lower()
-            if len(name_lower) >= 2 and name_lower in user_req_lower:
+            # Direct match with word boundaries
+            if len(name_lower) >= 2 and re.search(r'(?:\b|_)' + re.escape(name_lower) + r'(?:\b|_)', user_req_lower):
                 if len(name_lower) > max_match_len:
                     max_match_len = len(name_lower)
                     best_match_id = cid
+
+            # Synonym match (e.g. CV -> Thị giác máy tính, KPDL -> Khai phá dữ liệu)
+            for syn_key, syn_list in COURSE_SYNONYMS.items():
+                syn_key_matched = re.search(r'(?:\b|_)' + re.escape(syn_key) + r'(?:\b|_)', name_lower) is not None
+                syn_list_matched = any(re.search(r'(?:\b|_)' + re.escape(s) + r'(?:\b|_)', name_lower) for s in syn_list)
+                if syn_key_matched or syn_list_matched:
+                    # If the user mentioned either the key or any synonym in user_request
+                    all_syns = [syn_key] + syn_list
+                    for s in all_syns:
+                        if re.search(r'(?:\b|_)' + re.escape(s) + r'(?:\b|_)', user_req_lower):
+                            if len(s) > max_match_len:
+                                max_match_len = len(s)
+                                best_match_id = cid
 
     return best_match_id
 
@@ -882,7 +975,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
         logger.warning(f"Could not load existing tasks/fixed schedules for conflict checking: {e}")
 
     user_request = state.get("user_request")
-    req_dates, req_start, req_end = parse_user_time_and_days(user_request, week_start)
+    req_dates, req_start, req_end, req_duration = parse_user_time_and_days(user_request, week_start)
 
     for task_idx, task_data in enumerate(decision.get("tasks", [])):
         raw_date = task_data.get("scheduled_date")
@@ -898,7 +991,7 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
             if p_date:
                 raw_date = p_date
 
-        if req_start and req_end:
+        if (not raw_start or not raw_end) and req_start and req_end:
             raw_start = req_start
             raw_end = req_end
         elif not raw_start or not raw_end:
@@ -908,6 +1001,9 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
             if p_start and p_end:
                 raw_start = p_start
                 raw_end = p_end
+
+        if req_duration and not task_data.get("estimated_duration"):
+            task_data["estimated_duration"] = req_duration
 
         eff_start, eff_end, conflict_warn = resolve_task_time_conflict(
             scheduled_date=raw_date,
@@ -1027,7 +1123,7 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
             logger.warning(f"Could not load existing schedule for preview conflict checking: {e}")
 
     user_request = state.get("user_request")
-    req_dates, req_start, req_end = parse_user_time_and_days(user_request, week_start)
+    req_dates, req_start, req_end, req_duration = parse_user_time_and_days(user_request, week_start)
 
     for task_idx, task_data in enumerate(decision.get("tasks", [])):
         raw_date = task_data.get("scheduled_date")
@@ -1043,7 +1139,7 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
             if p_date:
                 raw_date = p_date
 
-        if req_start and req_end:
+        if (not raw_start or not raw_end) and req_start and req_end:
             raw_start = req_start
             raw_end = req_end
         elif not raw_start or not raw_end:
@@ -1053,6 +1149,9 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
             if p_start and p_end:
                 raw_start = p_start
                 raw_end = p_end
+
+        if req_duration and not task_data.get("estimated_duration"):
+            task_data["estimated_duration"] = req_duration
 
         eff_start, eff_end, conflict_warn = resolve_task_time_conflict(
             scheduled_date=raw_date,
