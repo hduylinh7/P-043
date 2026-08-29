@@ -29,6 +29,15 @@ from src.services.assignment_service import AssignmentService
 router = APIRouter(tags=["Assignments"])
 
 
+@router.get("/assignments", response_model=list[AssignmentResponse])
+async def get_all_user_assignments(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch all assignments across all enrolled/managed courses for the current user."""
+    return await AssignmentService.get_all_user_assignments(db, current_user)
+
+
 @router.get("/courses/{course_id}/assignments", response_model=list[AssignmentResponse])
 async def get_course_assignments(
     course_id: str,

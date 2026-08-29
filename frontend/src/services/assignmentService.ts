@@ -18,6 +18,11 @@ import {
 } from '../types/assignment';
 
 export const assignmentService = {
+  async getAllAssignments(): Promise<Assignment[]> {
+    const response = await api.get<Assignment[]>('/assignments');
+    return response.data;
+  },
+
   async getCourseAssignments(courseId: string): Promise<Assignment[]> {
     const response = await api.get<Assignment[]>(`/courses/${courseId}/assignments`);
     return response.data;

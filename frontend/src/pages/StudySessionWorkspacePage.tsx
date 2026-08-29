@@ -69,6 +69,7 @@ import {
   StudySessionCompanionData,
   SelfCheckEvaluationResult,
   KeyConcept,
+  QuickSelfCheckQuestion,
 } from '../types/weeklyPlan';
 import { Assignment, AssignmentQuestion, Submission } from '../types/assignment';
 
@@ -197,8 +198,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
   // Session Timer State
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
 
-  // Reflection Modal State
+  // Reflection Modal & AI Feedback State
   const [isReflectionModalOpen, setIsReflectionModalOpen] = useState<boolean>(false);
+  const [isAIFeedbackModalOpen, setIsAIFeedbackModalOpen] = useState<boolean>(false);
   const [submittingReflection, setSubmittingReflection] = useState<boolean>(false);
   const [reflectionForm] = Form.useForm();
 
@@ -361,7 +363,18 @@ export const StudySessionWorkspacePage: React.FC = () => {
   useEffect(() => {
     if (!task) return;
     const isCompleted = task.status === 'completed' || task.status === 'COMPLETED';
-    if (isCompleted || !task.started_at) return;
+    if (isCompleted) {
+      if (task.started_at && task.completed_at) {
+        const startMs = new Date(task.started_at).getTime();
+        const endMs = new Date(task.completed_at).getTime();
+        const seconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
+        setElapsedSeconds(seconds);
+      } else if (task.actual_duration) {
+        setElapsedSeconds(task.actual_duration * 60);
+      }
+      return;
+    }
+    if (!task.started_at) return;
 
     const interval = setInterval(() => {
       const startMs = new Date(task.started_at!).getTime();
@@ -370,7 +383,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [task?.started_at, task?.status]);
+  }, [task?.started_at, task?.completed_at, task?.status, task?.actual_duration]);
 
   // Scroll Chat to bottom
   useEffect(() => {
@@ -585,12 +598,9 @@ export const StudySessionWorkspacePage: React.FC = () => {
   }, [task, assignment]);
 
   const knowledgeQuickPrompts = [
-    { label: 'Môn học của tôi', query: `Tôi đang học môn gì và bài học "${task?.title || ''}" nằm trong chương trình nào?` },
-    { label: 'Bài tập sắp đến hạn', query: 'Tôi có những bài tập nào sắp đến hạn nộp liên quan đến bài này?' },
-    { label: 'Mục tiêu cá nhân', query: `Mục tiêu bài học "${task?.title || ''}" là gì và tôi cần đạt được kỹ năng nào?` },
-    { label: 'Điểm số & Đánh giá', query: 'Tôi cần lưu ý gì để đạt điểm cao trong bài kiểm tra thuộc chủ đề này?' },
-    { label: 'Gợi ý ưu tiên bài tập', query: `Hãy gợi ý các bước ôn tập ưu tiên để nắm vững kiến thức bài "${task?.title || ''}"?` },
-    { label: 'Tổng hợp kiến thức trọng tâm', query: `Hãy tổng hợp kiến thức trọng tâm của bài "${task?.title || ''}".` },
+    { label: 'Tóm tắt 1 câu', query: `Tóm tắt ngắn gọn bài học "${task?.title || ''}" trong 1 câu.` },
+    { label: '3 câu hỏi nhanh', query: 'Tạo 3 câu hỏi ngắn để tự ôn tập bài này.' },
+    { label: 'Bài tập sắp hạn', query: 'Bài tập nào liên quan sắp đến hạn nộp?' },
   ];
 
   useEffect(() => {
@@ -636,18 +646,27 @@ export const StudySessionWorkspacePage: React.FC = () => {
     if (!task) return;
     try {
       setSubmittingReflection(true);
+
+      const evalCount = Object.keys(selfCheckEvalResults).length;
+      const totalPracticeCount = ((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).length;
+      const practiceSummaryStr = evalCount > 0
+        ? `Đã thực hiện ${evalCount}/${totalPracticeCount} câu luyện tập và nhận được phản hồi AI.`
+        : `Sinh viên đã hoàn thành đọc và luyện tập bài học.`;
+
       const reflectionPayload: TaskReflectionData = {
         what_learned: values.what_learned,
         understood_well: values.understood_well,
         struggling_with: values.struggling_with,
         understanding_level: values.understanding_level,
         achieved_goal: values.achieved_goal,
+        practice_summary: practiceSummaryStr,
       };
 
       const updatedTask = await weeklyPlanService.saveTaskReflection(task.id, reflectionPayload);
       setTask(updatedTask);
       setIsReflectionModalOpen(false);
-      message.success('Đã lưu Reflection và hoàn thành buổi học! 🎉');
+      setIsAIFeedbackModalOpen(true);
+      message.success('Đã lưu Reflection và AI đã đưa ra Nhận xét tổng quan! 🎉');
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể lưu phản hồi Reflection.');
     } finally {
@@ -726,11 +745,52 @@ export const StudySessionWorkspacePage: React.FC = () => {
   }, [elapsedSeconds]);
 
   // Compute Material Stream URL
-  const materialStreamUrl = useMemo(() => {
-    if (!task?.course_id || !task?.material_id) return null;
-    const token = localStorage.getItem('access_token');
-    return `${API_BASE_URL}/courses/${task.course_id}/materials/${task.material_id}/download?inline=true&token=${token}`;
-  }, [task?.course_id, task?.material_id]);
+  const defaultPracticeQuestions: QuickSelfCheckQuestion[] = useMemo(() => {
+    const topic = task?.topic || task?.title || 'nội dung bài học';
+    const course = task?.course_name || 'môn học';
+    const studyItems = task?.what_to_study || [];
+    const mainItem = studyItems[0] || topic;
+
+    return [
+      {
+        id: 'prac-q1',
+        question: `Đâu là nguyên lý hoặc khái niệm cốt lõi quan trọng nhất của "${mainItem}" trong môn ${course}?`,
+        type: 'multiple_choice',
+        options: [
+          `Nắm vững định nghĩa, quy trình và điều kiện áp dụng của ${mainItem}`,
+          `Bỏ qua các bước phân tích và kiểm định lý thuyết`,
+          `Chỉ ghi nhớ kết quả mẫu mà không hiểu cách thực hiện`,
+          `Áp dụng công thức ngẫu nhiên cho mọi dạng bài tập`,
+        ],
+        hint: `Xem lại các định nghĩa và nguyên lý cốt lõi của ${mainItem} trong slide bài giảng.`,
+        sample_answer: `Lựa chọn A: Nắm vững định nghĩa, quy trình và điều kiện áp dụng của ${mainItem}`,
+        explanation: `Hiểu rõ bản chất và điều kiện áp dụng giúp bạn giải quyết tốt mọi dạng bài tập liên quan đến ${mainItem}.`,
+      },
+      {
+        id: 'prac-q2',
+        question: `Dựa trên nội dung bài học "${topic}", hãy giải thích ngắn gọn cách áp dụng ${mainItem} vào thực tế?`,
+        type: 'short_answer',
+        options: [],
+        hint: `Liên hệ kiến thức lý thuyết với ví dụ thực tiễn hoặc các bước giải bài tập mẫu.`,
+        sample_answer: `Vận dụng ${mainItem} để xử lý dữ liệu, kiểm định giả thuyết và đưa ra kết luận logic.`,
+        explanation: `Việc diễn đạt câu trả lời bằng ngôn ngữ của bản thân chứng minh mức độ thấu hiểu kiến thức.`,
+      },
+      {
+        id: 'prac-q3',
+        question: `Khi thực hiện phân tích bài tập thuộc chủ đề "${topic}", tiêu chuẩn nào đóng vai trò quan trọng nhất để đánh giá kết quả?`,
+        type: 'multiple_choice',
+        options: [
+          'Độ tin cậy của dữ liệu và tính logic của các bước lập luận',
+          'Tốc độ hoàn thành bài tập mà không cần kiểm tra lại',
+          'Sử dụng nhiều thuật ngữ phức tạp không liên quan',
+          'Bỏ qua các giả định ban đầu của bài toán',
+        ],
+        hint: 'Nhớ lại các tiêu chí đánh giá độ tin cậy và chính xác của mô hình.',
+        sample_answer: 'Lựa chọn A: Độ tin cậy của dữ liệu và tính logic của các bước lập luận',
+        explanation: 'Tính logic và độ tin cậy của lập luận là thước đo hàng đầu trong đánh giá kết quả bài tập.',
+      },
+    ];
+  }, [task]);
 
   if (loading) {
     return (
@@ -1425,34 +1485,34 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   : 'bg-white border-slate-200 shadow-slate-900/10'
               }`}>
                 {/* Header (Matching Floating Card Style) */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+                <div className={`px-4 py-2.5 border-b flex items-center justify-between shrink-0 ${
                   isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
                 }`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                      <BlockyRobotIcon size={24} className="text-white" />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                      <BlockyRobotIcon size={18} className="text-white" />
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-bold text-sm sm:text-base m-0 truncate text-slate-900 dark:text-white">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-xs sm:text-sm m-0 truncate text-slate-900 dark:text-white">
                           Personal Learning Companion
                         </h4>
                         <Badge
                           status="processing"
                           text={
-                            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
                               Learning Companion Agent
                             </span>
                           }
                         />
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                      <p className="text-[10px] text-slate-400 font-medium m-0 truncate leading-tight">
                         Đồng hành theo dõi bài học, hạn nộp, điểm số &amp; mục tiêu cá nhân
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {knowledgeChatMessages.length > 1 && (
                       <Popconfirm
                         title="Xóa đoạn chat này?"
@@ -1466,26 +1526,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                         <Button
                           danger
                           size="small"
-                          icon={<DeleteOutlined />}
-                          className="rounded-xl text-xs font-semibold px-2.5 hidden sm:flex items-center gap-1"
+                          icon={<DeleteOutlined className="text-xs" />}
+                          className="rounded-lg text-[11px] font-medium px-2 h-7 hidden sm:flex items-center gap-1"
                         >
-                          Xóa đoạn chat
+                          Xóa
                         </Button>
                       </Popconfirm>
                     )}
                     <button
                       type="button"
                       onClick={() => setIsKnowledgeChatOpen(false)}
-                      className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                       title="Đóng cửa sổ chat"
                     >
-                      <CloseOutlined className="text-base" />
+                      <CloseOutlined className="text-sm" />
                     </button>
                   </div>
                 </div>
 
                 {/* Messages Body */}
-                <div className={`flex-1 overflow-y-auto p-5 space-y-6 ${
+                <div className={`flex-1 overflow-y-auto p-3.5 space-y-3.5 ${
                   isDark ? 'bg-[#0B1118]' : 'bg-[#FAFAF9]'
                 }`}>
                   {knowledgeChatMessages.map((msg, index) => {
@@ -1493,26 +1553,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                     return (
                       <div
                         key={index}
-                        className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                        className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                       >
                         {/* Avatar */}
                         <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs mt-0.5 border ${
                             isUser
-                              ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
+                              ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-xs'
                               : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                           }`}
                         >
-                          {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
+                          {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
                         </div>
 
                         {/* Content Bubble */}
-                        <div className={`space-y-2 max-w-[82%]`}>
+                        <div className={`space-y-1.5 max-w-[85%]`}>
                           <div
                             className={
                               isUser
-                                ? 'p-3.5 px-5 rounded-2xl text-sm leading-snug bg-minecraft-grass text-white font-medium shadow-sm rounded-tr-none'
-                                : 'p-4 sm:p-5 rounded-2xl text-sm leading-relaxed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-tl-none font-sans'
+                                ? 'p-2.5 px-3.5 rounded-xl text-xs sm:text-sm leading-normal bg-minecraft-grass text-white font-medium shadow-xs rounded-tr-none'
+                                : 'p-3 px-4 rounded-xl text-xs sm:text-sm leading-normal bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs rounded-tl-none font-sans'
                             }
                           >
                             <MarkdownRenderer
@@ -1524,14 +1584,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                           {/* Sources list if any */}
                           {!isUser && msg.sources && msg.sources.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-0.5">
-                              <span className="text-[11px] font-medium text-slate-500">
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              <span className="text-[10px] font-medium text-slate-500">
                                 Nguồn tham khảo:
                               </span>
                               {msg.sources.map((src, sIdx) => (
                                 <span
                                   key={sIdx}
-                                  className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+                                  className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700"
                                 >
                                   {src}
                                 </span>
@@ -1544,13 +1604,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   })}
 
                   {knowledgeChatLoading && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-sm">
-                        <RobotOutlined className="animate-spin text-base" />
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                        <RobotOutlined className="animate-spin text-xs" />
                       </div>
-                      <div className="p-4 rounded-2xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="p-2.5 px-3.5 rounded-xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Spin size="small" />
-                        <span className="font-medium">Trợ lý AI đang suy nghĩ và tổng hợp câu trả lời...</span>
+                        <span className="font-medium">AI đang suy nghĩ &amp; tổng hợp câu trả lời...</span>
                       </div>
                     </div>
                   )}
@@ -1558,8 +1618,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   <div ref={knowledgeChatEndRef} />
                 </div>
 
-                {/* Prompt Suggestion Chips (Image 1 Style) */}
-                <div className={`px-4 py-2.5 border-t border-b flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 ${
+                {/* Prompt Suggestion Chips */}
+                <div className={`px-3 py-1.5 border-t border-b flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 ${
                   isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
                   {knowledgeQuickPrompts.map((chip, idx) => (
@@ -1568,21 +1628,21 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       type="button"
                       onClick={() => handleSendKnowledgeChat(chip.query)}
                       disabled={knowledgeChatLoading}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:scale-105 active:scale-95 shadow-2xs"
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-2xs"
                     >
                       {chip.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Input Area (Matching Image 1) */}
-                <div className={`p-4 pt-3 border-t shrink-0 ${
+                {/* Input Area */}
+                <div className={`p-2.5 px-3 border-t shrink-0 ${
                   isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <div className={`flex items-center gap-2 p-2 rounded-2xl border-2 transition-all ${
+                  <div className={`flex items-center gap-2 p-1 px-2 rounded-xl border transition-all ${
                     isDark
                       ? 'bg-slate-900 border-slate-700 focus-within:border-emerald-500'
-                      : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-sm'
+                      : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-2xs'
                   }`}>
                     <input
                       type="text"
@@ -1596,18 +1656,18 @@ export const StudySessionWorkspacePage: React.FC = () => {
                         }
                       }}
                       disabled={knowledgeChatLoading}
-                      className="flex-1 bg-transparent border-0 outline-none text-sm px-2 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
+                      className="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm py-1 px-1.5 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
                     />
                     <button
                       type="button"
                       onClick={() => handleSendKnowledgeChat()}
                       disabled={!knowledgeChatInput.trim() || knowledgeChatLoading}
-                      className="w-10 h-10 rounded-xl bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                      className="w-8 h-8 rounded-lg bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                     >
-                      <SendOutlined className="text-base" />
+                      <SendOutlined className="text-sm" />
                     </button>
                   </div>
-                  <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 m-0 pt-2 truncate">
+                  <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 m-0 pt-1 truncate leading-tight">
                     Trợ lý học tập cá nhân tự động tổng hợp thông tin khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân.
                   </p>
                 </div>
@@ -1662,12 +1722,25 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
           {/* TIMER & MAIN ACTION */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border-2 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono font-bold text-sm">
-              <ClockCircleOutlined className={isInProgress ? 'text-emerald-500 animate-spin' : 'text-emerald-500'} />
+            <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border-2 font-mono font-bold text-sm ${
+              isCompleted
+                ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+            }`}>
+              {isCompleted ? (
+                <CheckCircleOutlined className="text-emerald-500" />
+              ) : (
+                <ClockCircleOutlined className={isInProgress ? 'text-emerald-500 animate-spin' : 'text-emerald-500'} />
+              )}
               <span>{formattedTimer}</span>
               {task.estimated_duration && (
                 <span className="text-xs text-slate-400 font-sans">
                   / {task.estimated_duration}m
+                </span>
+              )}
+              {isCompleted && (
+                <span className="ml-1 text-[10px] font-sans font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-500/30 px-2 py-0.5 rounded-md border border-emerald-500/40">
+                  DONE
                 </span>
               )}
             </div>
@@ -1682,9 +1755,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 <span>Hoàn Thành Buổi Học</span>
               </button>
             ) : (
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-xs">
-                <span>Buổi học đã hoàn thành</span>
-              </div>
+              <button
+                type="button"
+                disabled
+                className="px-5 py-2.5 rounded-xl bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-xs opacity-90 cursor-not-allowed flex items-center gap-2"
+              >
+                <CheckCircleOutlined />
+                <span>Đã Hoàn Thành Buổi Học</span>
+              </button>
             )}
           </div>
         </header>
@@ -1724,104 +1802,203 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* AI FEEDBACK SUMMARY CARD */}
+                  {(task.ai_insight || task.reflection_data?.overall_assessment) && (
+                    <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border-2 border-emerald-500/30 space-y-3 pt-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span className="font-black text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                          <span>🤖 Nhận xét tổng quan từ AI</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsAIFeedbackModalOpen(true)}
+                          className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                        >
+                          Xem chi tiết nhận xét →
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-slate-800 dark:text-slate-200 font-semibold m-0 leading-relaxed">
+                        {task.ai_insight || task.reflection_data?.overall_assessment}
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {task.reflection_data?.strengths && (
+                          <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20 text-emerald-900 dark:text-emerald-200 font-medium">
+                            <strong className="block text-[10px] uppercase font-black text-emerald-700 dark:text-emerald-400">💪 Điểm sáng / Nắm tốt:</strong>
+                            <span>{task.reflection_data.strengths}</span>
+                          </div>
+                        )}
+                        {task.reflection_data?.weaknesses && (
+                          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-500/20 text-amber-900 dark:text-amber-200 font-medium">
+                            <strong className="block text-[10px] uppercase font-black text-amber-700 dark:text-amber-400">💡 Cần lưu ý thêm:</strong>
+                            <span>{task.reflection_data.weaknesses}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {task.suggested_next_focus && (
+                        <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-500/30 text-xs text-slate-800 dark:text-slate-200">
+                          <strong className="text-sky-700 dark:text-sky-300 block mb-0.5 uppercase tracking-wider text-[10px]">
+                            🎯 Gợi ý tiếp theo
+                          </strong>
+                          <p className="m-0 font-bold leading-relaxed">{task.suggested_next_focus}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* ASSIGNMENT HEADER CARD */}
-              <div className="p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+              {/* 🧠 BÀI TẬP LUYỆN TẬP DO AI TẠO */}
+              <div className="p-6 rounded-2xl border-2 border-emerald-500/30 bg-white dark:bg-slate-900 shadow-sm space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                      {task.course_name || 'Phân Tích Dữ Liệu'}
+                      🧠 AI Agent & RAG Grounded
                     </span>
                     <span className="px-3 py-1 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                      {(assignment?.questions && assignment.questions.length > 0) ? `${assignment.questions.length} câu hỏi` : `${DEFAULT_QUIZ_QUESTIONS.length} câu hỏi`}
+                      {task.course_name || 'Khóa học'}
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                      {((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).length} câu luyện tập
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    {mySubmission ? (
-                      <span className="badge-voxel-green text-xs">
-                        Đã Nộp Bài
-                      </span>
-                    ) : (
-                      <span className="badge-voxel-gold text-xs">
-                        Chưa Làm
-                      </span>
-                    )}
-                    <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
-                      Hạn nộp: {assignment?.due_date ? dayjs(assignment.due_date).format('HH:mm DD/MM/YYYY') : '23:59 29/08/2026'}
-                    </span>
-                  </div>
+                  <span className="badge-voxel-green text-xs">
+                    Tự Luyện Tập Non-Graded
+                  </span>
                 </div>
 
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white m-0">
-                    {assignment?.title || task.topic || 'Bài tập trắc nghiệm ngắn – Tuần 2'}
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white m-0 flex items-center gap-2">
+                    <span>🧠 Bài tập luyện tập do AI tạo</span>
                   </h2>
                   <p className="text-slate-600 dark:text-slate-400 text-xs mt-1.5 m-0 leading-relaxed font-medium">
-                    {assignment?.description || task.description || 'Sinh viên hoàn thành các câu hỏi trắc nghiệm dưới đây để củng cố kiến thức và nộp bài trực tiếp vào hệ thống.'}
+                    Các câu hỏi dưới đây được <strong>AI Agent</strong> tự động biên soạn dựa trên <strong>Mục tiêu học tập</strong> và <strong>Tài liệu bài giảng ({task.material_title || 'Tài liệu môn học'})</strong> của buổi học <em>"{task.title}"</em> để giúp bạn tự đánh giá và củng cố kiến thức vừa học.
                   </p>
                 </div>
+
+                {companionData?.learning_objectives && companionData.learning_objectives.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                      🎯 Mục tiêu học tập được củng cố trong các câu hỏi này:
+                    </span>
+                    <ul className="list-disc list-inside space-y-0.5 font-semibold text-slate-700 dark:text-slate-300 m-0">
+                      {companionData.learning_objectives.map((obj) => (
+                        <li key={obj.id}>{obj.text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
-              {/* INTERACTIVE QUESTIONS LIST */}
-              {loadingAssignment ? (
-                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
+              {companionLoading ? (
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800 space-y-3">
                   <Spin size="large" />
-                  <p className="text-xs text-slate-400 mt-3 font-semibold">Đang tải câu hỏi bài tập trắc nghiệm...</p>
+                  <p className="text-xs text-slate-400 font-semibold">AI Agent đang tổng hợp bài tập luyện tập từ tài liệu...</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {((assignment?.questions && assignment.questions.length > 0) ? assignment.questions : DEFAULT_QUIZ_QUESTIONS).map((q, qIdx) => {
-                    const selectedVal = studentAnswers[q.id];
-                    const isAnswered = selectedVal !== undefined && selectedVal !== null && String(selectedVal).trim() !== '';
+                <div className="space-y-5">
+                  {((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).map((q, qIdx) => {
+                    const studentAns = selfCheckAnswers[q.id] || '';
+                    const isAnswered = studentAns.trim().length > 0;
+                    const evalResult = selfCheckEvalResults[q.id];
+                    const isEvaluating = !!selfCheckLoading[q.id];
+                    const isHintVisible = !!knowledgeRevealedHints[q.id];
+                    const isAnswerVisible = !!knowledgeCheckedQuestions[q.id];
 
                     return (
                       <div
-                        key={q.id}
-                        className={`p-5 rounded-2xl border-2 transition-all space-y-4 ${
-                          isAnswered
+                        key={q.id || qIdx}
+                        className={`p-6 rounded-2xl border-2 transition-all space-y-4 ${
+                          evalResult
+                            ? evalResult.is_correct
+                              ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500/40 shadow-sm'
+                              : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-500/40 shadow-sm'
+                            : isAnswered
                             ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 shadow-sm'
-                            : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'
+                            : 'bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        {/* Question Header */}
-                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                           <div className="flex items-center gap-2.5">
-                            <span className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-mono font-black flex items-center justify-center">
+                            <span className="w-7 h-7 rounded-xl bg-emerald-600 text-white text-xs font-mono font-black flex items-center justify-center shadow-sm">
                               {qIdx + 1}
                             </span>
-                            <span className="font-black text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                              {q.question_type === 'MULTIPLE_CHOICE' ? 'Trắc Nghiệm' : q.question_type === 'ESSAY' ? 'Tự Luận' : 'Trả Lời Ngắn'}
+                            <span className="font-black text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                              {q.type === 'multiple_choice' || (q.options && q.options.length > 0) ? 'Trắc Nghiệm Luyện Tập' : 'Tự Luận / Trả Lời Ngắn'}
                             </span>
                           </div>
 
-                          <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                            {q.points || 2} điểm
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {q.hint && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setKnowledgeRevealedHints((prev) => ({ ...prev, [q.id]: !prev[q.id] }));
+                                }}
+                                className="px-3 py-1 rounded-xl border border-amber-500/30 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 font-bold text-xs cursor-pointer transition-all active:translate-y-0.5"
+                              >
+                                {isHintVisible ? 'Ẩn Gợi Ý' : '💡 Xem Gợi Ý'}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setKnowledgeCheckedQuestions((prev) => ({ ...prev, [q.id]: !prev[q.id] }));
+                              }}
+                              className="px-3 py-1 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 hover:bg-sky-100 font-bold text-xs cursor-pointer transition-all active:translate-y-0.5"
+                            >
+                              {isAnswerVisible ? 'Ẩn Đáp Án Mẫu' : '📖 Xem Đáp Án Mẫu'}
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Question Text */}
                         <p className="text-sm font-bold text-slate-900 dark:text-white m-0 leading-relaxed">
-                          {q.question_text}
+                          {q.question}
                         </p>
 
-                        {/* Multiple Choice Options */}
-                        {q.question_type === 'MULTIPLE_CHOICE' && q.options && (
+                        {isHintVisible && q.hint && (
+                          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                            <span className="font-black uppercase tracking-wider block text-[10px] text-amber-700 dark:text-amber-400">💡 Gợi ý suy luận:</span>
+                            <p className="m-0 leading-relaxed font-medium">{q.hint}</p>
+                          </div>
+                        )}
+
+                        {isAnswerVisible && (
+                          <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/30 text-xs text-slate-800 dark:text-slate-200 space-y-2">
+                            {q.sample_answer && (
+                              <div>
+                                <strong className="text-sky-700 dark:text-sky-300 block mb-0.5">Đáp án mẫu gợi ý:</strong>
+                                <p className="m-0 font-medium leading-relaxed">{q.sample_answer}</p>
+                              </div>
+                            )}
+                            {q.explanation && (
+                              <div className="pt-1.5 border-t border-sky-500/20 text-[11px] text-slate-600 dark:text-slate-400 italic">
+                                <strong>Giải thích chi tiết:</strong> {q.explanation}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {q.options && q.options.length > 0 ? (
                           <div className="grid grid-cols-1 gap-2.5 pt-1">
                             {q.options.map((opt, optIdx) => {
-                              const isSelected = selectedVal === opt.id || selectedVal === opt.option_text;
-                              const letter = String.fromCharCode(65 + optIdx); // A, B, C, D
+                              const isSelected = studentAns === opt;
+                              const letter = String.fromCharCode(65 + optIdx);
 
                               return (
                                 <div
-                                  key={opt.id}
+                                  key={optIdx}
                                   onClick={() => {
-                                    if (mySubmission && mySubmission.status === 'graded') return;
-                                    setStudentAnswers((prev) => ({ ...prev, [q.id]: opt.id }));
+                                    if (isCompleted) return;
+                                    setSelfCheckAnswers((prev) => ({ ...prev, [q.id]: opt }));
                                   }}
-                                  className={`p-3.5 rounded-xl border-2 flex items-center gap-3.5 transition-all cursor-pointer select-none ${
+                                  className={`p-3.5 rounded-xl border-2 flex items-center gap-3.5 transition-all select-none ${
+                                    isCompleted ? 'cursor-not-allowed opacity-85' : 'cursor-pointer'
+                                  } ${
                                     isSelected
                                       ? 'border-emerald-600 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 font-bold shadow-voxel-sm'
                                       : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100/50'
@@ -1837,60 +2014,117 @@ export const StudySessionWorkspacePage: React.FC = () => {
                                     {letter}
                                   </span>
                                   <span className="text-xs leading-relaxed flex-1">
-                                    {opt.option_text}
+                                    {opt}
                                   </span>
                                 </div>
                               );
                             })}
                           </div>
-                        )}
-
-                        {/* Essay / Short Answer input */}
-                        {q.question_type !== 'MULTIPLE_CHOICE' && (
-                          <div className="pt-2">
+                        ) : (
+                          <div className="pt-1 space-y-2">
                             <TextArea
                               rows={3}
-                              placeholder="Nhập câu trả lời của bạn cho bài tập này..."
-                              value={selectedVal || ''}
-                              onChange={(e) => setStudentAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                              disabled={!!(mySubmission && mySubmission.status === 'graded')}
-                              className="rounded-xl text-xs font-medium"
+                              disabled={isCompleted}
+                              placeholder={isCompleted ? "Buổi học đã hoàn thành" : "Nhập câu trả lời của bạn để AI kiểm tra và đưa ra phản hồi..."}
+                              value={studentAns}
+                              onChange={(e) => setSelfCheckAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                              className="rounded-xl text-xs font-medium border-2 border-slate-200 dark:border-slate-700"
                             />
+                          </div>
+                        )}
+
+                        {/* Submit for AI Evaluation Action */}
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {isCompleted ? 'Buổi học đã hoàn thành' : isAnswered ? 'Đã nhập câu trả lời' : 'Chưa nhập câu trả lời'}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={!isAnswered || isEvaluating || isCompleted}
+                            onClick={() => handleEvaluateSelfCheck(q.id, q.question)}
+                            className="btn-voxel-green text-xs px-5 py-2 rounded-xl font-bold shadow-voxel active:translate-y-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {isEvaluating ? <Spin size="small" /> : null}
+                            <span>
+                              {isCompleted
+                                ? '🔒 Buổi học đã hoàn thành'
+                                : isEvaluating
+                                ? 'AI Đang Đánh Giá...'
+                                : '🤖 Gửi AI Đánh Giá & Phản Hồi'}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* AI Evaluation Result Card */}
+                        {evalResult && (
+                          <div className={`p-4 rounded-xl border-2 space-y-2 text-xs ${
+                            evalResult.is_correct
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-950 dark:text-emerald-100'
+                              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-500/40 text-amber-950 dark:text-amber-100'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-black uppercase tracking-wider text-xs flex items-center gap-1.5">
+                                {evalResult.is_correct ? (
+                                  <span className="text-emerald-600 dark:text-emerald-400">✅ AI Đánh Giá: Nắm Bài Tốt!</span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400">💡 AI Đánh Giá: Cần Lưu Ý Thêm</span>
+                                )}
+                              </span>
+                            </div>
+                            <p className="m-0 leading-relaxed font-semibold">
+                              {evalResult.feedback}
+                            </p>
+                            {evalResult.explanation && (
+                              <p className="m-0 text-[11px] opacity-90 leading-relaxed">
+                                <strong>Chi tiết:</strong> {evalResult.explanation}
+                              </p>
+                            )}
+                            {evalResult.suggested_review && (
+                              <div className="pt-1.5 border-t border-current/20 text-[11px] font-bold">
+                                📌 Gợi ý ôn tập tiếp theo: {evalResult.suggested_review}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     );
                   })}
 
-                  {/* SUBMISSION FOOTER ACTION BAR */}
-                  <div className={`p-4 rounded-2xl border-2 flex items-center justify-between flex-wrap gap-3 ${
+                  {/* PRACTICE PROGRESS FOOTER */}
+                  <div className={`p-5 rounded-2xl border-2 flex items-center justify-between flex-wrap gap-4 ${
                     isDark ? 'bg-[#121B26] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
                   }`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Tiến độ:</span>
-                      <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">
-                        {Object.values(studentAnswers).filter((v) => v !== undefined && v !== null && String(v).trim() !== '').length} / {((assignment?.questions && assignment.questions.length > 0) ? assignment.questions : DEFAULT_QUIZ_QUESTIONS).length} câu đã trả lời
-                      </span>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Tiến độ tự luyện tập:</span>
+                        <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">
+                          {Object.keys(selfCheckEvalResults).length} / {((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).length} câu được AI nhận xét
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                        Bài tập luyện tập giúp củng cố kiến thức, không ảnh hưởng đến điểm số chính thức trên trường.
+                      </p>
                     </div>
 
-                    <div>
-                      {mySubmission ? (
-                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          <CheckCircleOutlined />
-                          <span>Bài làm đã được nộp thành công</span>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={submittingAssignment}
-                          onClick={handleDirectSubmitAssignment}
-                          className="btn-voxel-green text-xs px-7 py-3 rounded-2xl font-black shadow-voxel active:translate-y-1 transition-all cursor-pointer flex items-center gap-2"
-                        >
-                          {submittingAssignment ? <Spin size="small" /> : null}
-                          <span>{submittingAssignment ? 'Đang Nộp Bài...' : 'Nộp Bài Tập Trắc Nghiệm'}</span>
-                        </button>
-                      )}
-                    </div>
+                    {!isCompleted ? (
+                      <button
+                        type="button"
+                        onClick={handleStartCompletionFlow}
+                        className="btn-voxel-green text-xs px-6 py-3 rounded-2xl font-black shadow-voxel active:translate-y-1 transition-all cursor-pointer flex items-center gap-2"
+                      >
+                        <CheckCircleOutlined />
+                        <span>Hoàn Thành Buổi Học</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="px-6 py-3 rounded-2xl bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-xs opacity-90 cursor-not-allowed flex items-center gap-2"
+                      >
+                        <CheckCircleOutlined />
+                        <span>Đã Hoàn Thành Buổi Học</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1913,34 +2147,34 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 : 'bg-white border-slate-200 shadow-slate-900/10'
             }`}>
               {/* Header (Matching Floating Card Style) */}
-              <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+              <div className={`px-4 py-2.5 border-b flex items-center justify-between shrink-0 ${
                 isDark ? 'bg-[#151F30]/90 border-slate-800' : 'bg-[#FDFBF7]/90 border-amber-900/10'
               }`}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-                    <BlockyRobotIcon size={24} className="text-white" />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <BlockyRobotIcon size={18} className="text-white" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-sm sm:text-base m-0 truncate text-slate-900 dark:text-white">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-xs sm:text-sm m-0 truncate text-slate-900 dark:text-white">
                         Personal Learning Companion
                       </h4>
                       <Badge
                         status="processing"
                         text={
-                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                          <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
                             Socratic Tutor
                           </span>
                         }
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 font-medium m-0 truncate">
+                    <p className="text-[10px] text-slate-400 font-medium m-0 truncate leading-tight">
                       Gia sư Socratic hướng dẫn phương pháp &amp; tư duy bài tập
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {knowledgeChatMessages.length > 1 && (
                     <Popconfirm
                       title="Xóa đoạn chat này?"
@@ -1954,26 +2188,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       <Button
                         danger
                         size="small"
-                        icon={<DeleteOutlined />}
-                        className="rounded-xl text-xs font-semibold px-2.5 hidden sm:flex items-center gap-1"
+                        icon={<DeleteOutlined className="text-xs" />}
+                        className="rounded-lg text-[11px] font-medium px-2 h-7 hidden sm:flex items-center gap-1"
                       >
-                        Xóa đoạn chat
+                        Xóa
                       </Button>
                     </Popconfirm>
                   )}
                   <button
                     type="button"
                     onClick={() => setIsKnowledgeChatOpen(false)}
-                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     title="Đóng cửa sổ chat"
                   >
-                    <CloseOutlined className="text-base" />
+                    <CloseOutlined className="text-sm" />
                   </button>
                 </div>
               </div>
 
               {/* Messages Body */}
-              <div className={`flex-1 overflow-y-auto p-5 space-y-6 ${
+              <div className={`flex-1 overflow-y-auto p-3.5 space-y-3.5 ${
                 isDark ? 'bg-[#0B1118]' : 'bg-[#FAFAF9]'
               }`}>
                 {knowledgeChatMessages.map((msg, index) => {
@@ -1981,26 +2215,26 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   return (
                     <div
                       key={index}
-                      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                      className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                     >
                       {/* Avatar */}
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5 border ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs mt-0.5 border ${
                           isUser
-                            ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-base'
+                            ? 'bg-[#00897B] text-white border-teal-700 font-extrabold text-xs'
                             : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-base" /> : <BlockyRobotIcon size={20} className="text-white" />}
+                        {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
                       </div>
 
                       {/* Content Bubble */}
-                      <div className={`space-y-2 max-w-[82%]`}>
+                      <div className={`space-y-1.5 max-w-[85%]`}>
                         <div
                           className={
                             isUser
-                              ? 'p-3.5 px-5 rounded-2xl text-sm leading-snug bg-minecraft-grass text-white font-medium shadow-sm rounded-tr-none'
-                              : 'p-4 sm:p-5 rounded-2xl text-sm leading-relaxed bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-tl-none font-sans'
+                              ? 'p-2.5 px-3.5 rounded-xl text-xs sm:text-sm leading-normal bg-minecraft-grass text-white font-medium shadow-xs rounded-tr-none'
+                              : 'p-3 px-4 rounded-xl text-xs sm:text-sm leading-normal bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xs rounded-tl-none font-sans'
                           }
                         >
                           <MarkdownRenderer
@@ -2012,14 +2246,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                         {/* Sources list if any */}
                         {!isUser && msg.sources && msg.sources.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-0.5">
-                            <span className="text-[11px] font-medium text-slate-500">
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            <span className="text-[10px] font-medium text-slate-500">
                               Nguồn tham khảo:
                             </span>
                             {msg.sources.map((src, sIdx) => (
                               <span
                                 key={sIdx}
-                                className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+                                className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700"
                               >
                                 📄 {src}
                               </span>
@@ -2032,13 +2266,13 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 })}
 
                 {knowledgeChatLoading && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-sm">
-                      <RobotOutlined className="animate-spin text-base" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500 text-white border border-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                      <RobotOutlined className="animate-spin text-xs" />
                     </div>
-                    <div className="p-4 rounded-2xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="p-2.5 px-3.5 rounded-xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <Spin size="small" />
-                      <span className="font-medium">Trợ lý AI đang suy nghĩ và tổng hợp câu trả lời...</span>
+                      <span className="font-medium">Trợ lý AI đang suy nghĩ &amp; tổng hợp...</span>
                     </div>
                   </div>
                 )}
@@ -2046,38 +2280,35 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 <div ref={knowledgeChatEndRef} />
               </div>
 
-              {/* Prompt Suggestion Chips (Socratic Tutoring & Integrity Focused) */}
-              <div className={`px-4 py-2.5 border-t border-b flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 ${
+              {/* Prompt Suggestion Chips */}
+              <div className={`px-3 py-1.5 border-t border-b flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 ${
                 isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
               }`}>
                 {[
-                  { label: 'Gợi ý phương pháp giải', query: `Tôi đang làm bài tập "${task?.title || ''}", hãy gợi ý phương pháp tư duy và các bước tiếp cận (không đưa ra đáp án trực tiếp).` },
-                  { label: 'Giải thích khái niệm liên quan', query: 'Hãy giải thích các khái niệm và định nghĩa quan trọng xuất hiện trong bài tập này.' },
-                  { label: 'Đặt câu hỏi định hướng', query: 'Hãy đặt cho tôi 1 câu hỏi gợi mở để giúp tôi tự tìm ra cách giải bài tập này.' },
-                  { label: 'Nhắc lại lý thuyết cần dùng', query: 'Bài tập này đòi hỏi sử dụng những công thức và kiến thức nền tảng nào?' },
-                  { label: 'Môn học của tôi', query: `Tôi đang học môn gì và bài học "${task?.title || ''}" nằm trong chương trình nào?` },
-                  { label: 'Bài tập sắp đến hạn', query: 'Tôi có những bài tập nào sắp đến hạn nộp liên quan đến bài này?' },
+                  { label: 'Gợi ý 1 câu', query: `Gợi ý 1 câu hướng dẫn phương pháp giải bài tập "${task?.title || ''}".` },
+                  { label: '3 câu hỏi nhanh', query: 'Đặt 3 câu hỏi ngắn gợi mở để giúp tôi tự tìm cách giải.' },
+                  { label: 'Ý chính bài học', query: 'Ý chính nền tảng của bài tập này là gì?' },
                 ].map((chip, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSendKnowledgeChat(chip.query)}
                     disabled={knowledgeChatLoading}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:scale-105 active:scale-95 shadow-2xs"
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-all cursor-pointer bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-2xs"
                   >
                     {chip.label}
                   </button>
                 ))}
               </div>
 
-              {/* Input Area (Matching Image 2) */}
-              <div className={`p-4 pt-3 border-t shrink-0 ${
+              {/* Input Area */}
+              <div className={`p-2.5 px-3 border-t shrink-0 ${
                 isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-slate-200'
               }`}>
-                <div className={`flex items-center gap-2 p-2 rounded-2xl border-2 transition-all ${
+                <div className={`flex items-center gap-2 p-1 px-2 rounded-xl border transition-all ${
                   isDark
                     ? 'bg-slate-900 border-slate-700 focus-within:border-emerald-500'
-                    : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-sm'
+                    : 'bg-white border-slate-300 focus-within:border-emerald-500 shadow-2xs'
                 }`}>
                   <input
                     type="text"
@@ -2091,18 +2322,18 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       }
                     }}
                     disabled={knowledgeChatLoading}
-                    className="flex-1 bg-transparent border-0 outline-none text-sm px-2 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
+                    className="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm py-1 px-1.5 text-slate-900 dark:text-white placeholder:text-slate-400 font-sans"
                   />
                   <button
                     type="button"
                     onClick={() => handleSendKnowledgeChat()}
                     disabled={!knowledgeChatInput.trim() || knowledgeChatLoading}
-                    className="w-10 h-10 rounded-xl bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                    className="w-8 h-8 rounded-lg bg-[#A5D6A7] hover:bg-[#81C784] text-[#1B5E20] flex items-center justify-center shrink-0 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                   >
-                    <SendOutlined className="text-base" />
+                    <SendOutlined className="text-sm" />
                   </button>
                 </div>
-                <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 m-0 pt-2 truncate">
+                <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 m-0 pt-1 truncate leading-tight">
                   Trợ lý Socratic chỉ gợi ý phương pháp và giải thích lý thuyết, không cung cấp đáp án trực tiếp.
                 </p>
               </div>
@@ -2261,6 +2492,115 @@ export const StudySessionWorkspacePage: React.FC = () => {
             </button>
           </div>
         </Form>
+      </Modal>
+
+      {/* 🤖 AI FEEDBACK POST-REFLECTION MODAL */}
+      <Modal
+        title={
+          <div className="py-1 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+              <BlockyRobotIcon size={22} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900 dark:text-white m-0">
+                Nhận xét tổng quan từ AI
+              </h3>
+              <p className="text-xs text-slate-400 font-medium m-0">
+                Personal Learning Companion Agent Analysis &amp; Next Steps
+              </p>
+            </div>
+          </div>
+        }
+        open={isAIFeedbackModalOpen}
+        onCancel={() => setIsAIFeedbackModalOpen(false)}
+        footer={null}
+        destroyOnClose
+        centered
+        width={640}
+        className="modal-voxel rounded-3xl overflow-hidden"
+      >
+        <div className="space-y-5 py-2 font-sans text-xs">
+          {/* Main Assessment Box */}
+          <div className="p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-xs uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                <span>🤖 Nhận xét tổng quan</span>
+              </span>
+              <span className="badge-voxel-green text-[10px]">
+                ĐÁNH GIÁ THỦ CÔNG &amp; AI
+              </span>
+            </div>
+            <p className="text-sm font-bold text-slate-900 dark:text-white m-0 leading-relaxed">
+              {task?.ai_insight || task?.reflection_data?.overall_assessment || 'Bạn đã hoàn thành tốt buổi học và hoàn thành phần luyện tập.'}
+            </p>
+          </div>
+
+          {/* Strengths & Weaknesses Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border-2 border-emerald-500/30 space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">
+                💪 Điểm sáng / Hiểu tốt:
+              </span>
+              <p className="m-0 text-xs font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
+                {task?.reflection_data?.strengths || task?.reflection_data?.understood_well || 'Khái niệm và lý thuyết cốt lõi'}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border-2 border-amber-500/30 space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                💡 Cần lưu ý / Ôn tập thêm:
+              </span>
+              <p className="m-0 text-xs font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
+                {task?.reflection_data?.weaknesses || task?.reflection_data?.struggling_with || 'Các ví dụ và dạng bài tập vận dụng'}
+              </p>
+            </div>
+          </div>
+
+          {/* Next Steps Recommendation Box */}
+          {task?.suggested_next_focus && (
+            <div className="p-4 rounded-2xl bg-sky-500/10 border-2 border-sky-500/30 space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-300 block">
+                🎯 Gợi ý tiếp theo:
+              </span>
+              <p className="m-0 text-xs font-extrabold text-slate-900 dark:text-white leading-relaxed">
+                {task.suggested_next_focus}
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-between items-center gap-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAIFeedbackModalOpen(false);
+                const weakTopic = task?.reflection_data?.weaknesses || task?.reflection_data?.struggling_with || task?.title;
+                handleSendKnowledgeChat(`Tôi vừa hoàn thành buổi học "${task?.title}". Nhận xét AI gợi ý tôi nên ôn thêm "${weakTopic}". Hãy hướng dẫn tôi phương pháp ôn tập hiệu quả!`);
+                setIsKnowledgeChatOpen(true);
+              }}
+              className="btn-voxel-sky text-xs px-4 py-2.5 rounded-xl font-bold shadow-voxel-sky active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>💬 Trao đổi với Socratic Tutor</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/calendar')}
+                className="px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 active:translate-y-0.5 transition-all cursor-pointer"
+              >
+                Quay lại Calendar
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAIFeedbackModalOpen(false)}
+                className="btn-voxel-green text-xs px-6 py-2.5 rounded-xl font-black shadow-voxel active:translate-y-0.5 transition-all cursor-pointer"
+              >
+                Đóng &amp; Xem Tổng Quan
+              </button>
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   );

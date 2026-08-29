@@ -25,7 +25,7 @@ from src.models.weekly_plan import (
     WeeklyPlanResponse,
     WeeklyPlanUpdateRequest,
 )
-from src.services.schedule_utils import check_task_conflict_with_fixed_schedules
+from src.services.schedule_utils import check_task_conflict_with_fixed_schedules, parse_time_to_minutes
 
 
 import json
@@ -466,12 +466,22 @@ class WeeklyPlanService:
             target_date = sched_dt.date() if isinstance(sched_dt, datetime) else sched_dt
 
             def check_overlap(st_str: str, et_str: str) -> bool:
+                try:
+                    s_st = parse_time_to_minutes(st_str)
+                    s_et = parse_time_to_minutes(et_str)
+                except Exception:
+                    return False
                 for t in existing_tasks:
                     if t.scheduled_date and t.start_time and t.end_time:
                         t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
                         if t_date == target_date:
-                            if st_str < t.end_time and et_str > t.start_time:
-                                return True
+                            try:
+                                t_st = parse_time_to_minutes(t.start_time)
+                                t_et = parse_time_to_minutes(t.end_time)
+                                if s_st < t_et and s_et > t_st:
+                                    return True
+                            except Exception:
+                                pass
                 return False
 
             if check_overlap(payload.start_time, payload.end_time):
@@ -700,15 +710,28 @@ class WeeklyPlanService:
             existing_tasks = tasks_res.scalars().all()
 
             target_date = eff_date.date() if isinstance(eff_date, datetime) else eff_date
+            try:
+                e_st = parse_time_to_minutes(eff_start)
+                e_et = parse_time_to_minutes(eff_end)
+            except Exception:
+                e_st, e_et = 0, 0
+
             for t in existing_tasks:
                 if t.scheduled_date and t.start_time and t.end_time:
                     t_date = t.scheduled_date.date() if isinstance(t.scheduled_date, datetime) else t.scheduled_date
                     if t_date == target_date:
-                        if eff_start < t.end_time and eff_end > t.start_time:
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
-                            )
+                        try:
+                            t_st = parse_time_to_minutes(t.start_time)
+                            t_et = parse_time_to_minutes(t.end_time)
+                            if e_st < t_et and e_et > t_st:
+                                raise HTTPException(
+                                    status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail=f"Trùng lịch! Khung giờ ({eff_start} - {eff_end}) bị trùng với nhiệm vụ '{t.title}' ({t.start_time} - {t.end_time}). Vui lòng chọn khung giờ khác.",
+                                )
+                        except HTTPException:
+                            raise
+                        except Exception:
+                            pass
 
         await db.commit()
         await db.refresh(task)
@@ -836,29 +859,48 @@ class WeeklyPlanService:
             "struggling_with": payload.struggling_with,
             "understanding_level": payload.understanding_level,
             "achieved_goal": payload.achieved_goal,
+            "practice_summary": payload.practice_summary,
         }
 
         topic = existing_meta.get("topic") or task.title
         course_name = existing_meta.get("course_name") or "Khóa học"
+        what_to_study = existing_meta.get("what_to_study") or []
 
-        ai_insight = f"Bạn đã hoàn thành tốt buổi học về '{topic}'. Cần chú ý thêm phần: {payload.struggling_with or 'các khái niệm khó'}."
-        suggested_next_focus = f"Ôn tập và thực hành thêm kiến thức thuộc bài giảng {topic} ({course_name})."
+        ai_insight = f"Bạn đã nắm khá tốt nội dung bài học về '{topic}'. Cần chú ý thêm phần: {payload.struggling_with or 'các khái niệm phức tạp'}."
+        suggested_next_focus = f"Nên ôn lại các phần vướng mắc và làm thêm bài tập luyện tập trước khi chuyển sang chủ đề tiếp theo."
+        strengths = payload.understood_well or f"Khái niệm và lý thuyết cốt lõi của {topic}"
+        weaknesses = payload.struggling_with or "Cần rèn luyện thêm khả năng vận dụng bài tập"
 
         try:
             from src.services.llm import get_llm
             from langchain_core.messages import HumanMessage
             llm = get_llm(temperature=0.3)
             prompt = (
-                f"Dựa trên phản hồi Reflection của sinh viên sau buổi học:\n"
-                f"- Khóa học: {course_name}\n"
-                f"- Chủ đề: {topic}\n"
-                f"- Đã học được: {payload.what_learned or 'Chưa nhập'}\n"
-                f"- Hiểu tốt: {payload.understood_well or 'Chưa nhập'}\n"
-                f"- Vẫn vướng mắc: {payload.struggling_with or 'Chưa nhập'}\n"
-                f"- Mức độ hiểu: {payload.understanding_level}\n"
-                f"- Đạt mục tiêu: {payload.achieved_goal}\n\n"
-                f"Hãy đưa ra 1 nhận xét ngắn gọn (ai_insight - max 2 câu) và 1 gợi ý trọng tâm tiếp theo (suggested_next_focus - max 1 câu) bằng tiếng Việt dưới dạng JSON:\n"
-                f'{{"ai_insight": "...", "suggested_next_focus": "..."}}'
+                f"You are a Personal Learning Companion AI. Analyze the student's completed study session and generate comprehensive AI feedback (Nhận xét tổng quan từ AI) in Vietnamese.\n\n"
+                f"Study Session Context:\n"
+                f"- Course: {course_name}\n"
+                f"- Topic: {topic}\n"
+                f"- Covered items: {', '.join(what_to_study) if what_to_study else topic}\n"
+                f"- AI Practice Results: {payload.practice_summary or 'Đã hoàn thành các câu tự kiểm tra'}\n\n"
+                f"Student Reflection Answers:\n"
+                f"- What they learned: {payload.what_learned or 'Đã xem qua nội dung bài học'}\n"
+                f"- What they understood well: {payload.understood_well or 'Nội dung lý thuyết cơ bản'}\n"
+                f"- Areas still struggling with: {payload.struggling_with or 'Không ghi nhận vướng mắc lớn'}\n"
+                f"- Understanding level: {payload.understanding_level}\n"
+                f"- Achieved goal: {payload.achieved_goal}\n\n"
+                f"INSTRUCTIONS:\n"
+                f"Generate a helpful, empathetic, and actionable feedback in Vietnamese strictly adhering to JSON:\n"
+                f"1. ai_insight: Overall learning assessment summarizing what they did well and highlighting their main knowledge gap (2-3 concise sentences).\n"
+                f"2. suggested_next_focus: Short, practical recommendation for what they should study or practice next (1-2 sentences).\n"
+                f"3. strengths: Concise list/sentence of concepts they understood well.\n"
+                f"4. weaknesses: Concise list/sentence of concepts that still need improvement or review.\n\n"
+                f"Return JSON strictly matching format:\n"
+                f'{{\n'
+                f'  "ai_insight": "Bạn đã nắm khá tốt các khái niệm cơ bản và hoàn thành phần luyện tập...",\n'
+                f'  "suggested_next_focus": "Nên ôn lại phần... và làm thêm câu luyện tập trước khi chuyển bài tiếp.",\n'
+                f'  "strengths": "Nắm vững lý thuyết cơ bản...",\n'
+                f'  "weaknesses": "Còn lúng túng ở phần..."\n'
+                f'}}'
             )
             response = await llm.ainvoke([HumanMessage(content=prompt)])
             text = str(response.content)
@@ -869,8 +911,17 @@ class WeeklyPlanService:
                     ai_insight = parsed.get("ai_insight")
                 if parsed.get("suggested_next_focus"):
                     suggested_next_focus = parsed.get("suggested_next_focus")
+                if parsed.get("strengths"):
+                    strengths = parsed.get("strengths")
+                if parsed.get("weaknesses"):
+                    weaknesses = parsed.get("weaknesses")
         except Exception as e:
-            pass
+            import logging
+            logging.getLogger(__name__).warning(f"LLM Reflection analysis failed: {e}")
+
+        reflection_dict["overall_assessment"] = ai_insight
+        reflection_dict["strengths"] = strengths
+        reflection_dict["weaknesses"] = weaknesses
 
         started_at = existing_meta.get("started_at") or datetime.now(timezone.utc).isoformat()
         completed_at = datetime.now(timezone.utc).isoformat()
@@ -1059,134 +1110,110 @@ class WeeklyPlanService:
         ])
 
         system_instruction = (
-            "You are a Personal Learning Companion AI Assistant for University Students. "
-            "Generate high-quality grounded Study Guide, Reading Roadmap, Learning Objectives, and Quick Self-Check questions from the course materials and topic.\n"
-            "STRICT RULES:\n"
-            "1. Ground all information strictly in course domain and provided materials. NEVER output meta task names (such as 'Học và Làm', 'Làm bài tập', 'Ôn tập', 'Chuẩn bị') as concept titles.\n"
-            "2. ai_study_guide.key_concepts:\n"
-            "   - MUST generate exactly 3 distinct, concrete, subject-matter knowledge concepts/theories from the course curriculum (e.g. for Data Analysis: 'Kiểm định thống kê', 'Phân tích dữ liệu định lượng', 'Biểu đồ thống kê'; for Machine Learning: 'Decision Tree', 'Random Forest', 'Đánh giá mô hình').\n"
-            "   - Each concept MUST include:\n"
-            "     * title: Specific academic concept name in Vietnamese (e.g. 'Kiểm định thống kê').\n"
-            "     * definition: Concise, precise academic definition in Vietnamese.\n"
-            "     * main_characteristics: 2-4 bullet points detailing core properties, mathematical/statistical conditions, or steps.\n"
-            "     * examples: 1-3 practical, realistic application examples in Vietnamese.\n"
-            "3. learning_objectives: 3-4 actionable items in Vietnamese ('Giải thích...', 'Phân biệt...', 'Hiểu rõ...').\n"
-            "4. ai_study_guide.focus_area: 1 highlighted focus sentence in Vietnamese (e.g. ⭐ Trọng tâm cần chú ý là...).\n"
-            "5. ai_study_guide.important_points: 3-5 key takeaways in Vietnamese.\n"
-            "6. reading_roadmap:\n"
-            "   - focus_sections: 2-3 essential sections/topics that MUST be studied deeply.\n"
-            "   - skim_sections: 1-2 overview or contextual sections to read quickly.\n"
-            "   - skip_sections: 1-2 optional appendix or advanced non-exam sections.\n"
-            "7. quick_self_check: 2-3 lightweight non-graded self-check questions in Vietnamese with hint and explanation.\n"
-            "8. Return valid JSON strictly matching the specified structure."
+            "You are a Personal Learning Companion AI Assistant for university students.\n"
+            "Your task is to generate a grounded Study Session Companion based on:\n"
+            "- Course\n"
+            "- Study Session Topic\n"
+            "- Topics to Study\n"
+            "- Retrieved Course Materials from RAG\n"
+            "- Related Assignment (if available)\n\n"
+            "STRICT GROUNDING RULES:\n"
+            "1. Ground all academic content strictly in the provided course materials. Retrieved course materials are the primary source of truth.\n"
+            "2. Do not invent concepts, formulas, theories, definitions, examples, or facts that are not supported by the provided materials.\n"
+            "3. Focus only on the current Study Session Topic instead of generating broad content for the entire course.\n"
+            "4. All student-facing content must be written in Vietnamese.\n\n"
+            "KEY CONCEPTS:\n"
+            "1. Generate exactly 3 concrete academic concepts.\n"
+            "2. Each concept MUST be an actual subject-matter concept, theory, algorithm, method, formula, principle, metric, model, or technique.\n"
+            "3. The 3 concepts must be meaningfully different from each other.\n"
+            "4. Concepts must come from or be strongly supported by the retrieved course materials.\n"
+            "5. NEVER use generic activity or workflow titles such as:\n"
+            "   - 'Học và Làm', 'Học & Làm', 'Làm bài tập', 'Ôn tập', 'Chuẩn bị', 'Tự học'\n"
+            "   - 'Lý thuyết & Nguyên lý', 'Phương pháp phân tích & Triển khai', 'Trực quan hóa & Đánh giá kết quả'\n"
+            "6. Do not create generic concepts by simply combining the topic with words such as 'Theory', 'Method', 'Application', or 'Evaluation'.\n"
+            "7. For example, if the material discusses Decision Tree, Random Forest, and Model Evaluation, generate those actual concepts ('Decision Tree', 'Random Forest', 'Model Evaluation') instead of generic categories.\n"
+            "8. Each concept MUST contain:\n"
+            "   - title: Specific academic concept name in Vietnamese.\n"
+            "   - definition: Concise academic definition in Vietnamese.\n"
+            "   - main_characteristics: 2-4 important characteristics/principles/steps supported by the material.\n"
+            "   - examples: 1-3 realistic examples based on the course material.\n\n"
+            "LEARNING OBJECTIVES:\n"
+            "1. Generate 3-4 actionable learning objectives describing what the student should understand or do after the session.\n"
+            "2. Use concrete verbs such as: Giải thích, Phân biệt, Áp dụng, Phân tích, So sánh, Diễn giải...\n"
+            "3. Avoid generic objectives such as 'study the lesson', 'review', or 'do exercises'.\n"
+            "4. Objectives must directly correspond to the actual topic and retrieved materials.\n\n"
+            "FOCUS AREA:\n"
+            "1. Generate exactly 1 concise sentence identifying the most important knowledge or skill for this specific session.\n"
+            "2. Do not generate generic study advice.\n\n"
+            "IMPORTANT POINTS:\n"
+            "1. Generate 3-5 concise key takeaways with meaningful subject-matter knowledge.\n"
+            "2. Do not simply repeat the learning objectives.\n\n"
+            "READING ROADMAP:\n"
+            "- focus_sections: 2-3 concepts/sections that should be studied deeply.\n"
+            "- skim_sections: 1-2 contextual or overview sections.\n"
+            "- skip_sections: 1-2 optional/secondary sections ONLY if such content actually exists in the material.\n"
+            "- NEVER invent section names that are not represented in the retrieved materials.\n\n"
+            "QUICK SELF-CHECK:\n"
+            "1. Generate 3-4 lightweight, non-graded practice questions based directly on the current Study Session Topic and retrieved course materials.\n"
+            "2. DO NOT use fixed question templates. DO NOT repeatedly generate generic questions such as 'What is the core concept?', 'Explain the concept...', 'What should be checked first?' unless genuinely appropriate.\n"
+            "3. Questions must test different aspects of understanding (concept understanding, comparison, application, reasoning, result interpretation, formula/method application, algorithm/process tracing, error identification).\n"
+            "4. For technical/mathematical/programming subjects, prefer concrete technical/code/calculation questions over vague theoretical questions.\n"
+            "5. For multiple_choice: provide exactly 4 plausible options with only 1 correct answer.\n"
+            "6. For short_answer: options MUST be [].\n"
+            "7. Each question MUST contain: id, question, type ('multiple_choice' or 'short_answer'), options, hint, sample_answer, explanation.\n\n"
+            "OUTPUT REQUIREMENTS:\n"
+            "Return valid JSON only. Do not wrap in markdown or return extra text. All student-facing text must be in Vietnamese."
         )
+
+        assign_info = f"- Related Assignment: {related_assign_dict['title']} (Due: {related_assign_dict['due_date']})" if related_assign_dict else "- Related Assignment: None"
 
         user_prompt = (
             f"Study Session Context:\n"
             f"- Course: {course_name}\n"
             f"- Topic: {clean_topic}\n"
             f"- Topics to study: {', '.join(what_to_study) if what_to_study else clean_topic}\n"
-            f"- Activities: {', '.join(what_to_do)}\n\n"
+            f"- Activities: {', '.join(what_to_do)}\n"
+            f"{assign_info}\n\n"
             f"Retrieved Course Material Snippets:\n"
-            f"{context_text if context_text else f'Generate 3 concrete academic concepts for course {course_name} on topic {clean_topic}.'}\n\n"
-            f"Return JSON:\n"
+            f"{context_text if context_text else 'No specific material snippets retrieved. Generate grounded concepts based on the Course and Topic.'}\n\n"
+            f"Expected JSON Schema:\n"
             f'{{\n'
             f'  "learning_objectives": [\n'
-            f'    {{"id": "1", "text": "Giải thích khái niệm...", "checked": false}}\n'
+            f'    {{"id": "1", "text": "...", "checked": false}}\n'
             f'  ],\n'
             f'  "ai_study_guide": {{\n'
             f'    "key_concepts": [\n'
-            f'      {{"title": "Khái niệm 1", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}},\n'
-            f'      {{"title": "Khái niệm 2", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}},\n'
-            f'      {{"title": "Khái niệm 3", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}}\n'
+            f'      {{"title": "...", "definition": "...", "main_characteristics": ["..."], "examples": ["..."]}}\n'
             f'    ],\n'
-            f'    "focus_area": "⭐ Trọng tâm cần chú ý đặc biệt...",\n'
+            f'    "focus_area": "...",\n'
             f'    "important_points": ["..."]\n'
             f'  }},\n'
             f'  "reading_roadmap": {{\n'
-            f'    "focus_sections": ["Phần trọng tâm cần đọc kỹ..."],\n'
-            f'    "skim_sections": ["Phần đọc lướt..."],\n'
-            f'    "skip_sections": ["Phần có thể xem sau..."]\n'
+            f'    "focus_sections": ["..."],\n'
+            f'    "skim_sections": ["..."],\n'
+            f'    "skip_sections": ["..."]\n'
             f'  }},\n'
             f'  "quick_self_check": [\n'
-            f'    {{"id": "q1", "question": "...", "type": "short_answer", "options": [], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
+            f'    {{"id": "...", "question": "...", "type": "...", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
             f'  ]\n'
             f'}}'
         )
 
         comp_data_dict = {
-            "learning_objectives": [
-                {"id": "1", "text": f"Giải thích khái niệm cốt lõi về {clean_topic}.", "checked": False},
-                {"id": "2", "text": f"Phân biệt đặc điểm và ứng dụng chính của {clean_topic}.", "checked": False},
-                {"id": "3", "text": f"Áp dụng kiến thức {clean_topic} vào thực hành giải bài tập môn {course_name}.", "checked": False},
-            ],
+            "learning_objectives": [],
             "ai_study_guide": {
-                "key_concepts": [
-                    {
-                        "title": f"Lý thuyết & Nguyên lý {clean_topic}",
-                        "definition": f"Hệ thống định nghĩa, công thức và nguyên lý cốt lõi cần nắm vững trong chủ đề {clean_topic} môn {course_name}.",
-                        "main_characteristics": [
-                            "Xác định đúng phạm vi và điều kiện áp dụng",
-                            "Kiểm tra tính hợp lệ của dữ liệu và giả thiết ban đầu",
-                            "Hiểu bản chất của các tiêu chí và mô hình liên quan",
-                        ],
-                        "examples": [f"Bài toán áp dụng trong thực tế môn {course_name}"],
-                    },
-                    {
-                        "title": f"Phương pháp phân tích & Triển khai",
-                        "definition": f"Quy trình thực hiện từng bước để giải quyết bài toán và phân tích kết quả môn {course_name}.",
-                        "main_characteristics": [
-                            "Thu thập và tiền xử lý dữ liệu thô",
-                            "Lựa chọn phương pháp kiểm định hoặc mô hình phù hợp",
-                            "Đánh giá độ tin cậy và diễn giải ý nghĩa kết quả",
-                        ],
-                        "examples": [f"Trường hợp phân tích mẫu môn {course_name}"],
-                    },
-                    {
-                        "title": f"Trực quan hóa & Đánh giá kết quả",
-                        "definition": f"Cách trình bày dữ liệu trực quan và phân tích so sánh các chỉ số thực nghiệm.",
-                        "main_characteristics": [
-                            "Sử dụng biểu đồ thích hợp với từng loại biến số",
-                            "Phát hiện ngoại lệ, phân phối và xu hướng dữ liệu",
-                            "Tổng hợp báo cáo và rút ra kết luận logic",
-                        ],
-                        "examples": [f"Mô hình hóa dữ liệu mẫu môn {course_name}"],
-                    },
-                ],
-                "focus_area": f"⭐ Trọng tâm cần chú ý là nắm vững phương pháp và điều kiện áp dụng trong {clean_topic}.",
-                "important_points": what_to_study if len(what_to_study) >= 3 else [
-                    f"Xác định chính xác loại dữ liệu và mục tiêu bài toán {course_name}",
-                    f"Nắm vững các bước thực hiện và tiêu chuẩn kiểm tra",
-                    f"Liên hệ lý thuyết với dạng bài tập thực hành thường gặp",
-                ],
+                "key_concepts": [],
+                "focus_area": "",
+                "important_points": [],
                 "sources": sources_list,
             },
             "reading_roadmap": {
-                "focus_sections": what_to_study[:2] if what_to_study else [f"Trọng tâm lý thuyết và phương pháp triển khai {clean_topic}", f"Ví dụ và bài tập mẫu của {clean_topic}"],
-                "skim_sections": [f"Tổng quan giới thiệu chủ đề {clean_topic}"],
-                "skip_sections": ["Phụ lục công thức nâng cao và nội dung đọc thêm"],
+                "focus_sections": [],
+                "skim_sections": [],
+                "skip_sections": [],
             },
             "related_assignment": related_assign_dict,
-            "quick_self_check": [
-                {
-                    "id": "q1",
-                    "question": f"Đâu là khái niệm cốt lõi của {clean_topic}?",
-                    "type": "short_answer",
-                    "options": [],
-                    "hint": "Nắm định nghĩa cơ bản trong tài liệu bài giảng.",
-                    "sample_answer": f"{clean_topic} là...",
-                    "explanation": f"Hiểu đúng khái niệm {clean_topic} giúp sinh viên làm tốt các câu hỏi lý thuyết và bài tập.",
-                },
-                {
-                    "id": "q2",
-                    "question": f"Hãy nêu 1 ví dụ hoặc ứng dụng chính của {clean_topic}?",
-                    "type": "short_answer",
-                    "options": [],
-                    "hint": "Liên hệ với bài học hoặc ví dụ thực tế.",
-                    "sample_answer": "Ứng dụng...",
-                    "explanation": "Khả năng đưa ra ví dụ minh chứng cho mức độ hiểu sâu bài học.",
-                }
-            ],
+            "quick_self_check": [],
             "sources": sources_list,
         }
 

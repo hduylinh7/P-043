@@ -50,7 +50,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
     reset_token_expire_seconds: int = Field(default=3600, validation_alias="RESET_TOKEN_EXPIRE_SECONDS")
 
-    # SMTP / Email (Nodemailer)
+    # SMTP / Email / Brevo API
+    brevo_api_key: str = Field(default="", validation_alias="BREVO_API_KEY")
     smtp_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
     smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
     smtp_user: str = Field(default="", validation_alias="SMTP_USER")
