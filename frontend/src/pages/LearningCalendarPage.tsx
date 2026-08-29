@@ -278,6 +278,18 @@ export const LearningCalendarPage: React.FC = () => {
     fetchCalendarData();
   }, [currentMonday]);
 
+  // Auto-open task modal if task_id query param is present in URL
+  useEffect(() => {
+    const targetTaskId = searchParams.get('task_id');
+    if (targetTaskId && events.length > 0) {
+      const match = events.find((ev) => ev.id === targetTaskId || (ev as any).source_id === targetTaskId);
+      if (match) {
+        setSelectedTask(match as any);
+        setIsTaskDrawerOpen(true);
+      }
+    }
+  }, [events, searchParams]);
+
   // Fetch Planner Context Assignments when AI Modal Opens
   useEffect(() => {
     if (isAIModalOpen) {
@@ -1278,9 +1290,13 @@ export const LearningCalendarPage: React.FC = () => {
             }
           }
 
+          const st = (selectedTask.source_type || '').toUpperCase();
+          const evType = (selectedTask as any).type;
+          const isAITask = st !== 'MANUAL' && (evType === 'AI_STUDY' || ['AI', 'AI_PLAN', 'PLANNER', 'AI_PLANNER', 'ASSIGNMENT', 'GOAL'].includes(st));
+
           // Extract or construct meaningful learning objectives list
           let objectivesList = whatToStudy.length > 0 ? whatToStudy : whatToDo;
-          if (objectivesList.length === 0) {
+          if (objectivesList.length === 0 && isAITask) {
             objectivesList = [
               `Giải thích các khái niệm cốt lõi và phương pháp tiếp cận cho chủ đề ${topic}.`,
               `Phân biệt các đặc điểm chính và biết cách chọn phương pháp phân tích phù hợp.`,
@@ -1296,8 +1312,8 @@ export const LearningCalendarPage: React.FC = () => {
               <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/90 border-2 border-slate-200 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className={selectedTask.source_type === 'MANUAL' ? 'badge-voxel-gold text-xs' : 'badge-voxel-green text-xs'}>
-                      {selectedTask.source_type === 'MANUAL' ? 'My Plan' : 'AI Planned'}
+                    <span className={isAITask ? 'badge-voxel-green text-xs' : 'badge-voxel-gold text-xs'}>
+                      {isAITask ? 'AI Planned' : 'Nhiệm vụ cá nhân'}
                     </span>
                     {selectedTask.priority && (
                       <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
@@ -1349,76 +1365,80 @@ export const LearningCalendarPage: React.FC = () => {
               </div>
 
               {/* LEARNING OBJECTIVES SECTION */}
-              <div className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                  <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-extrabold text-xs uppercase tracking-wider">
-                    <AimOutlined className="text-sm text-emerald-600 dark:text-emerald-400" />
-                    <span>Mục Tiêu Bài Học (Learning Objectives)</span>
+              {objectivesList.length > 0 && (
+                <div className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                    <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-extrabold text-xs uppercase tracking-wider">
+                      <AimOutlined className="text-sm text-emerald-600 dark:text-emerald-400" />
+                      <span>Mục Tiêu Bài Học (Learning Objectives)</span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-slate-400">
+                      {completedCount} / {objectivesList.length} hoàn thành
+                    </span>
                   </div>
-                  <span className="text-xs font-mono font-bold text-slate-400">
-                    {completedCount} / {objectivesList.length} hoàn thành
-                  </span>
-                </div>
 
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 italic">
-                  Sau khi hoàn thành buổi học này, bạn nên nắm vững và thực hiện được các mục tiêu sau:
-                </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0 italic">
+                    Sau khi hoàn thành buổi học này, bạn nên nắm vững và thực hiện được các mục tiêu sau:
+                  </p>
 
-                <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-1">
-                  {objectivesList.map((item, idx) => {
-                    const isChecked = activeChecklist.includes(item);
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => handleToggleChecklist(item)}
-                        className={`pt-2.5 pb-2 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-all ${
-                          isChecked ? 'opacity-75' : ''
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isChecked}
-                          onChange={() => handleToggleChecklist(item)}
-                          className="mt-0.5 scale-105"
-                        />
-                        <span className={`text-xs leading-relaxed flex-1 select-none ${
-                          isChecked
-                            ? 'line-through text-slate-400 font-medium'
-                            : 'font-semibold text-slate-800 dark:text-slate-200'
-                        }`}>
-                          {item}
-                        </span>
-                      </div>
-                    );
-                  })}
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-1">
+                    {objectivesList.map((item, idx) => {
+                      const isChecked = activeChecklist.includes(item);
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => handleToggleChecklist(item)}
+                          className={`pt-2.5 pb-2 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-all ${
+                            isChecked ? 'opacity-75' : ''
+                          }`}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onChange={() => handleToggleChecklist(item)}
+                            className="mt-0.5 scale-105"
+                          />
+                          <span className={`text-xs leading-relaxed flex-1 select-none ${
+                            isChecked
+                              ? 'line-through text-slate-400 font-medium'
+                              : 'font-semibold text-slate-800 dark:text-slate-200'
+                          }`}>
+                            {item}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Main Actions Bar */}
               <div className="pt-2 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Button 1: Vào bài học Workspace */}
-                  <button
-                    type="button"
-                    onClick={() => handleStartSession(selectedTask.id)}
-                    className="btn-voxel-green text-xs py-3.5 px-4 rounded-xl font-extrabold flex items-center justify-center gap-2 w-full shadow-voxel active:translate-y-1 transition-all cursor-pointer"
-                  >
-                    <PlayCircleOutlined className="text-base" />
-                    <span>Vào Bài Học (Workspace)</span>
-                  </button>
+                {isAITask && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Button 1: Vào bài học Workspace */}
+                    <button
+                      type="button"
+                      onClick={() => handleStartSession(selectedTask.id)}
+                      className="btn-voxel-green text-xs py-3.5 px-4 rounded-xl font-extrabold flex items-center justify-center gap-2 w-full shadow-voxel active:translate-y-1 transition-all cursor-pointer"
+                    >
+                      <PlayCircleOutlined className="text-base" />
+                      <span>Vào Bài Học (Workspace)</span>
+                    </button>
 
-                  {/* Button 2: Kiến thức trọng tâm */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsTaskDrawerOpen(false);
-                      navigate(`/study-session/${selectedTask.id}?view=knowledge`);
-                    }}
-                    className="btn-voxel-gold text-xs py-3.5 px-4 rounded-xl font-extrabold uppercase flex items-center justify-center gap-2 w-full shadow-voxel-gold active:translate-y-1 transition-all cursor-pointer"
-                  >
-                    <BookOutlined className="text-base" />
-                    <span>Kiến Thức Trọng Tâm</span>
-                  </button>
-                </div>
+                    {/* Button 2: Kiến thức trọng tâm */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTaskDrawerOpen(false);
+                        navigate(`/study-session/${selectedTask.id}?view=knowledge`);
+                      }}
+                      className="btn-voxel-gold text-xs py-3.5 px-4 rounded-xl font-extrabold uppercase flex items-center justify-center gap-2 w-full shadow-voxel-gold active:translate-y-1 transition-all cursor-pointer"
+                    >
+                      <BookOutlined className="text-base" />
+                      <span>Kiến Thức Trọng Tâm</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Sub row: Xóa nhiệm vụ & Tag hoàn thành */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">

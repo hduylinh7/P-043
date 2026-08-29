@@ -21,6 +21,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { LitaLogo } from './common/LitaLogo';
+import { NotificationCenter } from './NotificationCenter';
 
 interface NavItem {
   id: string;
