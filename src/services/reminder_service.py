@@ -6,6 +6,7 @@ from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.database import AsyncSessionLocal
+from src.db.enums import EnrollmentRoleEnum
 from src.db.models.learning.assignment import Assignment
 from src.db.models.learning.course import Course
 from src.db.models.learning.course_schedule import CourseSchedule
@@ -104,11 +105,12 @@ class ReminderService:
 
                 # Check if class starts within 15 minutes (0 <= diff <= 900 seconds)
                 if 0 <= diff_seconds <= 900:
-                    # Fetch active enrolled students
+                    # Fetch active enrolled students (role='student' only)
                     enroll_stmt = select(Enrollment).where(
                         and_(
                             Enrollment.course_id == course.id,
                             Enrollment.status == "active",
+                            Enrollment.role == EnrollmentRoleEnum.STUDENT,
                         )
                     )
                     enroll_res = await db.execute(enroll_stmt)
@@ -264,11 +266,12 @@ class ReminderService:
             if not milestone or not message:
                 continue
 
-            # Fetch enrolled students
+            # Fetch enrolled students (role='student' only)
             enroll_stmt = select(Enrollment).where(
                 and_(
                     Enrollment.course_id == assignment.course_id,
                     Enrollment.status == "active",
+                    Enrollment.role == EnrollmentRoleEnum.STUDENT,
                 )
             )
             enroll_res = await db.execute(enroll_stmt)

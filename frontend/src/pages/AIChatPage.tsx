@@ -50,6 +50,7 @@ export const AIChatPage: React.FC = () => {
   const initialCourseId = searchParams.get('course_id') || undefined;
 
   const isDark = themeMode === 'dark';
+  const isInstructor = user?.roles?.some(r => ['instructor', 'admin', 'ta', 'teacher'].includes(r.toLowerCase())) || false;
 
   // Data States
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -119,8 +120,9 @@ export const AIChatPage: React.FC = () => {
           setMessages([
             {
               role: 'assistant',
-              content:
-                'Xin chào! Tôi là Trợ Lý Học Tập Cá Nhân (Personal Learning Companion). Tôi có thể giúp bạn theo dõi thông tin khóa học, bài tập, hạn nộp, điểm số, mục tiêu cá nhân và gợi ý những bài tập cần ưu tiên!',
+              content: isInstructor
+                ? 'Xin chào! Tôi là Trợ Lý Quản Lý Giảng Dạy & Khóa Học. Tôi có thể giúp bạn theo dõi thông tin các môn học bạn phụ trách, bài tập đã giao, thống kê nộp bài của sinh viên và điểm số trung bình của lớp!'
+                : 'Xin chào! Tôi là Trợ Lý Học Tập Cá Nhân (Personal Learning Companion). Tôi có thể giúp bạn theo dõi thông tin khóa học, bài tập, hạn nộp, điểm số, mục tiêu cá nhân và gợi ý những bài tập cần ưu tiên!',
             },
           ]);
         }
@@ -250,28 +252,51 @@ export const AIChatPage: React.FC = () => {
     }
   };
 
-  const quickPrompts = [
-    {
-      label: '📚 Môn học của tôi',
-      query: 'Tôi đang học những môn học nào?',
-    },
-    {
-      label: '⏰ Bài tập sắp đến hạn',
-      query: 'Tôi có những bài tập nào sắp đến hạn nộp?',
-    },
-    {
-      label: '🎯 Mục tiêu cá nhân',
-      query: 'Mục tiêu cá nhân của tôi hiện tại là gì?',
-    },
-    {
-      label: '📊 Điểm số & Đánh giá',
-      query: 'Tôi đã nhận được điểm số và nhận xét nào?',
-    },
-    {
-      label: '💡 Gợi ý ưu tiên bài tập',
-      query: 'Tôi nên ưu tiên tập trung làm bài tập nào tuần này?',
-    },
-  ];
+  const quickPrompts = isInstructor
+    ? [
+        {
+          label: '📚 Môn học giảng dạy',
+          query: 'Tôi đang phụ trách giảng dạy những môn học nào?',
+        },
+        {
+          label: '📝 Bài tập đã giao',
+          query: 'Danh sách các bài tập tôi đã tạo và hạn nộp của chúng?',
+        },
+        {
+          label: '📊 Thống kê nộp bài',
+          query: 'Bao nhiêu sinh viên đã nộp bài tập? Có bài tập nào sinh viên chưa nộp nhiều không?',
+        },
+        {
+          label: '📈 Điểm số trung bình lớp',
+          query: 'Thống kê điểm số trung bình của các bài tập trong các lớp tôi dạy?',
+        },
+        {
+          label: '💡 Gợi ý tiêu chí đánh giá',
+          query: 'Gợi ý cho tôi các tiêu chí đánh giá và chấm điểm bài tập?',
+        },
+      ]
+    : [
+        {
+          label: '📚 Môn học của tôi',
+          query: 'Tôi đang học những môn học nào?',
+        },
+        {
+          label: '⏰ Bài tập sắp đến hạn',
+          query: 'Tôi có những bài tập nào sắp đến hạn nộp?',
+        },
+        {
+          label: '🎯 Mục tiêu cá nhân',
+          query: 'Mục tiêu cá nhân của tôi hiện tại là gì?',
+        },
+        {
+          label: '📊 Điểm số & Đánh giá',
+          query: 'Tôi đã nhận được điểm số và nhận xét nào?',
+        },
+        {
+          label: '💡 Gợi ý ưu tiên bài tập',
+          query: 'Tôi nên ưu tiên tập trung làm bài tập nào tuần này?',
+        },
+      ];
 
   const filteredSessions = sessions.filter((s) =>
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -308,18 +333,20 @@ export const AIChatPage: React.FC = () => {
             </div>
             <div>
               <h1 className="font-bold text-sm sm:text-base tracking-tight flex items-center gap-2 m-0 leading-tight">
-                Personal Learning Companion
+                {isInstructor ? 'Instructor Teaching Assistant' : 'Personal Learning Companion'}
                 <Badge
                   status="processing"
                   text={
                     <span className="text-[10px] font-medium text-emerald-500 dark:text-emerald-400">
-                      Learning Companion Agent
+                      {isInstructor ? 'Teaching Companion Agent' : 'Learning Companion Agent'}
                     </span>
                   }
                 />
               </h1>
               <p className="text-[10px] text-slate-400 m-0 leading-tight">
-                Đồng hành theo dõi khóa học, bài tập, hạn nộp, điểm số &amp; mục tiêu cá nhân
+                {isInstructor
+                  ? 'Đồng hành quản lý khóa học, bài tập đã giao, thống kê nộp bài & điểm số của sinh viên'
+                  : 'Đồng hành theo dõi khóa học, bài tập, hạn nộp, điểm số & mục tiêu cá nhân'}
               </p>
             </div>
           </div>
@@ -464,7 +491,9 @@ export const AIChatPage: React.FC = () => {
                       Xin chào {user?.full_name || 'bạn'}! 👋
                     </h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Tôi là **Trợ Lý AI Học Tập Cá Nhân**. Tôi đã đồng bộ toàn bộ dữ liệu môn học, bài tập, hạn nộp và mục tiêu của bạn.
+                      {isInstructor
+                        ? 'Tôi là **Trợ Lý AI Quản Lý Giảng Dạy**. Tôi đã đồng bộ toàn bộ dữ liệu môn học bạn phụ trách, bài tập đã giao, thống kê nộp bài và điểm số của sinh viên.'
+                        : 'Tôi là **Trợ Lý AI Học Tập Cá Nhân**. Tôi đã đồng bộ toàn bộ dữ liệu môn học, bài tập, hạn nộp và mục tiêu của bạn.'}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full pt-2">

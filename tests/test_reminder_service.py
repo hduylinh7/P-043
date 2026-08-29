@@ -159,3 +159,66 @@ async def test_assignment_deadline_reminder(prepare_database):
         assert notifs[0].notification_type == "ASSIGNMENT_DEADLINE"
         assert notifs[0].payload["milestone"] == "1_DAY"
         assert notifs[0].payload["link"] == "/assignments/asg_1"
+
+
+@pytest.mark.asyncio
+async def test_instructor_does_not_receive_reminders(prepare_database):
+    from tests.conftest import TestSessionLocal
+
+    async with TestSessionLocal() as db:
+        now = datetime.now(timezone.utc)
+        today_name = now.strftime("%A")
+
+        # Create instructor user
+        instructor = User(id="instructor_1", email="teacher@test.com", full_name="Teacher One")
+        db.add(instructor)
+
+        course = Course(
+            id="c_inst",
+            code="CS999",
+            name="Advanced AI",
+            start_date=now - timedelta(days=1),
+            end_date=now + timedelta(days=30),
+        )
+        db.add(course)
+
+        # Schedule starting in 10 minutes
+        class_time_str = (now + timedelta(minutes=10)).strftime("%H:%M")
+        schedule = CourseSchedule(
+            id="sched_inst",
+            course_id="c_inst",
+            day_of_week=today_name,
+            start_time=class_time_str,
+            end_time="23:59",
+        )
+        db.add(schedule)
+
+        # Assignment due in 23.8 hours
+        assignment = Assignment(
+            id="asg_inst",
+            course_id="c_inst",
+            title="Final Project",
+            due_at=now + timedelta(hours=23, minutes=50),
+        )
+        db.add(assignment)
+
+        # Instructor enrolled as 'instructor'
+        enrollment = Enrollment(
+            id="e_inst",
+            user_id="instructor_1",
+            course_id="c_inst",
+            role="instructor",
+            status="active",
+        )
+        db.add(enrollment)
+        await db.commit()
+
+        # Run checks
+        await ReminderService.check_fixed_class_reminders(db)
+        await ReminderService.check_assignment_deadline_reminders(db)
+
+        # Verify instructor received NO notifications
+        res = await db.execute(select(Notification).where(Notification.student_id == "instructor_1"))
+        notifs = res.scalars().all()
+        assert len(notifs) == 0
+

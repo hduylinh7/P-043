@@ -54,9 +54,11 @@ const formatRelativeDate = (dateStr: string) => {
 };
 
 export const NotificationCenter: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { themeMode } = useTheme();
   const navigate = useNavigate();
+
+  const isInstructor = user?.roles?.some(r => ['instructor', 'admin', 'ta', 'teacher'].includes(r.toLowerCase())) || false;
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -65,7 +67,7 @@ export const NotificationCenter: React.FC = () => {
   const isDark = themeMode === 'dark';
 
   const fetchNotifications = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isInstructor) return;
     try {
       const data = await notificationService.getNotifications();
       setNotifications(data);
@@ -75,11 +77,11 @@ export const NotificationCenter: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isInstructor) return;
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 15000); // Poll every 15s
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isInstructor]);
 
   // Click outside listener for closing popover
   useEffect(() => {
@@ -190,7 +192,7 @@ export const NotificationCenter: React.FC = () => {
     }
   };
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || isInstructor) return null;
 
   return (
     <div className="relative inline-block text-left" ref={panelRef}>

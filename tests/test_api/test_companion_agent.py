@@ -148,3 +148,65 @@ async def test_companion_agent_execution(async_session: AsyncSession):
     assert "response" in res
     assert res["response"] is not None
     assert len(res["response"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_instructor_companion_agent_execution(async_session: AsyncSession):
+    """Test Instructor AI Chat Assistant execution for an instructor user."""
+    instructor = User(id="inst_1", email="instructor1@vinuni.edu.vn", full_name="Professor Smith")
+    course = Course(id="c_inst_1", code="CS401", name="Deep Learning", instructor_id="inst_1")
+    assignment = Assignment(id="a_inst_1", course_id="c_inst_1", title="Transformer Project", status="ACTIVE")
+
+    async_session.add_all([instructor, course, assignment])
+    await async_session.commit()
+
+    instructor_user = UserResponse(
+        id="inst_1",
+        email="instructor1@vinuni.edu.vn",
+        full_name="Professor Smith",
+        is_active=True,
+        is_verified=True,
+        roles=["instructor"],
+    )
+    res = await PersonalLearningCompanionAgent.run(
+        db=async_session,
+        current_user=instructor_user,
+        query="Môn học tôi giảng dạy và bài tập đã giao?",
+    )
+
+    assert "response" in res
+    assert res["response"] is not None
+    assert "403" not in res["response"]
+    assert "available for students only" not in res["response"]
+
+
+@pytest.mark.asyncio
+async def test_build_instructor_context(async_session: AsyncSession):
+    """Test InstructorLearningContextService builds context with taught courses and managed assignments."""
+    from src.services.instructor_context_service import InstructorLearningContextService
+
+    instructor = User(id="inst_2", email="prof@vinuni.edu.vn", full_name="Prof Johnson")
+    course = Course(id="c_inst_2", code="CS501", name="Advanced ML", instructor_id="inst_2")
+    assignment = Assignment(id="a_inst_2", course_id="c_inst_2", title="CNN Homework", status="ACTIVE")
+
+    async_session.add_all([instructor, course, assignment])
+    await async_session.commit()
+
+    instructor_user = UserResponse(
+        id="inst_2",
+        email="prof@vinuni.edu.vn",
+        full_name="Prof Johnson",
+        is_active=True,
+        is_verified=True,
+        roles=["instructor"],
+    )
+
+    context = await InstructorLearningContextService.build_instructor_context(async_session, instructor_user)
+
+    assert context["instructor_info"]["instructor_id"] == "inst_2"
+    assert len(context["taught_courses"]) == 1
+    assert context["taught_courses"][0]["course_code"] == "CS501"
+    assert len(context["managed_assignments"]) == 1
+    assert context["managed_assignments"][0]["title"] == "CNN Homework"
+
+
