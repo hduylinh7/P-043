@@ -35,6 +35,10 @@ class Settings(BaseSettings):
 
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     rag_top_k: int = Field(default=4, ge=1, le=20, validation_alias="RAG_TOP_K")
+    rag_min_score: float = Field(default=0.50, ge=0.0, le=1.0, validation_alias="RAG_MIN_SCORE")
+    enable_reranker: bool = Field(default=True, validation_alias="ENABLE_RERANKER")
+    rag_rerank_fetch_k: int = Field(default=15, ge=1, le=50, validation_alias="RAG_RERANK_FETCH_K")
+    reranker_model_name: str = Field(default="ms-marco-TinyBERT-L-2-v2", validation_alias="RERANKER_MODEL_NAME")
     chat_history_limit: int = Field(default=10, ge=1, le=50, validation_alias="CHAT_HISTORY_LIMIT")
 
     # Database (PostgreSQL default, falls back to SQLite if sqlite specified)
@@ -50,7 +54,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
     reset_token_expire_seconds: int = Field(default=3600, validation_alias="RESET_TOKEN_EXPIRE_SECONDS")
 
-    # SMTP / Email (Nodemailer)
+    # SMTP / Email / Brevo API
+    brevo_api_key: str = Field(default="", validation_alias="BREVO_API_KEY")
     smtp_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
     smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
     smtp_user: str = Field(default="", validation_alias="SMTP_USER")

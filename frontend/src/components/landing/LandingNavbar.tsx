@@ -8,9 +8,11 @@ import {
   RocketOutlined,
   LoginOutlined,
 } from '@ant-design/icons';
+import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { LitaLogo } from '../common/LitaLogo';
+import { NotificationCenter } from '../NotificationCenter';
 
 export const LandingNavbar: React.FC = () => {
   const { themeMode, toggleTheme } = useTheme();
@@ -61,26 +63,25 @@ export const LandingNavbar: React.FC = () => {
           </nav>
 
           {/* Actions & Theme Toggle */}
-          <div className="hidden md:flex items-center gap-3">
-            <Tooltip title={themeMode === 'dark' ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối'}>
-              <Button
-                type="text"
-                shape="circle"
-                icon={themeMode === 'dark' ? <SunOutlined className="text-blue-400 text-lg" /> : <MoonOutlined className="text-slate-700 text-lg" />}
-                onClick={toggleTheme}
-                aria-label="Toggle theme"
-                className="flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"
-              />
-            </Tooltip>
+          <div className="hidden md:flex items-center gap-2.5">
+            <button
+              onClick={toggleTheme}
+              className={`p-2.5 rounded-xl border transition-all duration-200 focus:outline-none flex items-center justify-center ${
+                themeMode === 'dark'
+                  ? 'bg-minecraft-obsidianCard hover:bg-amber-400/10 border-minecraft-obsidianBorder text-amber-400'
+                  : 'bg-white hover:bg-amber-50 border-amber-900/15 text-amber-700 shadow-sm'
+              }`}
+              title={themeMode === 'dark' ? 'Chuyển sang Chế độ Sáng' : 'Chuyển sang Chế độ Tối'}
+            >
+              {themeMode === 'dark' ? (
+                <Sun className="w-5 h-5 transition-transform duration-200 hover:scale-110" />
+              ) : (
+                <Moon className="w-5 h-5 transition-transform duration-200 hover:scale-110" />
+              )}
+            </button>
 
             {isAuthenticated ? (
-              <button
-                onClick={() => navigate('/courses')}
-                className="btn-voxel-green text-sm"
-              >
-                <RocketOutlined />
-                <span>Vào Không Gian Học Tập</span>
-              </button>
+              <NotificationCenter />
             ) : (
               <>
                 <button

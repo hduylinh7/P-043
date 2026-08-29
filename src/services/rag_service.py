@@ -32,11 +32,39 @@ try:
 except ImportError:
     PdfReader = None
 
+try:
+    from flashrank import Ranker, RerankRequest
+except ImportError:
+    Ranker = None
+    RerankRequest = None
+
 from src.config import get_settings
 from src.db.database import AsyncSessionLocal
 from src.repositories.material_repository import MaterialRepository
 
 logger = logging.getLogger(__name__)
+
+_ranker_instance = None
+
+
+def _get_reranker() -> Any:
+    """Instantiate or retrieve cached FlashRank Cross-Encoder Reranker."""
+    global _ranker_instance
+    if _ranker_instance is not None:
+        return _ranker_instance
+    if Ranker is None:
+        logger.warning("flashrank is not installed. Reranking disabled.")
+        return None
+    try:
+        settings = get_settings()
+        model_name = settings.reranker_model_name or "ms-marco-MiniLM-L-6-v2"
+        _ranker_instance = Ranker(model_name=model_name)
+        logger.info(f"Initialized FlashRank Reranker with model '{model_name}'.")
+        return _ranker_instance
+    except Exception as e:
+        logger.warning(f"Could not initialize FlashRank Reranker ({e}). Reranking disabled.")
+        return None
+
 
 
 class ResilientEmbeddings(Embeddings):
@@ -614,13 +642,18 @@ class RAGService:
         material_id: str | None = None,
         assignment_id: str | None = None,
         top_k: int | None = None,
+        min_score: float | None = None,
     ) -> list[dict[str, Any]]:
-        """Perform similarity search or direct fallback retrieval on Qdrant vector store."""
+        """Perform two-stage retrieval (Vector search + FlashRank Reranker) on Qdrant vector store."""
         if not query.strip():
             return []
 
         settings = get_settings()
         k = top_k if top_k is not None else settings.rag_top_k
+        threshold = min_score if min_score is not None else settings.rag_min_score
+
+        # Stage 1: Fetch initial candidate pool (larger k if reranker enabled)
+        fetch_k = max(k, settings.rag_rerank_fetch_k) if settings.enable_reranker else k
 
         must_conditions = []
         if material_id:
@@ -647,14 +680,17 @@ class RAGService:
             vector_store = _get_vector_store()
             results = vector_store.similarity_search_with_score(
                 query=query,
-                k=k,
+                k=fetch_k,
                 filter=search_filter,
             )
             for doc, score in results:
+                sc = float(score)
+                if threshold is not None and sc < threshold and not settings.enable_reranker:
+                    continue
                 formatted_results.append({
                     "content": doc.page_content,
                     "metadata": doc.metadata or {},
-                    "score": float(score),
+                    "score": sc,
                 })
         except Exception as e:
             logger.error(f"Error searching course materials (course_id={course_id}, material_id={material_id}): {e}")
@@ -677,7 +713,7 @@ class RAGService:
                     scroll_res, _ = client.scroll(
                         collection_name=collection_name,
                         scroll_filter=search_filter,
-                        limit=k,
+                        limit=fetch_k,
                         with_payload=True,
                         with_vectors=False,
                     )
@@ -695,5 +731,28 @@ class RAGService:
             except Exception as get_err:
                 logger.warning(f"Direct fallback retrieval failed for filter {search_filter}: {get_err}")
 
-        return formatted_results
+        # Stage 2: Rerank initial candidates using FlashRank Cross-Encoder
+        if settings.enable_reranker and len(formatted_results) > 1:
+            reranker = _get_reranker()
+            if reranker is not None:
+                try:
+                    passages = [
+                        {"id": i, "text": res["content"], "meta": res["metadata"]}
+                        for i, res in enumerate(formatted_results)
+                    ]
+                    rerank_req = RerankRequest(query=query, passages=passages)
+                    reranked = reranker.rerank(rerank_req)
+                    reranked_results = []
+                    for item in reranked:
+                        reranked_results.append({
+                            "content": item["text"],
+                            "metadata": item.get("meta", {}),
+                            "score": float(item.get("score", 0.0)),
+                        })
+                    formatted_results = reranked_results
+                    logger.info(f"Reranked {len(passages)} passages successfully with FlashRank.")
+                except Exception as r_err:
+                    logger.warning(f"Reranking failed ({r_err}). Preserving original vector order.")
+
+        return formatted_results[:k]
 

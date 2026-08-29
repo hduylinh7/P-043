@@ -2,12 +2,13 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, Sun, Moon } from 'lucide-react';
 import { LitaLogo } from './common/LitaLogo';
+import { NotificationCenter } from './NotificationCenter';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
-  const { themeMode } = useTheme();
+  const { themeMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -29,7 +30,23 @@ export const Navbar: React.FC = () => {
 
           <div className="flex items-center gap-4">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={toggleTheme}
+                  className={`p-2.5 rounded-xl border transition-all duration-200 focus:outline-none flex items-center justify-center ${
+                    themeMode === 'dark'
+                      ? 'bg-minecraft-obsidianCard hover:bg-amber-400/10 border-minecraft-obsidianBorder text-amber-400'
+                      : 'bg-white hover:bg-amber-50 border-amber-900/15 text-amber-700 shadow-sm'
+                  }`}
+                  title={themeMode === 'dark' ? 'Chuyển sang Chế độ Sáng' : 'Chuyển sang Chế độ Tối'}
+                >
+                  {themeMode === 'dark' ? (
+                    <Sun className="w-5 h-5 transition-transform duration-200 hover:scale-110" />
+                  ) : (
+                    <Moon className="w-5 h-5 transition-transform duration-200 hover:scale-110" />
+                  )}
+                </button>
+                <NotificationCenter />
                 <div className={`flex items-center gap-2 text-sm px-3.5 py-1.5 rounded-xl border font-medium ${
                   themeMode === 'dark'
                     ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-emerald-400'

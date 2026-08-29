@@ -17,9 +17,11 @@ import {
   Calendar,
   Clock,
   Settings,
+  CheckSquare,
   LucideIcon,
 } from 'lucide-react';
 import { LitaLogo } from './common/LitaLogo';
+import { NotificationCenter } from './NotificationCenter';
 
 interface NavItem {
   id: string;
@@ -36,7 +38,8 @@ export const Sidebar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { themeMode, toggleTheme } = useTheme();
 
-  const isStudent = user?.roles?.includes('student') || false;
+  const isInstructor = user?.roles?.some(r => ['instructor', 'admin', 'ta'].includes(r.toLowerCase())) || false;
+  const isStudent = !isInstructor || (user?.roles?.some(r => r.toLowerCase() === 'student') ?? true);
   const isDark = themeMode === 'dark';
   const isHomePage = location.pathname === '/';
 
@@ -55,6 +58,12 @@ export const Sidebar: React.FC = () => {
     },
     ...(isStudent
       ? [
+          {
+            id: 'assignments',
+            name: 'Bài tập',
+            path: '/assignments',
+            icon: CheckSquare,
+          },
           {
             id: 'calendar',
             name: 'Lịch học cá nhân',
@@ -94,7 +103,7 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       <aside
-        className={`relative flex flex-col h-screen transition-all duration-300 ease-in-out z-40 border-r ${
+        className={`sticky top-0 h-screen shrink-0 flex flex-col transition-all duration-300 ease-in-out z-40 border-r ${
           isDark
             ? 'bg-[#0F1710] border-minecraft-obsidianBorder text-slate-200'
             : 'bg-[#FDFBF7] border-amber-900/10 text-slate-800 shadow-md'

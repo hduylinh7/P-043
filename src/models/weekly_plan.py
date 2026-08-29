@@ -78,6 +78,7 @@ class PlanTaskReflectionRequest(BaseModel):
     struggling_with: str | None = Field(default=None, description="What are you still struggling with?")
     understanding_level: str | None = Field(default="mostly", description="not_understood, partially, mostly, fully")
     achieved_goal: str | None = Field(default="yes", description="yes, partially, no")
+    practice_summary: str | None = Field(default=None, description="Summary of AI practice exercises completed")
 
 
 class LearningObjectiveItem(BaseModel):

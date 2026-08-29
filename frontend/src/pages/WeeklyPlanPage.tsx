@@ -37,7 +37,6 @@ import {
   QuestionCircleOutlined,
   PlayCircleOutlined,
   RocketOutlined,
-  WarningOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -1595,44 +1594,7 @@ export const WeeklyPlanPage: React.FC = () => {
       >
         {aiResultData && (
           <div className="space-y-4 py-2 text-xs">
-            {/* Short Summary & Stats */}
-            <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border-2 border-minecraft-grassBorder shadow-voxel-sm space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="font-extrabold text-emerald-900 dark:text-emerald-200 text-sm flex items-center gap-2">
-                  <RocketOutlined className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Chiến lược học tập do AI đề xuất:</span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="badge-voxel-gold text-xs font-bold">
-                    {(aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || []).length} Buổi học đề xuất
-                  </span>
-                  {aiResultData.week_start && (
-                    <span className="badge-voxel-green text-xs font-bold font-mono">
-                      {aiResultData.week_start} ➔ {aiResultData.week_end || weekEnd.format('YYYY-MM-DD')}
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              <p className="text-sm font-semibold leading-relaxed text-slate-800 dark:text-slate-100 m-0">
-                {aiResultData.summary}
-              </p>
-            </div>
-
-            {/* Warnings Box */}
-            {aiResultData.warnings && aiResultData.warnings.length > 0 && (
-              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800/60 space-y-1.5 text-slate-900 dark:text-slate-100">
-                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-extrabold text-xs uppercase tracking-wider">
-                  <WarningOutlined className="text-amber-600 text-sm" />
-                  <span>Lưu ý & Xung đột lịch:</span>
-                </div>
-                <ul className="list-disc list-inside space-y-0.5 pl-1 m-0 text-[11px]">
-                  {aiResultData.warnings.map((w, idx) => (
-                    <li key={idx}>{w}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             {/* Proposed Tasks Interactive Review List Grouped by Day */}
             <div className="space-y-3">

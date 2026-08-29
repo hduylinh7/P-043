@@ -675,8 +675,8 @@ export const CourseDetailPage: React.FC = () => {
     editAssignmentForm.setFieldsValue({
       title: assignment.title,
       description: assignment.description,
-      available_from: assignment.available_from ? assignment.available_from.slice(0, 16) : '',
-      due_date: assignment.due_date ? assignment.due_date.slice(0, 16) : '',
+      available_from: assignment.available_from ? dayjs(assignment.available_from).format('YYYY-MM-DDTHH:mm') : '',
+      due_date: assignment.due_date ? dayjs(assignment.due_date).format('YYYY-MM-DDTHH:mm') : '',
       estimated_hours: assignment.estimated_hours,
       status: assignment.status || 'ACTIVE',
       priority: assignment.priority || 'MEDIUM',

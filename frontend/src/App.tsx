@@ -17,6 +17,8 @@ import { CourseDetailPage } from './pages/CourseDetailPage';
 import { MaterialViewerPage } from './pages/MaterialViewerPage';
 import { AIChatPage } from './pages/AIChatPage';
 import { GoalsPage } from './pages/GoalsPage';
+import { AssignmentsPage } from './pages/AssignmentsPage';
+import { AssignmentDetailPage } from './pages/AssignmentDetailPage';
 import { WeeklyPlanPage } from './pages/WeeklyPlanPage';
 import { StudySessionWorkspacePage } from './pages/StudySessionWorkspacePage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -84,6 +86,22 @@ export const App: React.FC = () => {
               element={
                 <ProtectedDashboardRoute>
                   <CoursesPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
+              path="/assignments"
+              element={
+                <ProtectedDashboardRoute>
+                  <AssignmentsPage />
+                </ProtectedDashboardRoute>
+              }
+            />
+            <Route
+              path="/assignments/:assignmentId"
+              element={
+                <ProtectedDashboardRoute>
+                  <AssignmentDetailPage />
                 </ProtectedDashboardRoute>
               }
             />

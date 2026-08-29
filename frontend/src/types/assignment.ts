@@ -1,4 +1,4 @@
-export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUBMITTED' | 'GRADED';
 export type PriorityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type QuestionType = 'MULTIPLE_CHOICE' | 'ESSAY' | 'SHORT_ANSWER';
 
@@ -98,6 +98,8 @@ export interface GradeSubmissionPayload {
 export interface Assignment {
   id: string;
   course_id: string;
+  course_title?: string;
+  course_code?: string;
   title: string;
   description?: string | null;
   available_from?: string | null;

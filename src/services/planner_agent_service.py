@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -8,6 +9,7 @@ from src.agents.nodes.planner_nodes import (
     analyze_and_decide_node,
     load_context_node,
     resolve_proposed_tasks_for_preview,
+    resolve_task_time_conflict,
 )
 from src.agents.planner_graph import planner_agent_graph
 from src.agents.planner_state import PlannerAgentState
@@ -22,6 +24,9 @@ from src.models.planner_agent import (
     PlannerTaskResult,
 )
 from src.services.planner_context_builder import format_iso, parse_week_start
+from src.services.schedule_utils import normalize_day_of_week_index
+
+logger = logging.getLogger(__name__)
 
 
 class PlannerAgentService:
@@ -166,9 +171,53 @@ class PlannerAgentService:
         created_tasks: list[PlannerTaskResult] = []
         warnings: list[str] = []
 
-        # 2. Persist tasks to DB
+        # Track existing tasks & fixed university class schedules to avoid conflicts during apply
+        existing_tasks: list[dict[str, Any]] = []
+        try:
+            plan_tasks = await PlannerTools.get_weekly_plan_tasks(db, current_user, weekly_plan_id)
+            for pt in plan_tasks:
+                date_str = str(pt.scheduled_date).split("T")[0] if pt.scheduled_date else None
+                existing_tasks.append({
+                    "title": pt.title,
+                    "scheduled_date": date_str,
+                    "start_time": pt.start_time,
+                    "end_time": pt.end_time,
+                })
+
+            context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+            start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
+            for idx in range(7):
+                d_curr = start_d + timedelta(days=idx)
+                d_str = d_curr.strftime("%Y-%m-%d")
+                d_day_idx = d_curr.weekday()
+                for fs in (context.fixed_course_schedules or []):
+                    fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
+                    if fs_day_idx is not None and fs_day_idx == d_day_idx:
+                        existing_tasks.append({
+                            "title": f"Lịch học cố định: {fs.course_name}",
+                            "scheduled_date": d_str,
+                            "start_time": fs.start_time,
+                            "end_time": fs.end_time,
+                        })
+        except Exception as e:
+            logger.warning(f"Could not load existing schedule for apply conflict checking: {e}")
+
+        # 2. Persist tasks to DB with conflict resolution
         for task_data in payload.tasks:
             t_dict = task_data.model_dump()
+            raw_date = t_dict.get("scheduled_date")
+            raw_start = t_dict.get("start_time")
+            raw_end = t_dict.get("end_time")
+
+            eff_start, eff_end, conflict_warn = resolve_task_time_conflict(
+                scheduled_date=raw_date,
+                start_time=raw_start,
+                end_time=raw_end,
+                existing_tasks=existing_tasks,
+            )
+            if conflict_warn:
+                warnings.append(conflict_warn)
+
             try:
                 task_res = await PlannerTools.create_plan_task(
                     db=db,
@@ -186,9 +235,9 @@ class PlannerAgentService:
                     course_name=t_dict.get("course_name"),
                     goal_id=t_dict.get("goal_id"),
                     goal_title=t_dict.get("goal_title"),
-                    scheduled_date=t_dict.get("scheduled_date"),
-                    start_time=t_dict.get("start_time"),
-                    end_time=t_dict.get("end_time"),
+                    scheduled_date=raw_date,
+                    start_time=eff_start,
+                    end_time=eff_end,
                     priority=normalize_priority(t_dict.get("priority", "medium")),
                     estimated_duration=t_dict.get("estimated_duration") or 90,
                     source_type=t_dict.get("source_type", "AI_PLAN") or "AI_PLAN",
@@ -218,6 +267,12 @@ class PlannerAgentService:
                         goal_title=task_res.goal_title,
                     )
                 )
+                existing_tasks.append({
+                    "title": t_dict.get("title"),
+                    "scheduled_date": raw_date,
+                    "start_time": eff_start,
+                    "end_time": eff_end,
+                })
             except Exception as e:
                 try:
                     await db.rollback()

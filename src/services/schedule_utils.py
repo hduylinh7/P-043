@@ -2,6 +2,25 @@ from datetime import datetime, timezone
 from src.models.course import ScheduleConflictDetail
 
 
+DAY_NAME_TO_INDEX: dict[str, int] = {
+    "monday": 0, "mon": 0, "thứ 2": 0, "thứ hai": 0, "t2": 0, "thu 2": 0, "thu hai": 0, "1": 0,
+    "tuesday": 1, "tue": 1, "thứ 3": 1, "thứ ba": 1, "t3": 1, "thu 3": 1, "thu ba": 1, "2": 1,
+    "wednesday": 2, "wed": 2, "thứ 4": 2, "thứ tư": 2, "t4": 2, "thu 4": 2, "thu tu": 2, "3": 2,
+    "thursday": 3, "thu": 3, "thứ 5": 3, "thứ năm": 3, "t5": 3, "thu 5": 3, "thu nam": 3, "4": 3,
+    "friday": 4, "fri": 4, "thứ 6": 4, "thứ sáu": 4, "t6": 4, "thu 6": 4, "thu sau": 4, "5": 4,
+    "saturday": 5, "sat": 5, "thứ 7": 5, "thứ bảy": 5, "t7": 5, "thu 7": 5, "thu bay": 5, "6": 5,
+    "sunday": 6, "sun": 6, "chủ nhật": 6, "cn": 6, "chu nhat": 6, "7": 6, "0": 6,
+}
+
+
+def normalize_day_of_week_index(day_str: str | None) -> int | None:
+    """Normalize any day of week string (Vietnamese, English, abbreviation, or numeric) to 0-6 index (0=Monday)."""
+    if not day_str:
+        return None
+    clean = str(day_str).strip().lower()
+    return DAY_NAME_TO_INDEX.get(clean)
+
+
 def parse_time_to_minutes(time_str: str) -> int:
     """Parse 'HH:MM' or 'HH:MM:SS' string into minutes from start of day."""
     parts = time_str.strip().split(":")
@@ -76,12 +95,14 @@ def check_schedule_conflict(
 
         existing_schedules = getattr(existing_course, "schedules", [])
         for e_sched in existing_schedules:
-            for n_sched in new_schedules:
-                # Compare day of week (case-insensitive)
-                e_day = e_sched.day_of_week.strip().lower() if hasattr(e_sched, "day_of_week") else n_sched.get("day_of_week", "").strip().lower()
-                n_day = n_sched.day_of_week.strip().lower() if hasattr(n_sched, "day_of_week") else n_sched.get("day_of_week", "").strip().lower()
+            e_day_raw = getattr(e_sched, "day_of_week", "") if hasattr(e_sched, "day_of_week") else e_sched.get("day_of_week", "")
+            e_idx = normalize_day_of_week_index(e_day_raw)
 
-                if e_day == n_day:
+            for n_sched in new_schedules:
+                n_day_raw = getattr(n_sched, "day_of_week", "") if hasattr(n_sched, "day_of_week") else n_sched.get("day_of_week", "")
+                n_idx = normalize_day_of_week_index(n_day_raw)
+
+                if e_idx is not None and n_idx is not None and e_idx == n_idx:
                     e_start_mins = parse_time_to_minutes(e_sched.start_time)
                     e_end_mins = parse_time_to_minutes(e_sched.end_time)
                     n_start_mins = parse_time_to_minutes(n_sched.start_time)
@@ -96,7 +117,7 @@ def check_schedule_conflict(
                             conflicting_course_id=existing_course.id,
                             conflicting_course_code=existing_course.code,
                             conflicting_course_name=existing_course.name,
-                            day_of_week=e_sched.day_of_week,
+                            day_of_week=getattr(e_sched, "day_of_week", str(e_day_raw)),
                             existing_start_time=e_sched.start_time,
                             existing_end_time=e_sched.end_time,
                             new_start_time=n_sched.start_time,
@@ -129,8 +150,7 @@ def check_task_conflict_with_fixed_schedules(
     else:
         target_dt = scheduled_date
 
-    weekday_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    target_day_name = weekday_names[target_dt.weekday()]
+    target_weekday_idx = target_dt.weekday()
 
     task_start_mins = parse_time_to_minutes(start_time)
     task_end_mins = parse_time_to_minutes(end_time)
@@ -151,8 +171,8 @@ def check_task_conflict_with_fixed_schedules(
                 continue  # Outside active course date range
 
         for sched in (getattr(c_obj, "schedules", []) or []):
-            s_day = sched.day_of_week.strip().lower()
-            if s_day == target_day_name.lower():
+            s_idx = normalize_day_of_week_index(getattr(sched, "day_of_week", None))
+            if s_idx is not None and s_idx == target_weekday_idx:
                 s_start_mins = parse_time_to_minutes(sched.start_time)
                 s_end_mins = parse_time_to_minutes(sched.end_time)
 
@@ -163,7 +183,7 @@ def check_task_conflict_with_fixed_schedules(
                         "course_id": c_obj.id,
                         "course_code": c_obj.code,
                         "course_name": c_obj.name,
-                        "day_of_week": sched.day_of_week,
+                        "day_of_week": getattr(sched, "day_of_week", ""),
                         "fixed_start_time": sched.start_time,
                         "fixed_end_time": sched.end_time,
                         "task_start_time": start_time,
@@ -173,3 +193,4 @@ def check_task_conflict_with_fixed_schedules(
                     }
 
     return None
+

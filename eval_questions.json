@@ -1,0 +1,192 @@
+[
+  {
+    "question": "Hai phương pháp phổ biến để fine-tune tự động các tham số của mô hình là gì?",
+    "ground_truth": "Grid Search và Randomized Search",
+    "category": "factual"
+  },
+  {
+    "question": "Trong thuật toán kmeans của OpenCV, tham số 'criteria' bao gồm những thành phần nào?",
+    "ground_truth": "type, max_iter, epsilon",
+    "category": "factual"
+  },
+  {
+    "question": "Thư viện Scikit-learn được cấp phép theo giấy phép nào?",
+    "ground_truth": "Giấy phép BSD",
+    "category": "factual"
+  },
+  {
+    "question": "Học có giám sát bao gồm 2 nhóm bài toán chính nào?",
+    "ground_truth": "Phân loại (Classification) và Hồi quy (Regression)",
+    "category": "factual"
+  },
+  {
+    "question": "Trong quy trình học máy, mô hình được kiểm tra để đánh giá độ chính xác ở bước nào?",
+    "ground_truth": "Step 5. Đánh giá mô hình",
+    "category": "factual"
+  },
+  {
+    "question": "Bước nào trong quy trình thực hiện một dự án Khai phá dữ liệu thường chiếm nhiều thời gian nhất?",
+    "ground_truth": "Bước Chuẩn bị dữ liệu (Preparation)",
+    "category": "factual"
+  },
+  {
+    "question": "Phương thức nào được dùng để lọc dữ liệu theo một tập hợp trong pandas?",
+    "ground_truth": ".isin()",
+    "category": "factual"
+  },
+  {
+    "question": "Trong pandas, hàm nào được sử dụng để xóa một cột trong DataFrame khi DataFrame không có tên cột?",
+    "ground_truth": "df.drop(df.columns[index], axis=1|columns)",
+    "category": "factual"
+  },
+  {
+    "question": "Thư viện Python nào được mô tả là thư viện mạnh mẽ nhất dành cho các thuật toán học máy?",
+    "ground_truth": "Scikit-learn",
+    "category": "factual"
+  },
+  {
+    "question": "Hàm cv2.kmeans trong OpenCV trả về bao nhiêu giá trị và chúng là gì?",
+    "ground_truth": "Ba giá trị: ret, label, center.",
+    "category": "factual"
+  },
+  {
+    "question": "Bạn hãy so sánh vai trò của thư viện scikit-learn trong việc xây dựng mô hình phân loại và hồi quy với các ứng dụng thực tế như email filtering, và giải thích cách các tính năng của scikit-learn hỗ trợ các nhiệm vụ này.",
+    "ground_truth": "Thư viện scikit-learn cung cấp một bộ công cụ mạnh mẽ cho các thuật toán học máy, trong đó có các mô hình phân loại (classification) và hồi quy (regression) – hai loại chính của học có giám sát. Các tính năng như preprocessing, model selection, dimensionality reduction và clustering giúp chuẩn bị dữ liệu, lựa chọn mô hình và giảm chiều dữ liệu, từ đó nâng cao hiệu suất của các mô hình phân loại và hồi quy. Khi áp dụng vào ứng dụng thực tế như email filtering, scikit-learn cho phép xây dựng nhanh chóng một mô hình phân loại để xác định email là spam hay không, nhờ vào các thuật toán classification sẵn có và khả năng tích hợp dễ dàng với các pipeline xử lý dữ liệu. Nhờ giấy phép BSD, mã nguồn mở và thiết kế dễ sử dụng, scikit-learn trở thành công cụ phổ biến trong các dự án ML thực tiễn, bao gồm cả email filtering, self‑driving cars, recommendation, v.v.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Trong quy trình thực hiện một dự án khai phá dữ liệu, liệt kê các bước cơ bản và giải thích tại sao bước Chuẩn bị dữ liệu thường chiếm tới 80% thời gian và nguồn lực của dự án?",
+    "ground_truth": "Quy trình khai phá dữ liệu gồm năm bước cơ bản: 1) Thu thập (Collection) – xác định mục tiêu và thu thập dữ liệu thô; 2) Hiểu dữ liệu (Understanding) – khám phá cấu trúc, tính chất của dữ liệu; 3) Chuẩn bị dữ liệu (Preparation) – tiền xử lý và làm sạch dữ liệu thô (xử lý nhiễu, dữ liệu thiếu); 4) Xây dựng mô hình (Modeling) – lựa chọn thuật toán phù hợp; 5) Đánh giá (Evaluation) – đo lường hiệu suất mô hình. Bước Chuẩn bị dữ liệu thường chiếm nhiều thời gian nhất vì dữ liệu thô thường rất nhiễu, không nhất quán và cần được làm sạch, chuyển đổi, mã hóa, xử lý dữ liệu thiếu, đồng bộ hóa, và chuẩn bị các đặc trưng phù hợp với mô hình – các công việc này tốn công sức và thời gian, dẫn tới chiếm tới 80% thời gian và nguồn lực của dự án.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Trong quá trình chuẩn bị dữ liệu cho một mô hình phân cụm KMeans của OpenCV, các bước nào trong quy trình chuẩn bị dữ liệu (như làm sạch, tích hợp, biến đổi, cân bằng) cần được thực hiện trước khi thiết lập tham số 'max_iter' và 'attempts', và làm thế nào các bước này ảnh hưởng đến hiệu suất của thuật toán?",
+    "ground_truth": "Trước khi thiết lập 'max_iter' và 'attempts', cần thực hiện các bước làm sạch dữ liệu (xử lý giá trị thiếu, ngoại lai), tích hợp dữ liệu, biến đổi và chuẩn hóa, cân bằng dữ liệu, và rút gọn thuộc tính. Những bước này giúp dữ liệu đồng nhất, giảm nhiễu và kích thước, từ đó làm giảm số vòng lặp cần thiết và tăng độ chính xác của KMeans, vì 'max_iter' giới hạn vòng lặp tối đa và 'attempts' quyết định số lần khởi tạo trung tâm khác nhau.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "AI đã vượt khả năng con người trong nhiều lĩnh vực chuyên sâu. Liệt kê các lĩnh vực này và giải thích cách Machine Learning, như được định nghĩa trong slide, đóng vai trò trong việc đạt được những thành tựu đó.",
+    "ground_truth": "Các lĩnh vực mà AI đã vượt khả năng con người bao gồm Computer Vision, Pattern Recognition, Speech Recognition, Machine Translation và Game Playing. Machine Learning, được định nghĩa là một subfield của AI cho phép máy tính học từ dữ liệu mà không cần lập trình rõ ràng, là công cụ chính giúp các hệ thống này học các mô hình phức tạp từ dữ liệu lớn, từ đó cải thiện độ chính xác và hiệu suất vượt trội hơn con người.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Trong quy trình khai phá dữ liệu, bước nào thường chiếm nhiều thời gian nhất và tại sao? Nếu trong quá trình thực hiện mô hình K‑means, tham số max_iter được đặt rất cao, thời gian thực thi của bước này có thể so sánh được với thời gian của bước chuẩn bị dữ liệu như thế nào? Hãy giải thích sự liên quan giữa hai yếu tố này.",
+    "ground_truth": "Bước Chuẩn bị dữ liệu (Preparation) thường chiếm tới 80% thời gian và nguồn lực của một dự án khai phá dữ liệu vì dữ liệu thô thường nhiễu, thiếu và không nhất quán, đòi hỏi tiền xử lý và làm sạch. Tham số max_iter trong thuật toán K‑means xác định số vòng lặp tối đa; khi đặt giá trị cao, thời gian thực thi của K‑means tăng theo số vòng lặp, có thể gần bằng hoặc vượt quá thời gian của bước chuẩn bị dữ liệu nếu dữ liệu lớn và số cluster nhiều. Do đó, mặc dù max_iter ảnh hưởng đáng kể đến thời gian tính toán của mô hình, thời gian chuẩn bị dữ liệu vẫn thường lớn hơn, trừ khi dữ liệu đã được làm sạch trước đó.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "So sánh TensorFlow và scikit-learn trong việc xây dựng mô hình học máy, và mô tả quy trình huấn luyện và đánh giá mô hình theo các slide được cung cấp.",
+    "ground_truth": "TensorFlow là thư viện mã nguồn mở của Google, hỗ trợ mạnh mẽ các phép toán học, cho phép xây dựng nhiều neural network, hỗ trợ tính toán song song trên nhiều CPU/GPU và tạo dữ liệu flow graph – đồ thị luồng dữ liệu. Scikit-learn là thư viện ML phổ biến, tập trung vào các thuật toán truyền thống (linear regression, decision tree, k‑means, v.v.) và không chuyên sâu vào deep learning. Trong cả hai thư viện, quá trình huấn luyện mô hình bao gồm: 1) sử dụng tập huấn luyện (training set) để tìm các tham số tối ưu của thuật toán sao cho độ chính xác cao nhất; 2) quá trình đánh giá mô hình sử dụng tập dữ liệu kiểm tra (test set) độc lập với dữ liệu huấn luyện, nhằm dự đoán và đánh giá độ chính xác của mô hình đã học.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Trong một dự án khai phá dữ liệu nhằm phân loại email (Spam/Non‑Spam), bước nào trong quy trình khai phá dữ liệu thường chiếm nhiều thời gian nhất và tại sao bước đó quan trọng đối với việc áp dụng thuật toán phân loại?",
+    "ground_truth": "Bước Chuẩn bị dữ liệu (Preparation) thường chiếm tới 80% thời gian vì dữ liệu thô thường nhiễu và không nhất quán. Bước này quan trọng vì dữ liệu sạch và được tiền xử lý đúng cách là điều kiện tiên quyết để thuật toán phân loại (Supervised Learning) hoạt động hiệu quả và đạt được độ chính xác cao.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Trong quy trình khai phá dữ liệu, bước nào thường chiếm tới 80% thời gian và nguồn lực, và những nhiệm vụ chính trong bước đó là gì? Hãy liệt kê cả 5 bước của quy trình và giải thích vì sao bước này tốn nhiều thời gian hơn các bước khác.",
+    "ground_truth": "Quy trình khai phá dữ liệu gồm 5 bước: \n1. Thu thập (Collection) – xác định mục tiêu và thu thập dữ liệu thô. \n2. Hiểu dữ liệu (Understanding) – khám phá cấu trúc, thống kê dữ liệu. \n3. Chuẩn bị dữ liệu (Preparation) – tiền xử lý và làm sạch dữ liệu thô. \n4. Xây dựng mô hình (Modeling) – lựa chọn thuật toán và huấn luyện mô hình. \n5. Đánh giá (Evaluation) – đo lường hiệu suất mô hình. \nBước chiếm nhiều thời gian nhất là bước Chuẩn bị dữ liệu. Các nhiệm vụ chính trong bước này bao gồm: khám phá dữ liệu, làm sạch dữ liệu (xử lý giá trị thiếu, giá trị ngoại lai), tích hợp dữ liệu, biến đổi, rời rạc hóa và chuẩn hóa dữ liệu, cân bằng dữ liệu, và rút gọn thuộc tính. \nLý do bước này tốn nhiều thời gian hơn các bước khác là vì dữ liệu thô thường chứa nhiều nhiễu, thiếu sót và không nhất quán, đòi hỏi phải thực hiện nhiều thao tác tiền xử lý phức tạp để đưa dữ liệu vào dạng phù hợp cho mô hình. Điều này chiếm tới 80% thời gian và nguồn lực của một dự án khai phá dữ liệu.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Liệt kê 5 bước cơ bản trong quy trình thực hiện một dự án khai phá dữ liệu và xác định bước nào thường chiếm nhiều thời gian nhất, đồng thời giải thích lý do tại sao bước đó chiếm nhiều thời gian.",
+    "ground_truth": "Các bước cơ bản là: 1) Thu thập dữ liệu (Collection), 2) Hiểu dữ liệu (Understanding), 3) Chuẩn bị dữ liệu (Preparation), 4) Xây dựng mô hình (Modeling), 5) Đánh giá (Evaluation). Bước chiếm nhiều thời gian nhất là Chuẩn bị dữ liệu (Preparation) vì dữ liệu thô thường chứa nhiều nhiễu, thiếu dữ liệu, ngoại lai, cần làm sạch, chuẩn hóa, tích hợp, biến đổi, cân bằng và rút gọn thuộc tính, nên chiếm tới 80% thời gian và nguồn lực.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Trong một hệ thống AI ứng dụng Computer Vision, thuật toán K-means thường được dùng để phân cụm đặc trưng. Liệt kê các tham số chính của K-means (max_iter, epsilon, attempts, flags) và mô tả cách mỗi tham số ảnh hưởng đến kết quả cuối cùng (compactness, labels, centers).",
+    "ground_truth": "Tham số max_iter giới hạn số vòng lặp tối đa của thuật toán, giúp ngăn chặn vòng lặp vô hạn; epsilon xác định độ chính xác tối thiểu, khi sai số giữa các vòng lặp nhỏ hơn epsilon thuật toán dừng; attempts quyết định số lần thuật toán được thực hiện với khởi tạo nhãn khác nhau, giúp tránh rơi vào cực trị địa phương; flags (cv2.KMEANS_PP_CENTERS hoặc cv2.KMEANS_RANDOM_CENTERS) xác định cách chọn trung tâm ban đầu, ảnh hưởng đến tốc độ hội tụ và chất lượng của compactness, labels và centers cuối cùng. Khi các tham số này được điều chỉnh hợp lý, thuật toán K-means sẽ cung cấp các cụm đặc trưng chính xác hơn, giúp cải thiện hiệu suất của mô hình học máy trong lĩnh vực Computer Vision.",
+    "category": "multi_hop"
+  },
+  {
+    "question": "Thời tiết hôm nay tại Hà Nội là gì?",
+    "ground_truth": "Tài liệu không cung cấp thông tin về thời tiết.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Ai giành chức vô địch bóng đá thế giới năm 2022?",
+    "ground_truth": "Bài giảng không cung cấp thông tin về kết quả bóng đá.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Giá cổ phiếu của công ty Apple hôm nay là bao nhiêu?",
+    "ground_truth": "Tài liệu không cung cấp thông tin về chủ đề này.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Thời tiết hôm nay ở Hà Nội là gì?",
+    "ground_truth": "Tài liệu không cung cấp thông tin về thời tiết.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Thời tiết hôm nay tại Hà Nội sẽ như thế nào?",
+    "ground_truth": "Bài giảng không cung cấp thông tin về thời tiết.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Giá vàng hiện tại là bao nhiêu?",
+    "ground_truth": "Tài liệu không cung cấp thông tin về giá vàng.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Giá vàng hiện tại là bao nhiêu đồng Việt Nam?",
+    "ground_truth": "Tài liệu không cung cấp thông tin về giá vàng.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Thị giá vàng hiện tại là bao nhiêu?",
+    "ground_truth": "Tài liệu không cung cấp thông tin về giá vàng.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Hàm nào trong scikit-learn được dùng để phân loại email spam?",
+    "ground_truth": "Câu hỏi này thiếu ngữ cảnh vì có nhiều hàm trong scikit-learn có thể được dùng cho bài toán phân loại email spam. Một số lựa chọn phổ biến bao gồm:\n- `sklearn.naive_bayes.MultinomialNB` (Naïve Bayes cho dữ liệu đếm, thường dùng cho văn bản)\n- `sklearn.linear_model.LogisticRegression` (Mô hình logistic regression)\n- `sklearn.svm.SVC` (Support Vector Machine)\n- `sklearn.ensemble.RandomForestClassifier` (Cây quyết định ngẫu nhiên)\n- `sklearn.neural_network.MLPClassifier` (Mạng neural đa lớp)\n\nNếu bạn muốn một giải pháp nhanh và hiệu quả cho dữ liệu văn bản, `MultinomialNB` thường được khuyên dùng. Nếu dữ liệu có tính liên tục và bạn cần mô hình có khả năng giải thích, `LogisticRegression` là lựa chọn tốt. Đối với dữ liệu phức tạp hơn, có thể thử `SVC` hoặc `RandomForestClassifier`. Việc lựa chọn cuối cùng phụ thuộc vào đặc điểm dữ liệu, kích thước tập dữ liệu, và yêu cầu về tốc độ và độ chính xác.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Tham số attempts trong hàm cv2.kmeans có tác dụng gì?",
+    "ground_truth": "Bạn đang hỏi về tham số attempts, nhưng không rõ bạn muốn biết nó làm gì hay làm sao điều chỉnh. Tham số attempts xác định số lần thuật toán kmeans được chạy với các khởi tạo nhãn khác nhau để tìm nghiệm tốt nhất. Nếu bạn muốn cải thiện độ ổn định của kết quả, có thể tăng giá trị attempts; nếu muốn giảm thời gian tính toán, giảm giá trị attempts. Nếu câu hỏi của bạn chỉ muốn biết chức năng cơ bản, thì attempts giúp thuật toán thử nhiều lần và chọn kết quả có độ compactness thấp nhất.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Bạn có thể nói gì về Scikit-learn?",
+    "ground_truth": "Câu hỏi này thiếu ngữ cảnh rõ ràng: bạn có thể đang muốn biết về các tính năng, cách cài đặt, cách sử dụng, hoặc các thuật toán hỗ trợ. Vì vậy, cần xác định mục tiêu cụ thể để trả lời chính xác.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Thuật toán nào được áp dụng trong ứng dụng Email Filtering?",
+    "ground_truth": "Câu hỏi này khá mơ hồ vì \"ứng dụng Email Filtering\" có thể được thực hiện bằng nhiều thuật toán học máy khác nhau. Có thể hiểu theo hai cách: 1) Người hỏi muốn biết thuật toán phổ biến nhất được dùng trong thực tế, ví dụ như Naïve Bayes, SVM hoặc mạng nơ-ron; 2) Người hỏi muốn biết các loại thuật toán (phân loại, hồi quy, clustering) có thể được áp dụng trong bài toán này. Vì vậy câu trả lời cần làm rõ ngữ cảnh: nếu muốn biết thuật toán phổ biến, hãy liệt kê các thuật toán phân loại; nếu muốn biết phạm vi, hãy nêu các loại thuật toán có thể được dùng trong Email Filtering.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Trong đoạn mã kmeans, làm sao chọn giá trị K?",
+    "ground_truth": "Câu hỏi này thiếu ngữ cảnh vì không biết mục tiêu cuối cùng là gì. Nếu mục tiêu là phân vùng ảnh, K thường tương ứng với số lớp màu mong muốn (ví dụ 3 lớp: nền, đối tượng, nền). Nếu mục tiêu là giảm nhiễu, K có thể nhỏ hơn. Ngoài ra, có thể dùng phương pháp elbow hoặc silhouette để xác định K tối ưu. Do đó, câu trả lời phụ thuộc vào mục đích sử dụng.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Bạn có thể giải thích quy trình chuẩn bị dữ liệu trong dự án ML?",
+    "ground_truth": "Câu hỏi này không rõ bạn muốn biết về bước nào trong quá trình chuẩn bị dữ liệu. Bạn có thể đang hỏi về khám phá dữ liệu, làm sạch dữ liệu, xử lý giá trị thiếu, xử lý ngoại lai, tích hợp dữ liệu, biến đổi dữ liệu, chuẩn hóa dữ liệu, cân bằng dữ liệu, hoặc rút gọn thuộc tính. Nếu bạn muốn biết chi tiết về một phần cụ thể, hãy chỉ rõ phần đó.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Bạn có thể giải thích chi tiết về một bước trong quy trình khai phá dữ liệu?",
+    "ground_truth": "Câu hỏi này thiếu ngữ cảnh vì không chỉ rõ bước nào trong quy trình khai phá dữ liệu (thu thập, hiểu, chuẩn bị, mô hình, đánh giá) mà bạn muốn biết. Có thể bạn đang hỏi về bước chuẩn bị dữ liệu, vì đây thường chiếm nhiều thời gian, hoặc bạn muốn biết về bước mô hình. Nếu bạn cung cấp thêm thông tin, mình có thể trả lời chính xác hơn.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Tôi cần làm gì để tăng độ chính xác của mô hình?",
+    "ground_truth": "Câu hỏi thiếu thông tin chi tiết: bạn chưa nêu rõ mô hình đang dùng, loại dữ liệu, hoặc vấn đề cụ thể (overfitting, underfitting, dữ liệu nhiễu, v.v.). Để trả lời chính xác, bạn cần mô tả mô hình, dữ liệu, và mục tiêu. Nếu bạn đang gặp overfitting, có thể thử thu thập thêm dữ liệu, thay đổi mô hình, hoặc điều chỉnh tham số. Nếu underfitting, có thể cần mô hình phức tạp hơn hoặc tăng số lượng đặc trưng. Tuy nhiên, vì thiếu thông tin, đây chỉ là những giả định chung.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Tôi cần biết cách điều chỉnh tham số trong mô hình học máy.",
+    "ground_truth": "Câu hỏi này thiếu ngữ cảnh cụ thể: bạn có thể đang muốn biết cách thực hiện hyperparameter tuning bằng Grid Search, Randomized Search, hoặc cách điều chỉnh các tham số cụ thể như learning rate, batch size, số lớp, v.v. Nếu bạn đang hỏi về phương pháp tự động, có thể đang đề cập đến Grid Search hoặc Randomized Search. Nếu bạn muốn điều chỉnh thủ công, bạn cần xác định tham số nào và giá trị mong muốn. Vì thiếu thông tin, câu trả lời có thể bao gồm các bước chung: 1) xác định tham số cần điều chỉnh, 2) chọn phương pháp (grid, random, thủ công), 3) thực hiện và đánh giá độ chính xác. Nếu bạn cung cấp chi tiết hơn, câu trả lời sẽ chính xác hơn.",
+    "category": "ambiguous"
+  },
+  {
+    "question": "Làm thế nào để điều chỉnh tham số max_iter?",
+    "ground_truth": "Câu hỏi này thiếu ngữ cảnh vì 'max_iter' có thể xuất hiện trong nhiều hàm và thuật toán khác nhau. Nếu đề cập đến cv2.kmeans, max_iter là số vòng lặp tối đa cho thuật toán K‑Means và được truyền vào tham số criteria (cv2.TERM_CRITERIA_MAX_ITER). Để điều chỉnh, ta cần xác định giá trị mong muốn và truyền vào criteria: criteria = (cv2.TERM_CRITERIA_MAX_ITER | cv2.TERM_CRITERIA_EPS, max_iter, epsilon). Nếu câu hỏi liên quan đến một thuật toán khác, cách điều chỉnh sẽ khác. Do đó, cần làm rõ hàm hoặc thư viện đang dùng trước khi đưa ra hướng dẫn cụ thể.",
+    "category": "ambiguous"
+  }
+]
