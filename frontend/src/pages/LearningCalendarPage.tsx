@@ -561,7 +561,7 @@ export const LearningCalendarPage: React.FC = () => {
   const proposedTasksGroupedByDate = useMemo(() => {
     if (!aiResult) return [];
     const rawTasks = (aiResult.proposed_tasks || (aiResult.created_tasks as any) || []) as any[];
-    
+
     const groups: Record<string, any[]> = {};
     rawTasks.forEach((task, idx) => {
       const dateKey = task.scheduled_date ? dayjs(task.scheduled_date).format('YYYY-MM-DD') : 'undated';
@@ -746,31 +746,28 @@ export const LearningCalendarPage: React.FC = () => {
               <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-950/80 p-1.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
                 <button
                   onClick={() => setViewMode('day')}
-                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${
-                    viewMode === 'day'
+                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${viewMode === 'day'
                       ? 'bg-white dark:bg-slate-800 border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 font-extrabold shadow-voxel-sm shadow-minecraft-grassBorder/40'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   Ngày
                 </button>
                 <button
                   onClick={() => setViewMode('week')}
-                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${
-                    viewMode === 'week'
+                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${viewMode === 'week'
                       ? 'bg-white dark:bg-slate-800 border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 font-extrabold shadow-voxel-sm shadow-minecraft-grassBorder/40'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   Tuần
                 </button>
                 <button
                   onClick={() => setViewMode('month')}
-                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${
-                    viewMode === 'month'
+                  className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all ${viewMode === 'month'
                       ? 'bg-white dark:bg-slate-800 border-2 border-minecraft-grassBorder text-emerald-800 dark:text-emerald-300 font-extrabold shadow-voxel-sm shadow-minecraft-grassBorder/40'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   Tháng
                 </button>
@@ -788,11 +785,10 @@ export const LearningCalendarPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowFixedClass(!showFixedClass)}
-                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${
-                    showFixedClass
+                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${showFixedClass
                       ? 'border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 shadow-voxel-sm shadow-minecraft-grassBorder/40 font-extrabold'
                       : 'border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 text-slate-400 opacity-60'
-                  }`}
+                    }`}
                 >
                   Fixed Class
                 </button>
@@ -800,11 +796,10 @@ export const LearningCalendarPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAIPlan(!showAIPlan)}
-                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${
-                    showAIPlan
+                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${showAIPlan
                       ? 'border-minecraft-skyBorder bg-minecraft-sky/15 text-sky-800 dark:text-sky-300 shadow-voxel-sm shadow-minecraft-skyBorder/40 font-extrabold'
                       : 'border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 text-slate-400 opacity-60'
-                  }`}
+                    }`}
                 >
                   AI Planned
                 </button>
@@ -812,11 +807,10 @@ export const LearningCalendarPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowStudentPlan(!showStudentPlan)}
-                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${
-                    showStudentPlan
+                  className={`font-bold select-none px-3.5 py-1.5 rounded-xl border-2 transition-all active:translate-y-0.5 cursor-pointer text-xs ${showStudentPlan
                       ? 'border-minecraft-goldBorder bg-minecraft-gold/15 text-amber-800 dark:text-amber-300 shadow-voxel-sm shadow-minecraft-goldBorder/40 font-extrabold'
                       : 'border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 text-slate-400 opacity-60'
-                  }`}
+                    }`}
                 >
                   My Plan
                 </button>
@@ -831,55 +825,50 @@ export const LearningCalendarPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPriorityFilter('ALL')}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      priorityFilter === 'ALL'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${priorityFilter === 'ALL'
                         ? 'bg-white dark:bg-slate-800 shadow-voxel-sm border-2 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white'
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-2 border-transparent'
-                    }`}
+                      }`}
                   >
                     Tất cả
                   </button>
                   <button
                     type="button"
                     onClick={() => setPriorityFilter('urgent')}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      priorityFilter === 'urgent'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${priorityFilter === 'urgent'
                         ? 'bg-rose-500 text-white shadow-voxel-sm border-2 border-rose-700 shadow-rose-900/40'
                         : 'text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border-2 border-transparent'
-                    }`}
+                      }`}
                   >
                     Khẩn cấp
                   </button>
                   <button
                     type="button"
                     onClick={() => setPriorityFilter('high')}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      priorityFilter === 'high'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${priorityFilter === 'high'
                         ? 'bg-amber-500 text-slate-950 shadow-voxel-sm border-2 border-amber-700 shadow-amber-900/40'
                         : 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 border-2 border-transparent'
-                    }`}
+                      }`}
                   >
                     Cao
                   </button>
                   <button
                     type="button"
                     onClick={() => setPriorityFilter('medium')}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      priorityFilter === 'medium'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${priorityFilter === 'medium'
                         ? 'bg-sky-500 text-white shadow-voxel-sm border-2 border-sky-700 shadow-sky-900/40'
                         : 'text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 border-2 border-transparent'
-                    }`}
+                      }`}
                   >
                     Trung bình
                   </button>
                   <button
                     type="button"
                     onClick={() => setPriorityFilter('low')}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      priorityFilter === 'low'
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${priorityFilter === 'low'
                         ? 'bg-emerald-600 text-white shadow-voxel-sm border-2 border-emerald-800 shadow-emerald-900/40'
                         : 'text-slate-500 dark:text-slate-400 hover:bg-slate-500/10 border-2 border-transparent'
-                    }`}
+                      }`}
                   >
                     Thấp
                   </button>
@@ -910,9 +899,8 @@ export const LearningCalendarPage: React.FC = () => {
                     return (
                       <div
                         key={dayName}
-                        className={`p-3 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0 ${
-                          isToday ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'
-                        }`}
+                        className={`p-3 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0 ${isToday ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'
+                          }`}
                       >
                         <div className="uppercase tracking-wider">{DAY_LABELS[dayName]}</div>
                         <div className="text-base font-extrabold font-mono mt-0.5">{dayDate.format('DD/MM')}</div>
@@ -968,7 +956,18 @@ export const LearningCalendarPage: React.FC = () => {
                           >
                             {cellEvents.map((ev) => {
                               const isFixed = ev.type === 'FIXED_CLASS';
-                              const isAI = ev.type === 'AI_STUDY';
+                              const taskSource = (ev.task_data?.source_type || '').toUpperCase();
+                              const taskTitle = ev.title || ev.task_data?.title || '';
+                              const taskDesc = ev.task_data?.description || '';
+                              const isAI =
+                                ev.type === 'AI_STUDY' ||
+                                ['AI', 'AI_PLAN', 'PLANNER', 'AI_PLANNER'].includes(taskSource) ||
+                                taskTitle.includes('Ôn tập chuẩn bị:') ||
+                                taskTitle.includes('Ôn tập nhẹ nhàng:') ||
+                                taskTitle.startsWith('Ôn tập:') ||
+                                taskDesc.includes('"what_to_study"') ||
+                                taskDesc.includes('"material_id"') ||
+                                !!ev.task_data?.material_id;
                               const prio = getPriorityConfig(ev.priority, isFixed);
                               const spanInfo = getEventSpanStyles(ev.start_time, ev.end_time);
 
@@ -982,29 +981,26 @@ export const LearningCalendarPage: React.FC = () => {
                                     handleEventClick(ev);
                                   }}
                                   style={spanInfo.isSpanned ? spanInfo.style : undefined}
-                                  className={`p-2 rounded-2xl border-2 text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between relative z-10 ${
-                                    spanInfo.isSpanned ? '' : 'min-h-[76px]'
-                                  } ${prio.borderLeft} ${
-                                    isFixed
+                                  className={`p-2 rounded-2xl border-2 text-xs cursor-pointer shadow-sm transition-all hover:scale-[1.02] overflow-hidden flex flex-col justify-between relative z-10 ${spanInfo.isSpanned ? '' : 'min-h-[76px]'
+                                    } ${prio.borderLeft} ${isFixed
                                       ? 'bg-[#EBFBEE] dark:bg-[#092E1B] border-emerald-500/60 text-emerald-950 dark:text-emerald-100 hover:border-emerald-500'
                                       : isAI
-                                      ? 'bg-[#EEF2FF] dark:bg-[#111827] border-indigo-500/60 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500'
-                                      : 'bg-[#FEF8E7] dark:bg-[#231908] border-amber-500/60 text-amber-950 dark:text-amber-100 hover:border-amber-500'
-                                  }`}
+                                        ? 'bg-[#EEF2FF] dark:bg-[#111827] border-indigo-500/60 text-indigo-950 dark:text-indigo-100 hover:border-indigo-500'
+                                        : 'bg-[#FEF8E7] dark:bg-[#231908] border-amber-500/60 text-amber-950 dark:text-amber-100 hover:border-amber-500'
+                                    }`}
                                 >
                                   <div className="overflow-hidden min-w-0">
                                     {/* Badge Header */}
                                     <div className="flex items-center justify-between gap-1 mb-1 font-bold text-[10px] min-w-0">
                                       <span
-                                        className={`px-1.5 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[9px] truncate shrink-0 max-w-[65%] ${
-                                          isFixed
+                                        className={`px-1.5 py-0.5 rounded-md border font-bold uppercase tracking-wider text-[9px] truncate shrink-0 max-w-[65%] ${isFixed
                                             ? 'bg-emerald-600 text-white border-emerald-700'
                                             : isAI
-                                            ? 'bg-indigo-600 text-white border-indigo-700'
-                                            : 'bg-amber-500 text-slate-950 border-amber-600'
-                                        }`}
+                                              ? 'bg-indigo-600 text-white border-indigo-700'
+                                              : 'bg-amber-500 text-slate-950 border-amber-600'
+                                          }`}
                                       >
-                                        {isFixed ? 'Fixed Class' : isAI ? 'AI Plan' : 'My Plan'}
+                                        {isFixed ? 'Fixed Class' : isAI ? 'AI Planned' : 'My Plan'}
                                       </span>
 
                                       {/* Compact Priority Badge */}
@@ -1107,7 +1103,18 @@ export const LearningCalendarPage: React.FC = () => {
                         ) : (
                           slotEvents.map((ev) => {
                             const isFixed = ev.type === 'FIXED_CLASS';
-                            const isAI = ev.type === 'AI_STUDY';
+                            const taskSource = (ev.task_data?.source_type || '').toUpperCase();
+                            const taskTitle = ev.title || ev.task_data?.title || '';
+                            const taskDesc = ev.task_data?.description || '';
+                            const isAI =
+                              ev.type === 'AI_STUDY' ||
+                              ['AI', 'AI_PLAN', 'PLANNER', 'AI_PLANNER'].includes(taskSource) ||
+                              taskTitle.includes('Ôn tập chuẩn bị:') ||
+                              taskTitle.includes('Ôn tập nhẹ nhàng:') ||
+                              taskTitle.startsWith('Ôn tập:') ||
+                              taskDesc.includes('"what_to_study"') ||
+                              taskDesc.includes('"material_id"') ||
+                              !!ev.task_data?.material_id;
                             const prio = getPriorityConfig(ev.priority, isFixed);
 
                             return (
@@ -1124,13 +1131,12 @@ export const LearningCalendarPage: React.FC = () => {
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span
-                                      className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
-                                        isFixed
+                                      className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${isFixed
                                           ? 'bg-emerald-600 text-white'
                                           : isAI
-                                          ? 'bg-indigo-600 text-white'
-                                          : 'bg-amber-500 text-slate-950'
-                                      }`}
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'bg-amber-500 text-slate-950'
+                                        }`}
                                     >
                                       {isFixed ? 'Fixed Class' : isAI ? 'AI Planned' : 'My Plan'}
                                     </span>
@@ -1206,13 +1212,12 @@ export const LearningCalendarPage: React.FC = () => {
                         setSelectedDate(d);
                         setViewMode('day');
                       }}
-                      className={`min-h-[100px] p-2.5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] flex flex-col justify-between ${
-                        !isCurrentMonth
+                      className={`min-h-[100px] p-2.5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] flex flex-col justify-between ${!isCurrentMonth
                           ? 'opacity-40 bg-slate-50/50 dark:bg-slate-950/40 border-slate-100 dark:border-slate-900'
                           : isToday
-                          ? 'bg-indigo-500/10 border-indigo-500 text-indigo-900 dark:text-indigo-200 font-bold'
-                          : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800'
-                      }`}
+                            ? 'bg-indigo-500/10 border-indigo-500 text-indigo-900 dark:text-indigo-200 font-bold'
+                            : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800'
+                        }`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className={`font-mono font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400 text-sm' : ''}`}>
@@ -1292,7 +1297,16 @@ export const LearningCalendarPage: React.FC = () => {
 
           const st = (selectedTask.source_type || '').toUpperCase();
           const evType = (selectedTask as any).type;
-          const isAITask = st !== 'MANUAL' && (evType === 'AI_STUDY' || ['AI', 'AI_PLAN', 'PLANNER', 'AI_PLANNER', 'ASSIGNMENT', 'GOAL'].includes(st));
+          const isAITask =
+            evType === 'AI_STUDY' ||
+            ['AI', 'AI_PLAN', 'PLANNER', 'AI_PLANNER'].includes(st) ||
+            selectedTask.title.includes('Ôn tập chuẩn bị:') ||
+            selectedTask.title.includes('Ôn tập nhẹ nhàng:') ||
+            selectedTask.title.startsWith('Ôn tập:') ||
+            whatToStudy.length > 0 ||
+            whatToDo.length > 0 ||
+            !!selectedTask.material_id ||
+            !!selectedTask.course_id;
 
           // Extract or construct meaningful learning objectives list
           let objectivesList = whatToStudy.length > 0 ? whatToStudy : whatToDo;
@@ -1312,8 +1326,8 @@ export const LearningCalendarPage: React.FC = () => {
               <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/90 border-2 border-slate-200 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className={isAITask ? 'badge-voxel-green text-xs' : 'badge-voxel-gold text-xs'}>
-                      {isAITask ? 'AI Planned' : 'Nhiệm vụ cá nhân'}
+                    <span className={st === 'ASSIGNMENT' ? 'badge-voxel-blue text-xs' : isAITask ? 'badge-voxel-purple text-xs' : 'badge-voxel-gold text-xs'}>
+                      {st === 'ASSIGNMENT' ? '📝 Bài tập (Assignment)' : isAITask ? '🤖 Kế hoạch AI (AI Planned)' : '👤 Nhiệm vụ cá nhân'}
                     </span>
                     {selectedTask.priority && (
                       <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
@@ -1388,20 +1402,18 @@ export const LearningCalendarPage: React.FC = () => {
                         <div
                           key={idx}
                           onClick={() => handleToggleChecklist(item)}
-                          className={`pt-2.5 pb-2 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-all ${
-                            isChecked ? 'opacity-75' : ''
-                          }`}
+                          className={`pt-2.5 pb-2 flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-all ${isChecked ? 'opacity-75' : ''
+                            }`}
                         >
                           <Checkbox
                             checked={isChecked}
                             onChange={() => handleToggleChecklist(item)}
                             className="mt-0.5 scale-105"
                           />
-                          <span className={`text-xs leading-relaxed flex-1 select-none ${
-                            isChecked
+                          <span className={`text-xs leading-relaxed flex-1 select-none ${isChecked
                               ? 'line-through text-slate-400 font-medium'
                               : 'font-semibold text-slate-800 dark:text-slate-200'
-                          }`}>
+                            }`}>
                             {item}
                           </span>
                         </div>
@@ -1578,11 +1590,10 @@ export const LearningCalendarPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAiStep('input')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  aiStep === 'input'
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${aiStep === 'input'
                     ? 'border-2 border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 shadow-voxel-sm font-extrabold'
                     : 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                  }`}
               >
                 <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
                 <span>Thiết Lập Yêu Cầu</span>
@@ -1594,13 +1605,12 @@ export const LearningCalendarPage: React.FC = () => {
                 type="button"
                 disabled={!aiResult}
                 onClick={() => aiResult && setAiStep('preview')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  aiStep === 'preview'
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${aiStep === 'preview'
                     ? 'border-2 border-minecraft-grassBorder bg-minecraft-grass/15 text-emerald-800 dark:text-emerald-300 shadow-voxel-sm font-extrabold cursor-pointer'
                     : aiResult
-                    ? 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer'
-                    : 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 text-slate-400 opacity-50 cursor-not-allowed'
-                }`}
+                      ? 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer'
+                      : 'border-2 border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 text-slate-400 opacity-50 cursor-not-allowed'
+                  }`}
               >
                 <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
                 <span>Xem Phân Lịch & Duyệt</span>

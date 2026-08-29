@@ -4,7 +4,7 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent' | 'LOW' | 'MEDIU
 
 export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'skipped' | 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
 
-export type TaskSourceType = 'ASSIGNMENT' | 'PERSONAL_TASK' | 'GOAL' | 'MANUAL';
+export type TaskSourceType = 'ASSIGNMENT' | 'PERSONAL_TASK' | 'GOAL' | 'MANUAL' | 'AI_PLAN' | 'AI';
 
 export type CalendarEventType = 'FIXED_CLASS' | 'AI_STUDY' | 'STUDENT_STUDY';
 

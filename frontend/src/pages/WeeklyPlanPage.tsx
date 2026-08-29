@@ -76,6 +76,8 @@ const SOURCE_CONFIG: Record<TaskSourceType, { label: string; color: string; icon
   PERSONAL_TASK: { label: 'Nhiệm vụ cá nhân', color: 'emerald', icon: <UserOutlined /> },
   GOAL: { label: 'Mục tiêu (Goal)', color: 'purple', icon: <AimOutlined /> },
   MANUAL: { label: 'Thủ công (Manual)', color: 'amber', icon: <FlagOutlined /> },
+  AI_PLAN: { label: 'Kế hoạch AI (AI Planned)', color: 'purple', icon: <RobotOutlined /> },
+  AI: { label: 'Kế hoạch AI (AI Planned)', color: 'purple', icon: <RobotOutlined /> },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
@@ -386,7 +388,7 @@ export const WeeklyPlanPage: React.FC = () => {
   const proposedTasksGroupedByDate = useMemo(() => {
     if (!aiResultData) return [];
     const rawTasks = (aiResultData.proposed_tasks || (aiResultData.created_tasks as any) || []) as any[];
-    
+
     const groups: Record<string, any[]> = {};
     rawTasks.forEach((task, idx) => {
       const dateKey = task.scheduled_date ? dayjs(task.scheduled_date).format('YYYY-MM-DD') : 'undated';
@@ -858,12 +860,12 @@ export const WeeklyPlanPage: React.FC = () => {
                                           zIndex: 10,
                                         }}
                                         className={`absolute rounded-xl border transition-all duration-200 ease-out cursor-pointer hover:z-30 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between overflow-hidden backdrop-blur-xs ${isCompleted
-                                            ? isDark
-                                              ? 'bg-slate-900/70 border-slate-800 text-slate-500 line-through opacity-65'
-                                              : 'bg-slate-100/90 border-slate-200 text-slate-400 line-through opacity-65'
-                                            : isDark
-                                              ? `${theme.cardBgDark} ${theme.borderDark} text-slate-100 ${theme.glowHover}`
-                                              : `${theme.cardBgLight} ${theme.borderLight} text-slate-900 ${theme.glowHover}`
+                                          ? isDark
+                                            ? 'bg-slate-900/70 border-slate-800 text-slate-500 line-through opacity-65'
+                                            : 'bg-slate-100/90 border-slate-200 text-slate-400 line-through opacity-65'
+                                          : isDark
+                                            ? `${theme.cardBgDark} ${theme.borderDark} text-slate-100 ${theme.glowHover}`
+                                            : `${theme.cardBgLight} ${theme.borderLight} text-slate-900 ${theme.glowHover}`
                                           }`}
                                       >
                                         {/* Accent Bar */}
@@ -932,9 +934,8 @@ export const WeeklyPlanPage: React.FC = () => {
                     return (
                       <div
                         key={dayIdx}
-                        className={`card-voxel-3d space-y-4 ${
-                          isToday ? 'border-minecraft-grass shadow-voxel' : ''
-                        }`}
+                        className={`card-voxel-3d space-y-4 ${isToday ? 'border-minecraft-grass shadow-voxel' : ''
+                          }`}
                       >
                         {/* Day Section Header */}
                         <div className="flex items-center justify-between pb-3 border-b-2 border-slate-200 dark:border-minecraft-obsidianBorder">
@@ -979,9 +980,8 @@ export const WeeklyPlanPage: React.FC = () => {
                                 <div
                                   key={task.id}
                                   onClick={() => setDetailTask(task)}
-                                  className={`card-voxel-3d p-4 cursor-pointer transition-all hover:-translate-y-1 relative overflow-hidden ${
-                                    isCompleted ? 'opacity-65 line-through' : ''
-                                  }`}
+                                  className={`card-voxel-3d p-4 cursor-pointer transition-all hover:-translate-y-1 relative overflow-hidden ${isCompleted ? 'opacity-65 line-through' : ''
+                                    }`}
                                 >
                                   <div className={`absolute top-0 bottom-0 left-0 w-2 ${isCompleted ? 'bg-slate-400' : theme.accentBorder}`} />
                                   <div className="pl-2 space-y-2">
@@ -1236,8 +1236,8 @@ export const WeeklyPlanPage: React.FC = () => {
               {detailTask.status === 'in_progress' || detailTask.status === 'IN_PROGRESS'
                 ? '⚡ Tiếp tục Học tập (Workspace)'
                 : detailTask.status === 'completed' || detailTask.status === 'COMPLETED'
-                ? '🔍 Xem Workspace Buổi học'
-                : '▶ Start Study Session (Bắt đầu học)'}
+                  ? '🔍 Xem Workspace Buổi học'
+                  : '▶ Start Study Session (Bắt đầu học)'}
             </Button>,
             <Button
               key="toggle"
@@ -1254,9 +1254,8 @@ export const WeeklyPlanPage: React.FC = () => {
         >
           <div className="space-y-4 py-2 text-xs">
             {/* Header info bar */}
-            <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
-              isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-amber-50/70 border-amber-200/60'
-            }`}>
+            <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-amber-50/70 border-amber-200/60'
+              }`}>
               <div className="flex items-center gap-2 font-mono font-bold text-slate-700 dark:text-slate-300">
                 <ClockCircleOutlined className="text-emerald-500" />
                 <span>
@@ -1462,11 +1461,10 @@ export const WeeklyPlanPage: React.FC = () => {
             />
           </div>
 
-          <div className={`p-4 rounded-2xl border-2 space-y-1 ${
-            isDark
+          <div className={`p-4 rounded-2xl border-2 space-y-1 ${isDark
               ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder text-slate-100'
               : 'bg-emerald-50/80 border-minecraft-grassBorder text-slate-900 shadow-sm'
-          }`}>
+            }`}>
             <div className="flex items-center justify-between text-sm flex-wrap gap-2">
               <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Khoảng thời gian lập lộ trình:</span>
               <span className="badge-voxel-green text-xs font-extrabold px-3 py-1 font-mono">

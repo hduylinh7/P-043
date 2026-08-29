@@ -55,7 +55,7 @@ class PlannerTaskResult(BaseModel):
     end_time: str | None = None
     priority: str = "medium"
     estimated_duration: int | None = None
-    source_type: str = "MANUAL"
+    source_type: str = "AI_PLAN"
     source_id: str | None = None
     course_id: str | None = None
     course_name: str | None = None
@@ -80,7 +80,7 @@ class PlannerProposedTask(BaseModel):
     end_time: str | None = None
     priority: str = "medium"
     estimated_duration: int | None = None
-    source_type: str = "MANUAL"
+    source_type: str = "AI_PLAN"
     source_id: str | None = None
     course_id: str | None = None
     course_name: str | None = None
