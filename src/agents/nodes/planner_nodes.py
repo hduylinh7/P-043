@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -328,9 +328,10 @@ CRITICAL GROUNDING & NO-HALLUCINATION RULES:
 DATE & TIME CONSTRAINTS:
 1. FIXED UNIVERSITY CLASS SCHEDULES ARE IMMUTABLE HARD CONSTRAINTS. NEVER schedule during hours occupied by a fixed university class!
 2. All study preparation sessions MUST be scheduled strictly BEFORE the related assignment's deadline!
-3. Weekday Date Mapping ({week_start} to {week_end}):
+3. ABSOLUTE RULE: DO NOT schedule any study session on past dates or past hours of today! Today's Date is {today_date}, and Current Local Time is {current_time}. If scheduling for TODAY ({today_date}), all tasks MUST be scheduled at or after {current_time}! NEVER generate tasks at 08:00 AM or 09:30 AM if current time is past those hours.
+4. Weekday Date Mapping ({week_start} to {week_end}):
 {weekday_mapping}
-4. priority MUST be strictly one of: "low", "medium", "high", "urgent".
+5. priority MUST be strictly one of: "low", "medium", "high", "urgent".
 
 OUTPUT FORMAT:
 Respond strictly with a valid JSON object formatted as follows:
@@ -479,6 +480,57 @@ def filter_context_to_course(context_dict: dict[str, Any], course_id: str) -> di
     return filtered
 
 
+def ensure_future_task_time(sched_date_str: str | None, start_time_str: str | None, end_time_str: str | None) -> tuple[str, str, str]:
+    """
+    Ensures (scheduled_date, start_time, end_time) is strictly in the future relative to current local time (UTC+7).
+    If scheduled_date is today and start_time/end_time is in the past, pushes to future hours today or tomorrow.
+    """
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc + timedelta(hours=7)
+    today_date = now_local.date()
+
+    try:
+        if sched_date_str:
+            clean_date = str(sched_date_str).split("T")[0].rstrip("Z")
+            task_date = datetime.strptime(clean_date, "%Y-%m-%d").date()
+        else:
+            task_date = today_date
+    except Exception:
+        task_date = today_date
+
+    # If task_date is in the past, bump to today
+    if task_date < today_date:
+        task_date = today_date
+
+    start_str = start_time_str or "19:00"
+    end_str = end_time_str or "20:30"
+
+    # If task is scheduled for today, check if start_time has already passed
+    if task_date == today_date:
+        try:
+            s_h, s_m = map(int, start_str.split(":")[:2])
+            task_start_minutes = s_h * 60 + s_m
+            now_minutes = now_local.hour * 60 + now_local.minute
+
+            if task_start_minutes <= now_minutes:
+                # Time has already passed today! Push to future slot today or tomorrow
+                if now_local.hour < 13:
+                    start_str = "14:00"
+                    end_str = "15:30"
+                elif now_local.hour < 18:
+                    start_str = "19:00"
+                    end_str = "20:30"
+                else:
+                    # Too late in the evening today, bump to tomorrow
+                    task_date = today_date + timedelta(days=1)
+                    start_str = "08:00"
+                    end_str = "09:30"
+        except Exception:
+            pass
+
+    return task_date.strftime("%Y-%m-%d"), start_str, end_str
+
+
 def validate_scheduled_before_deadline(
     decision: dict[str, Any],
     context_dict: dict[str, Any],
@@ -519,6 +571,8 @@ def validate_scheduled_before_deadline(
                 except Exception:
                     pass
 
+    today_date = datetime.now(timezone.utc).date()
+
     tasks = decision.get("tasks", [])
     if not isinstance(tasks, list) or not tasks:
         return decision
@@ -535,6 +589,17 @@ def validate_scheduled_before_deadline(
         if not isinstance(task, dict):
             adjusted_tasks.append(task)
             continue
+
+        # CRITICAL: Never allow tasks to be scheduled in the past
+        sched_raw = task.get("scheduled_date")
+        if sched_raw:
+            try:
+                clean_sched = str(sched_raw).split("T")[0].rstrip("Z")
+                s_date_val = datetime.strptime(clean_sched, "%Y-%m-%d").date()
+                if s_date_val < today_date:
+                    task["scheduled_date"] = today_date.strftime("%Y-%m-%d")
+            except Exception:
+                pass
 
         ass_id = task.get("assignment_id") or task.get("source_id")
         task_topic = (task.get("topic") or task.get("title") or task.get("assignment_title") or "").strip().lower()
@@ -561,8 +626,8 @@ def validate_scheduled_before_deadline(
                 except Exception:
                     pass
 
-            if not sched_date:
-                sched_date = due_dt.date()
+            if not sched_date or sched_date < today_date:
+                sched_date = max(due_dt.date(), today_date)
 
             # Parse start and end datetime of the proposed study session
             try:
@@ -586,9 +651,11 @@ def validate_scheduled_before_deadline(
                 # Step 1: Default to 1 day before due_date in evening (19:00 - 20:30)
                 new_date = due_dt.date() - timedelta(days=1)
 
-                # Bounded by planning week start
+                # Bounded by planning week start and TODAY (never in the past)
                 if start_date_obj and new_date < start_date_obj:
                     new_date = start_date_obj
+                if new_date < today_date:
+                    new_date = today_date
 
                 # If new_date is same as due_dt.date(), check if morning hours fit before due_dt
                 if new_date == due_dt.date():
@@ -601,6 +668,8 @@ def validate_scheduled_before_deadline(
                         new_date = due_dt.date() - timedelta(days=1)
                         if start_date_obj and new_date < start_date_obj:
                             new_date = start_date_obj
+                        if new_date < today_date:
+                            new_date = today_date
                         new_start = "19:00"
                         new_end = "20:30"
                 else:
@@ -612,12 +681,124 @@ def validate_scheduled_before_deadline(
                 task["end_time"] = new_end
                 due_fmt = due_dt.strftime("%d/%m/%Y %H:%M") if (due_dt.hour or due_dt.minute) else due_dt.strftime("%d/%m/%Y")
                 reason_clean = task.get('reason') or ''
-                task["reason"] = f"{reason_clean} (Tự động sắp xếp trước hạn nộp {due_fmt}).".strip()
+        # Enforce that scheduled_date and start_time are strictly in the future relative to current local time (UTC+7)
+        f_date, f_start, f_end = ensure_future_task_time(
+            task.get("scheduled_date"),
+            task.get("start_time"),
+            task.get("end_time"),
+        )
+        task["scheduled_date"] = f_date
+        task["start_time"] = f_start
+        task["end_time"] = f_end
 
         adjusted_tasks.append(task)
 
     decision["tasks"] = adjusted_tasks
     return decision
+
+
+def allocate_future_slots(tasks: list[dict[str, Any]], week_start: str = "") -> list[dict[str, Any]]:
+    """
+    Ensures ALL tasks are scheduled in non-overlapping, strictly FUTURE time slots
+    relative to current local time (UTC+7).
+    """
+    if not isinstance(tasks, list) or not tasks:
+        return tasks
+
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc + timedelta(hours=7)
+    today_date = now_local.date()
+    now_minutes = now_local.hour * 60 + now_local.minute
+
+    STANDARD_SLOTS = [
+        ("08:00", "09:30"),
+        ("09:30", "11:00"),
+        ("14:00", "15:30"),
+        ("16:00", "17:30"),
+        ("19:00", "20:30"),
+        ("20:30", "22:00"),
+    ]
+
+    used_slots_by_date: dict[str, list[tuple[int, int]]] = {}
+
+    def is_slot_available(date_str: str, s_min: int, e_min: int) -> bool:
+        try:
+            d_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+            if d_obj < today_date:
+                return False
+            if d_obj == today_date and s_min <= now_minutes:
+                return False
+        except Exception:
+            return False
+
+        existing = used_slots_by_date.get(date_str, [])
+        for ex_s, ex_e in existing:
+            if s_min < ex_e and e_min > ex_s:
+                return False
+        return True
+
+    adjusted_tasks = []
+    for task in tasks:
+        if not isinstance(task, dict):
+            adjusted_tasks.append(task)
+            continue
+
+        raw_date = task.get("scheduled_date")
+        raw_start = task.get("start_time") or "19:00"
+        raw_end = task.get("end_time") or "20:30"
+
+        try:
+            clean_date = str(raw_date).split("T")[0].rstrip("Z") if raw_date else today_date.strftime("%Y-%m-%d")
+            d_obj = datetime.strptime(clean_date, "%Y-%m-%d").date()
+        except Exception:
+            d_obj = today_date
+
+        if d_obj < today_date:
+            d_obj = today_date
+
+        try:
+            sh, sm = map(int, raw_start.split(":")[:2])
+            eh, em = map(int, raw_end.split(":")[:2])
+            s_min = sh * 60 + sm
+            e_min = eh * 60 + em
+        except Exception:
+            s_min, e_min = 1140, 1230
+
+        curr_date_obj = d_obj
+        curr_date_str = curr_date_obj.strftime("%Y-%m-%d")
+
+        if is_slot_available(curr_date_str, s_min, e_min):
+            task["scheduled_date"] = curr_date_str
+            task["start_time"] = f"{s_min // 60:02d}:{s_min % 60:02d}"
+            task["end_time"] = f"{e_min // 60:02d}:{e_min % 60:02d}"
+            used_slots_by_date.setdefault(curr_date_str, []).append((s_min, e_min))
+            adjusted_tasks.append(task)
+            continue
+
+        allocated = False
+        for day_offset in range(14):
+            candidate_date = curr_date_obj + timedelta(days=day_offset)
+            cand_date_str = candidate_date.strftime("%Y-%m-%d")
+
+            for slot_start, slot_end in STANDARD_SLOTS:
+                c_sh, c_sm = map(int, slot_start.split(":"))
+                c_eh, c_em = map(int, slot_end.split(":"))
+                c_s_min = c_sh * 60 + c_sm
+                c_e_min = c_eh * 60 + c_em
+
+                if is_slot_available(cand_date_str, c_s_min, c_e_min):
+                    task["scheduled_date"] = cand_date_str
+                    task["start_time"] = slot_start
+                    task["end_time"] = slot_end
+                    used_slots_by_date.setdefault(cand_date_str, []).append((c_s_min, c_e_min))
+                    allocated = True
+                    break
+            if allocated:
+                break
+
+        adjusted_tasks.append(task)
+
+    return adjusted_tasks
 
 
 
@@ -677,10 +858,17 @@ async def analyze_and_decide_node(state: PlannerAgentState) -> dict[str, Any]:
         for i in range(total_days)
     ])
 
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc + timedelta(hours=7)
+    today_date_str = now_local.strftime("%Y-%m-%d")
+    current_time_str = now_local.strftime("%H:%M")
+
     system_prompt = PLANNER_SYSTEM_PROMPT.format(
         week_start=week_start,
         week_end=week_end,
         weekday_mapping=mapping_str,
+        today_date=today_date_str,
+        current_time=current_time_str,
     )
 
     user_msg_content = f"""
@@ -733,6 +921,10 @@ PLANNER CONTEXT (Real database context - Assignments, Courses, Goals, Materials)
         # Post-LLM validation 2: validate scheduled_date is strictly before assignment due date
         decision = validate_scheduled_before_deadline(decision, context_dict, week_start, user_request)
 
+        # Post-LLM validation 3: allocate strictly future non-overlapping time slots
+        if isinstance(decision, dict) and "tasks" in decision and isinstance(decision["tasks"], list):
+            decision["tasks"] = allocate_future_slots(decision["tasks"], week_start)
+
         return {"plan_decision": decision}
     except Exception as e:
         logger.error(f"LLM call or JSON parsing error in analyze_and_decide_node: {e}", exc_info=True)
@@ -746,7 +938,8 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
     tasks = []
     skipped = []
 
-    curr_date = datetime.strptime(week_start, "%Y-%m-%d").date()
+    today_date = datetime.now(timezone.utc).date()
+    curr_date = max(datetime.strptime(week_start, "%Y-%m-%d").date(), today_date)
     materials = context_dict.get("course_materials", [])
     p_date, p_start, p_end = parse_task_datetime_from_text(None, None, week_start, user_request)
 
@@ -766,6 +959,8 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
         if p_date:
             try:
                 target_day = datetime.strptime(p_date, "%Y-%m-%d").date()
+                if target_day < today_date:
+                    target_day = today_date
             except Exception:
                 target_day = curr_date
             f_start = p_start or "19:00"
@@ -775,6 +970,8 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
             target_day = due_dt.date() - timedelta(days=1)
             if target_day < curr_date:
                 target_day = curr_date
+            if target_day < today_date:
+                target_day = today_date
 
             # If target day is same as due date and deadline is morning/noon, set morning study session
             if target_day == due_dt.date() and (due_dt.hour * 60 + due_dt.minute) <= 660:
@@ -784,9 +981,16 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
                 f_start = "19:00"
                 f_end = "20:30"
         else:
-            target_day = curr_date + timedelta(days=idx % 5)
+            target_day = max(curr_date + timedelta(days=idx % 5), today_date)
             f_start = "19:00"
             f_end = "20:30"
+
+        f_date_str, f_start, f_end = ensure_future_task_time(
+            target_day.strftime("%Y-%m-%d"),
+            f_start,
+            f_end,
+        )
+        target_day = datetime.strptime(f_date_str, "%Y-%m-%d").date()
 
         matched_mat = next((m for m in materials if m.get("course_id") == ass.get("course_id")), None)
         mat_id = matched_mat.get("id") if matched_mat else None
@@ -799,17 +1003,17 @@ def create_fallback_decision(context_dict: dict[str, Any], week_start: str, user
             "topic": ass.get("title"),
             "what_to_study": ["Ôn lại slide bài giảng và lý thuyết liên quan", "Nắm vững các công thức & khái niệm cốt lõi"],
             "what_to_do": [
-                "1. Đọc lại tài liệu và bài giảng của giáo viên",
-                "2. Thực hành các bài tập ví dụ mẫu",
-                "3. Chuẩn bị kiến thức làm bài tập chính thức"
+                f"1. Đọc lại slide \"{mat_title}\" để nắm các khái niệm nền tảng.",
+                "2. Thực hành viết tóm tắt ngắn gọn các bước chính và ví dụ thực tế.",
+                f"3. Sẵn sàng tự tin làm bài tập '{ass.get('title')}' (Hạn nộp: {due_display}).",
             ],
-            "reason": f"Ôn tập củng cố kiến thức trước hạn nộp bài tập ({due_display}) giáo viên giao.",
-            "course_id": ass.get("course_id"),
-            "course_name": ass.get("course_name"),
+            "reason": f"Ôn tập củng cố kiến thức trước hạn nộp bài tập {ass.get('title')} ({due_display}).",
             "material_id": mat_id,
             "material_title": mat_title,
+            "course_id": ass.get("course_id"),
             "assignment_id": ass.get("id"),
             "assignment_title": ass.get("title"),
+            "due_date": ass.get("due_date") or ass.get("due_at"),
             "scheduled_date": target_day.strftime("%Y-%m-%d"),
             "start_time": f_start,
             "end_time": f_end,

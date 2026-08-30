@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.routers import router
 from src.config import get_settings
 from src.db.database import init_db
-from src.services.redis_service import close_redis, init_redis
+from src.services.reminder_scheduler import start_reminder_scheduler, stop_reminder_scheduler
 
 
 @asynccontextmanager
@@ -26,8 +26,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Redis initialization warning: {e}")
 
+    # Start Reminder Scheduler
+    try:
+        start_reminder_scheduler(interval_seconds=60)
+        print("Reminder scheduler started successfully.")
+    except Exception as e:
+        print(f"Reminder scheduler warning: {e}")
+
     yield
 
+    await stop_reminder_scheduler()
     await close_redis()
     print("Shutting down...")
 

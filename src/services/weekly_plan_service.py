@@ -180,7 +180,7 @@ def serialize_task(task: Task) -> PlanTaskResponse:
         end_time=task.end_time,
         estimated_duration=task.estimated_minutes,
         estimated_minutes=task.estimated_minutes,
-        source_type=task.source_type or "MANUAL",
+        source_type=task.source_type or "AI_PLAN",
         source_id=task.source_id,
         started_at=meta.get("started_at"),
         completed_at=meta.get("completed_at"),
@@ -1457,8 +1457,13 @@ class WeeklyPlanService:
                 start_time_clean = normalize_time_str(t.start_time) or "09:00"
                 end_time_clean = normalize_time_str(t.end_time) or "10:00"
 
-                s_type = (t.source_type or "MANUAL").upper()
-                is_ai_task = is_plan_ai or (s_type in ["AI_PLAN", "ASSIGNMENT", "GOAL", "AI"])
+                s_type = (t.source_type or "AI_PLAN").upper()
+                is_ai_task = (
+                    is_plan_ai
+                    or s_type in ["AI_PLAN", "ASSIGNMENT", "GOAL", "AI"]
+                    or (t.title and any(prefix in t.title for prefix in ["Ôn tập chuẩn bị:", "Ôn tập nhẹ nhàng:", "Ôn tập:", "Slide_"]))
+                    or (t.description and any(k in str(t.description) for k in ['"what_to_study"', '"material_id"', '"course_id"', '"companion_data"']))
+                )
                 event_type = "AI_STUDY" if is_ai_task else "STUDENT_STUDY"
 
                 task_dto = serialize_task(t)

@@ -21,13 +21,31 @@ class AssignmentRepository:
         if val is None:
             return None
         if isinstance(val, datetime):
-            return val
+            if val.tzinfo is None:
+                return val.replace(tzinfo=timezone.utc)
+            return val.astimezone(timezone.utc)
         if isinstance(val, str):
-            val_clean = val.rstrip("Z")
-            try:
-                return datetime.fromisoformat(val_clean)
-            except ValueError:
+            val_str = val.strip()
+            if not val_str:
                 return None
+            try:
+                if val_str.endswith("Z") or val_str.endswith("z"):
+                    val_str = val_str[:-1] + "+00:00"
+                dt = datetime.fromisoformat(val_str)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
+            except ValueError:
+                try:
+                    if "T" in val_str:
+                        val_str = val_str.replace("T", " ")
+                    if len(val_str) == 10:
+                        dt = datetime.strptime(val_str, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+                    else:
+                        dt = datetime.strptime(val_str[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                    return dt
+                except Exception:
+                    return None
         return None
 
     @classmethod

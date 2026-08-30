@@ -63,11 +63,16 @@ class StudentLearningContextService:
 
     @staticmethod
     def _ensure_student(current_user: UserResponse) -> None:
-        if "student" not in current_user.roles and "admin" not in current_user.roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Personal Learning Companion context is available for students only.",
-            )
+        # Allow all authenticated user roles (student, instructor, ta, admin)
+        pass
+
+    @classmethod
+    async def _delegate_instructor_if_needed(cls, db: AsyncSession, current_user: UserResponse) -> dict[str, Any] | None:
+        user_roles = [str(r).lower() for r in (current_user.roles or [])]
+        if "student" not in user_roles and any(r in user_roles for r in ["instructor", "teacher", "ta", "admin"]):
+            from src.services.instructor_context_service import InstructorLearningContextService
+            return await InstructorLearningContextService.build_instructor_context(db, current_user)
+        return None
 
     @classmethod
     async def get_assignments_context(
@@ -79,6 +84,10 @@ class StudentLearningContextService:
         Build a lightweight context containing ONLY student assignments and deadlines.
         """
         cls._ensure_student(current_user)
+        instructor_ctx = await cls._delegate_instructor_if_needed(db, current_user)
+        if instructor_ctx:
+            return instructor_ctx
+
         student_id = current_user.id
 
         student_info = {
@@ -201,6 +210,10 @@ class StudentLearningContextService:
         Build a lightweight context containing ONLY student enrolled courses and materials.
         """
         cls._ensure_student(current_user)
+        instructor_ctx = await cls._delegate_instructor_if_needed(db, current_user)
+        if instructor_ctx:
+            return instructor_ctx
+
         student_id = current_user.id
 
         student_info = {
@@ -268,6 +281,10 @@ class StudentLearningContextService:
         Build a lightweight context containing ONLY student personal goals.
         """
         cls._ensure_student(current_user)
+        instructor_ctx = await cls._delegate_instructor_if_needed(db, current_user)
+        if instructor_ctx:
+            return instructor_ctx
+
         student_id = current_user.id
 
         student_info = {
@@ -313,6 +330,10 @@ class StudentLearningContextService:
         Build a lightweight context containing ONLY student grades, assignment scores, and feedback.
         """
         cls._ensure_student(current_user)
+        instructor_ctx = await cls._delegate_instructor_if_needed(db, current_user)
+        if instructor_ctx:
+            return instructor_ctx
+
         student_id = current_user.id
 
         student_info = {
@@ -376,6 +397,10 @@ class StudentLearningContextService:
         Defaults to near-term window (today through +2 days).
         """
         cls._ensure_student(current_user)
+        instructor_ctx = await cls._delegate_instructor_if_needed(db, current_user)
+        if instructor_ctx:
+            return instructor_ctx
+
         student_id = current_user.id
 
         today = target_date or datetime.now(timezone.utc).date()
@@ -484,6 +509,10 @@ class StudentLearningContextService:
         Build the student's personal learning context dictionary.
         """
         cls._ensure_student(current_user)
+        instructor_ctx = await cls._delegate_instructor_if_needed(db, current_user)
+        if instructor_ctx:
+            return instructor_ctx
+
         student_id = current_user.id
 
         # 1. Student Personal Information

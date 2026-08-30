@@ -78,6 +78,37 @@ RULES & GUIDELINES:
 14. MARKDOWN TABLE & LAYOUT FORMATTING RULE:
    - Format structured data (assignments, courses, deadlines, grades) using standard GitHub Flavored Markdown tables or bulleted lists.
    - ALWAYS put a blank newline BEFORE and AFTER any table.
+   """
+
+
+INSTRUCTOR_SYSTEM_PROMPT = """
+You are the Instructor's AI Teaching & Course Management Assistant.
+
+YOUR PURPOSE:
+Understand and answer questions about the instructor's courses taught, assignments created, assignment submission statistics, class performance, and pedagogical advice based STRICTLY on real database context.
+
+CURRENT DATETIME:
+{current_datetime}
+
+INSTRUCTOR COURSE & TEACHING CONTEXT:
+{context_json}
+
+RULES & GUIDELINES:
+1. Ground every factual answer in the actual instructor context provided above.
+2. If asked about taught courses (e.g. "Môn học tôi giảng dạy", "What courses do I teach?"), list the instructor's actual taught courses with course code, name, and enrolled student counts.
+3. If asked about managed assignments or deadlines (e.g. "Danh sách bài tập tôi đã giao", "What assignments have I created?", "Which assignments are due soon?"), list the actual assignments created with their due dates, course name, and submission statistics (submitted count, unsubmitted count, graded count, average score, late submissions).
+4. If asked about student submission statistics or class performance (e.g. "Bao nhiêu sinh viên đã nộp bài?", "Điểm số trung bình của lớp là bao nhiêu?"), summarize the exact metrics from the context.
+5. If asked for teaching advice, rubrics, or assignment creation ideas, provide helpful, clear, and professional pedagogical suggestions tailored to their course topics.
+6. NEVER invent courses, assignments, deadlines, or submission stats that do not exist in the context.
+7. Maintain a professional, polite, respectful, and supportive tone suitable for a university professor or lecturer. Use Vietnamese if the user writes in Vietnamese, or English if the user writes in English.
+8. CRITICAL LINK FORMATTING RULE:
+   Whenever you mention any assignment or course, ALWAYS format them as Markdown links so the instructor can click directly on them to open details:
+   - For an assignment: Format as `[Assignment Name](/courses/{{course_id}}?assignment={{id}})`
+   - For a course: Format as `[Course Name](/courses/{{id}})`
+   Use the exact `id` and `course_id` provided in the INSTRUCTOR CONTEXT JSON.
+9. MARKDOWN TABLE & LAYOUT FORMATTING RULE:
+   - Format structured data (assignments, courses, submission stats, grades) using standard GitHub Flavored Markdown tables or bulleted lists.
+   - ALWAYS put a blank newline BEFORE and AFTER any table.
    - Put each table row on its own line (`| Col 1 | Col 2 |`). NEVER use HTML tags like `<br>` or double pipes `||` inside tables.
 """
 
@@ -178,10 +209,25 @@ class PersonalLearningCompanionAgent:
                     }
                 }
             else:
-                # 2. LLM Intent Classification & Selective Context Retrieval via Handler Registry
-                intent = await classify_intent(query)
-                handler = INTENT_HANDLERS.get(intent, StudentLearningContextService.build_student_context)
-                student_context = await handler(db=db, current_user=current_user)
+                user_roles = [str(r).lower() for r in (current_user.roles or [])]
+                is_user_instructor = (
+                    current_user
+                    and (
+                        any(r in user_roles for r in ["instructor", "teacher", "ta"])
+                        or "student" not in user_roles
+                    )
+                )
+                if is_user_instructor:
+                    intent = "instructor_teaching"
+                    from src.services.instructor_context_service import InstructorLearningContextService
+                    student_context = await InstructorLearningContextService.build_instructor_context(
+                        db=db, current_user=current_user
+                    )
+                else:
+                    # 2. LLM Intent Classification & Selective Context Retrieval via Handler Registry
+                    intent = await classify_intent(query)
+                    handler = INTENT_HANDLERS.get(intent, StudentLearningContextService.build_student_context)
+                    student_context = await handler(db=db, current_user=current_user)
 
             # Format context as compact JSON to save tokens and prevent TPM limit errors
             context_json_str = json.dumps(student_context, separators=(',', ':'), ensure_ascii=False)
@@ -191,8 +237,11 @@ class PersonalLearningCompanionAgent:
             now_utc = datetime.now(timezone.utc)
             current_datetime_str = f"{now_utc.strftime('%Y-%m-%d %H:%M:%S UTC')} ({now_utc.strftime('%A')})"
 
-            # 3. Build system prompt
-            system_prompt_content = COMPANION_SYSTEM_PROMPT.format(
+            # 3. Build system prompt based on user role
+            is_instructor = "instructor_info" in student_context or (current_user and any(r in (current_user.roles or []) for r in ["instructor", "teacher", "ta"]) and "student" not in (current_user.roles or []))
+            selected_prompt_template = INSTRUCTOR_SYSTEM_PROMPT if is_instructor else COMPANION_SYSTEM_PROMPT
+
+            system_prompt_content = selected_prompt_template.format(
                 current_datetime=current_datetime_str,
                 context_json=context_json_str,
                 study_session_json=study_session_json_str,
