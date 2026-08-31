@@ -57,6 +57,7 @@ import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer, EntityContext } from '../components/MarkdownRenderer';
 import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
 import { KnowledgeLoadingOrb } from '../components/common/KnowledgeLoadingOrb';
+import { DocumentLoadingOrb } from '../components/common/DocumentLoadingOrb';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -214,6 +215,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
   // Ref tracking to prevent duplicate fetching across tab switches
   const materialLoadedRef = useRef<boolean>(false);
   const assignmentLoadedRef = useRef<boolean>(false);
+  const [materialLoading, setMaterialLoading] = useState<boolean>(false);
 
   // 1. Fetch Core Task & Initialize Workspace Instantly (< 80ms)
   const fetchTaskDetails = async () => {
@@ -250,9 +252,10 @@ export const StudySessionWorkspacePage: React.FC = () => {
   // 2. Lazy Load Course Material (Triggered ONLY when opening Material Tab)
   const lazyLoadMaterial = async (targetTask?: PlanTask | null) => {
     const currentTask = targetTask || task;
-    if (!currentTask?.course_id || materialLoadedRef.current) return;
+    if (!currentTask?.course_id || materialLoadedRef.current || materialLoading) return;
 
     try {
+      setMaterialLoading(true);
       let matId = currentTask.material_id;
       if (!matId && currentTask.material_title && currentTask.material_title !== 'No matching course material was found.') {
         const courseMaterials = await materialService.getCourseMaterials(currentTask.course_id);
@@ -273,6 +276,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
       }
     } catch (e) {
       console.warn('Lazy loading material failed:', e);
+    } finally {
+      setMaterialLoading(false);
     }
   };
 
@@ -287,14 +292,12 @@ export const StudySessionWorkspacePage: React.FC = () => {
       if (!targetAssignId && currentTask.course_id) {
         const courseAssignments = await assignmentService.getCourseAssignments(currentTask.course_id);
         if (courseAssignments && courseAssignments.length > 0) {
-          const matched = courseAssignments.find(
-            (a) =>
-              a.title.toLowerCase().includes(currentTask.title.toLowerCase()) ||
-              (currentTask.topic && a.title.toLowerCase().includes(currentTask.topic.toLowerCase())) ||
-              currentTask.title.toLowerCase().includes(a.title.toLowerCase()) ||
-              a.title.toLowerCase().includes('trắc nghiệm') ||
-              a.title.toLowerCase().includes('tuần 2')
-          ) || courseAssignments[0];
+          const taskTopic = (currentTask.topic || '').toLowerCase().trim();
+          const taskTitle = currentTask.title.toLowerCase().trim();
+          const matched = courseAssignments.find((a) => {
+            const aTitle = a.title.toLowerCase().trim();
+            return (taskTopic && aTitle.includes(taskTopic)) || aTitle.includes(taskTitle) || taskTitle.includes(aTitle);
+          });
           if (matched) targetAssignId = matched.id;
         }
       }
@@ -1392,7 +1395,11 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                 {/* Document Canvas */}
                 <div className="flex-1 overflow-hidden relative">
-                  {task.course_id && task.material_id ? (
+                  {materialLoading ? (
+                    <div className="flex-1 flex items-center justify-center p-8 h-full">
+                      <DocumentLoadingOrb isLoading={materialLoading} documentTitle={materialFileName || task.material_title} />
+                    </div>
+                  ) : task.course_id && task.material_id ? (
                     (() => {
                       const token = localStorage.getItem('access_token');
                       const ext = (materialFileName || task.material_title || '').split('.').pop()?.toLowerCase() || '';

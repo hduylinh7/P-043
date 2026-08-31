@@ -34,6 +34,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
+import { DocumentLoadingOrb } from '../components/common/DocumentLoadingOrb';
 import { materialService } from '../services/materialService';
 import { api, ChatSession, API_BASE_URL } from '../services/api';
 import { CourseMaterial } from '../types/material';
@@ -240,8 +241,8 @@ export const MaterialViewerPage: React.FC = () => {
     return (
       <div className={`flex h-screen ${isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
         <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Spin size="large" />
+        <div className="flex-1 flex items-center justify-center p-8">
+          <DocumentLoadingOrb isLoading={loading} documentTitle={currentMaterial?.title} />
         </div>
       </div>
     );
