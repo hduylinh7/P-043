@@ -32,7 +32,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer, cleanErrorMessage } from '../components/MarkdownRenderer';
-import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { api, ChatSession, ChatMessage, Citation } from '../services/api';
 import { courseService } from '../services/courseService';
 import { assignmentService } from '../services/assignmentService';
@@ -530,7 +529,7 @@ export const AIChatPage: React.FC = () => {
                             : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
+                        {isUser ? <UserOutlined className="text-xs" /> : <RobotOutlined className="text-xs text-white" />}
                       </div>
 
                       {/* Content Bubble */}
@@ -603,7 +602,7 @@ export const AIChatPage: React.FC = () => {
                   className="flex items-center gap-2.5 max-w-4xl mx-auto"
                 >
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center shadow-xs font-bold shrink-0">
-                    <BlockyRobotIcon size={16} className="animate-pulse text-white" />
+                    <RobotOutlined className="text-xs animate-pulse text-white" />
                   </div>
                   <div className="card-voxel-3d p-2.5 px-3.5 rounded-xl rounded-tl-none text-xs flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300 font-bold">
                     <Spin size="small" />

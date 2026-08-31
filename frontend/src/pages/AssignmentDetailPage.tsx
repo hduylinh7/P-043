@@ -224,7 +224,11 @@ export const AssignmentDetailPage: React.FC = () => {
   // Deadline relative badge
   const renderDeadlineBadge = (dueDateStr?: string | null) => {
     if (!dueDateStr) {
-      return <span className="text-xs font-medium text-slate-400">Không có hạn</span>;
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+          <ClockCircleOutlined /> Không có hạn
+        </span>
+      );
     }
 
     const now = dayjs();
@@ -235,7 +239,7 @@ export const AssignmentDetailPage: React.FC = () => {
     if (due.isBefore(now)) {
       const pastDays = Math.abs(diffDays);
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/30">
+        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border-2 border-rose-500/30 shadow-voxel-sm shadow-rose-900/20">
           <ExclamationCircleOutlined /> Quá hạn {pastDays > 0 ? `${pastDays} ngày` : 'hôm nay'}
         </span>
       );
@@ -243,23 +247,23 @@ export const AssignmentDetailPage: React.FC = () => {
 
     if (diffHours < 24) {
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-          <ClockCircleOutlined /> Hạn hôm nay ({due.format('HH:mm')})
+        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border-2 border-amber-500/30 shadow-voxel-sm shadow-amber-900/20">
+          <ClockCircleOutlined className="text-amber-500" /> Hạn hôm nay ({due.format('HH:mm')})
         </span>
       );
     }
 
     if (diffDays === 1) {
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500/30 shadow-voxel-sm shadow-emerald-900/20">
           <CalendarOutlined /> Hạn ngày mai ({due.format('HH:mm')})
         </span>
       );
     }
 
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-300 border border-slate-500/20">
-        <CalendarOutlined /> Còn {diffDays} ngày ({due.format('DD/MM/YYYY')})
+      <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 border-2 border-slate-200 dark:border-slate-700">
+        <CalendarOutlined className="text-emerald-500" /> Còn {diffDays} ngày ({due.format('DD/MM/YYYY')})
       </span>
     );
   };
@@ -269,22 +273,22 @@ export const AssignmentDetailPage: React.FC = () => {
     const st = statusStr || 'NOT_STARTED';
     if (st === 'COMPLETED' || st === 'SUBMITTED' || st === 'GRADED') {
       return (
-        <Tag color="success" className="font-extrabold px-3 py-1 text-xs rounded-full flex items-center gap-1 m-0">
+        <span className="badge-voxel-green text-xs font-extrabold">
           <CheckCircleOutlined /> Đã hoàn thành
-        </Tag>
+        </span>
       );
     }
     if (st === 'IN_PROGRESS') {
       return (
-        <Tag color="processing" className="font-extrabold px-3 py-1 text-xs rounded-full flex items-center gap-1 m-0">
+        <span className="badge-voxel-sky text-xs font-extrabold">
           <SyncOutlined spin /> Đang thực hiện
-        </Tag>
+        </span>
       );
     }
     return (
-      <Tag color="default" className="font-semibold px-3 py-1 text-xs rounded-full flex items-center gap-1 m-0">
+      <span className="badge-voxel-gold text-xs font-extrabold">
         <ClockCircleOutlined /> Cần làm
-      </Tag>
+      </span>
     );
   };
 
@@ -328,34 +332,32 @@ export const AssignmentDetailPage: React.FC = () => {
 
         {/* Loading State */}
         {loading ? (
-          <div className="py-24 text-center space-y-3">
+          <div className="py-24 text-center space-y-3 card-voxel-3d">
             <Spin size="large" />
-            <p className="text-xs text-slate-400">Đang tải thông tin bài tập...</p>
+            <p className="text-xs font-bold text-slate-400 mt-2">Đang tải thông tin bài tập...</p>
           </div>
         ) : error || !assignment ? (
-          <div className={`p-8 rounded-2xl border text-center space-y-4 ${
-            isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10'
-          }`}>
+          <div className="card-voxel-3d text-center p-8 space-y-4">
             <ExclamationCircleOutlined className="text-3xl text-rose-500" />
             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{error || 'Không tìm thấy bài tập'}</p>
-            <Button onClick={() => navigate('/assignments')}>Quay lại danh sách bài tập</Button>
+            <button onClick={() => navigate('/assignments')} className="btn-voxel-green text-xs px-4 py-2 mx-auto">
+              Quay lại danh sách bài tập
+            </button>
           </div>
         ) : (
           <>
             {/* Header Section */}
-            <div className={`p-6 rounded-2xl border ${
-              isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-            }`}>
+            <div className="card-voxel-3d p-6">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-extrabold px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="badge-voxel-green text-xs font-bold">
                     <BookOutlined className="mr-1" />
                     {assignment.course_code || assignment.course_title || 'Khóa học'}
                   </span>
                   {renderStatusTag(assignment.progress_status)}
                   {renderDeadlineBadge(assignment.due_date)}
                   {assignment.priority && (
-                    <span className={`text-xs font-extrabold px-2.5 py-1 rounded-full border ${
+                    <span className={`text-xs font-extrabold px-2.5 py-1 rounded-xl border-2 ${
                       (PRIORITY_CONFIG[assignment.priority] || PRIORITY_CONFIG.MEDIUM).badgeBg
                     }`}>
                       {(PRIORITY_CONFIG[assignment.priority] || PRIORITY_CONFIG.MEDIUM).label}
@@ -368,7 +370,7 @@ export const AssignmentDetailPage: React.FC = () => {
                 </h1>
 
                 {assignment.course_title && assignment.course_code && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium m-0">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold m-0">
                     Môn học: {assignment.course_title}
                   </p>
                 )}
@@ -380,9 +382,7 @@ export const AssignmentDetailPage: React.FC = () => {
               {/* Left Column (Main Content) */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Assignment Description Card */}
-                <div className={`p-6 rounded-2xl border space-y-4 ${
-                  isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-                }`}>
+                <div className="card-voxel-3d space-y-4 p-6">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 m-0 flex items-center gap-2">
                     <FileTextOutlined className="text-emerald-500" />
                     Mô tả bài tập
@@ -400,7 +400,7 @@ export const AssignmentDetailPage: React.FC = () => {
                   {assignment.attachment_file_name && (
                     <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
                       <h3 className="text-xs font-bold uppercase text-slate-400 mb-2">Tài liệu đính kèm</h3>
-                      <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+                      <div className="p-4 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <FileTextOutlined className="text-emerald-500 text-xl shrink-0" />
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
@@ -421,9 +421,7 @@ export const AssignmentDetailPage: React.FC = () => {
 
                 {/* Interactive Questions Section (Multiple Choice / Essay / Short Answer) */}
                 {questionsCount > 0 && (
-                  <div className={`p-6 rounded-2xl border space-y-5 ${
-                    isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-                  }`}>
+                  <div className="card-voxel-3d space-y-5 p-6">
                     <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                       <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 m-0 flex items-center gap-2">
                         <FormOutlined className="text-emerald-500 text-base" />
@@ -586,16 +584,14 @@ export const AssignmentDetailPage: React.FC = () => {
                 )}
 
                 {/* Submission Workspace Card */}
-                <div className={`p-6 rounded-2xl border space-y-4 ${
-                  isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-                }`}>
+                <div className="card-voxel-3d space-y-4 p-6">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 m-0 flex items-center gap-2">
                     <UploadOutlined className="text-emerald-500" />
                     Nộp bài làm
                   </h2>
 
                   {isSubmitted && mySubmission ? (
-                    <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
+                    <div className="p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 text-sm">
                           <CheckCircleOutlined className="text-base" /> Đã nộp bài
@@ -608,14 +604,14 @@ export const AssignmentDetailPage: React.FC = () => {
                       </div>
 
                       {mySubmission.score !== null && mySubmission.score !== undefined && (
-                        <div className="p-3 rounded-lg bg-emerald-500/20 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                        <div className="p-3 rounded-xl bg-emerald-500/20 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
                           <span>Kết quả chấm điểm:</span>
                           <span className="text-sm font-black">{mySubmission.score} điểm</span>
                         </div>
                       )}
 
                       {mySubmission.file_name && (
-                        <div className="flex items-center justify-between text-xs font-medium text-slate-700 dark:text-slate-300 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between text-xs font-medium text-slate-700 dark:text-slate-300 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                           <span className="truncate">📄 Tệp đã nộp: {mySubmission.file_name}</span>
                           <Button
                             size="small"
@@ -631,7 +627,7 @@ export const AssignmentDetailPage: React.FC = () => {
                       {mySubmission.submission_text && (
                         <div className="space-y-1">
                           <span className="text-[11px] font-bold text-slate-400 uppercase">Nội dung câu trả lời:</span>
-                          <div className="text-xs bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 leading-relaxed whitespace-pre-wrap">
+                          <div className="text-xs bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 leading-relaxed whitespace-pre-wrap">
                             {mySubmission.submission_text}
                           </div>
                         </div>
@@ -639,7 +635,7 @@ export const AssignmentDetailPage: React.FC = () => {
 
                       {/* Clean Human-Readable Instructor / System Feedback */}
                       {mySubmission.feedback && (
-                        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
+                        <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30 text-xs space-y-2">
                           <p className="font-extrabold text-amber-600 dark:text-amber-400 m-0 flex items-center gap-1.5 text-sm">
                             <MessageOutlined /> Nhận xét từ Giảng viên / Hệ thống:
                           </p>
@@ -720,9 +716,7 @@ export const AssignmentDetailPage: React.FC = () => {
 
               {/* Right Column (Information Panel) */}
               <div className="space-y-6">
-                <div className={`p-6 rounded-2xl border space-y-4 sticky top-6 ${
-                  isDark ? 'bg-minecraft-obsidianCard border-minecraft-obsidianBorder' : 'bg-white border-amber-900/10 shadow-sm'
-                }`}>
+                <div className="card-voxel-3d space-y-4 sticky top-6 p-6">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 m-0 border-b border-slate-200 dark:border-slate-800 pb-3">
                     Thông tin bài tập
                   </h3>
@@ -786,13 +780,13 @@ export const AssignmentDetailPage: React.FC = () => {
                   </div>
 
                   <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
-                    <Button
-                      block
-                      icon={<BookOutlined />}
+                    <button
                       onClick={() => navigate(`/courses/${assignment.course_id}`)}
+                      className="btn-voxel-green text-xs w-full py-2.5 flex items-center justify-center gap-2"
                     >
-                      Đến trang môn học
-                    </Button>
+                      <BookOutlined />
+                      <span>Đến trang môn học</span>
+                    </button>
                   </div>
                 </div>
               </div>

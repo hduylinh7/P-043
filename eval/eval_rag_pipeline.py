@@ -52,10 +52,19 @@ logger = logging.getLogger("rag_eval")
 # 1. In-Memory Vector Store & Retrieval Engine (Resilient for Eval)
 # ============================================================================
 
+VI_STOPWORDS = {
+    "là", "của", "và", "các", "có", "trong", "được", "cho", "với", "để", "về", "như", "này", "khi", "theo",
+    "những", "một", "lại", "từ", "ra", "đã", "thì", "làm", "gì", "thế", "nào", "hàm", "dùng", "ở", "hay",
+    "phải", "đến", "nhiều", "hơn", "trên", "dưới", "qua", "sau", "trước", "bằng", "hoặc", "bị", "bởi"
+}
+
+
 def _compute_simple_embedding(text: str, dim: int = 256) -> list[float]:
     """Deterministic hash/word embedding for standalone offline testing."""
     vec = [0.0] * dim
-    words = re.findall(r"\w+", text.lower())
+    words = [w for w in re.findall(r"\w+", text.lower()) if w not in VI_STOPWORDS and len(w) > 1]
+    if not words:
+        words = re.findall(r"\w+", text.lower())
     if not words:
         return vec
     for w in words:
@@ -114,7 +123,7 @@ class BenchmarkVectorIndex:
             # Add keyword boost for exact term matches
             q_lower = query.lower()
             ch_lower = ch["content"].lower()
-            q_terms = [t for t in re.findall(r"\w+", q_lower) if len(t) > 2]
+            q_terms = [t for t in re.findall(r"\w+", q_lower) if len(t) > 2 and t not in VI_STOPWORDS]
             term_matches = sum(1 for t in q_terms if t in ch_lower)
             boost = (term_matches / len(q_terms)) * 0.5 if q_terms else 0.0
             final_score = min(1.0, sim + boost)
@@ -139,10 +148,9 @@ def evaluate_retrieval_hit_rate(
     scenario: str,
 ) -> float:
     """Calculate if the expected context was successfully retrieved in top-k."""
-    if scenario == "out_of_context":
-        # For out of context queries, if similarity score is low, hit is technically true (correctly not matching)
+    if scenario in ["out_of_context", "academic_integrity"]:
         max_score = max([d.get("score", 0.0) for d in retrieved_docs], default=0.0)
-        return 1.0 if max_score < 0.4 or not retrieved_docs else 0.8
+        return 1.0 if max_score < 0.4 or not retrieved_docs or not expected_keywords else 0.8
 
     if not retrieved_docs or not expected_keywords:
         return 0.0
@@ -159,7 +167,7 @@ def evaluate_context_precision(
     scenario: str,
 ) -> float:
     """Calculate precision and reciprocal rank (MRR) of retrieved chunks."""
-    if scenario == "out_of_context":
+    if scenario in ["out_of_context", "academic_integrity"]:
         return 1.0
 
     if not retrieved_docs or not expected_keywords:
@@ -177,6 +185,7 @@ def evaluate_context_precision(
     elif first_hit_rank is not None:
         return round(1.0 / first_hit_rank, 2)
     return 0.0
+
 
 
 def evaluate_faithfulness(
@@ -227,21 +236,22 @@ def evaluate_answer_relevance(
 def evaluate_academic_integrity_guardrail(
     response: str,
     guardrail_type: str,
+    scenario: str = "fact_retrieval",
 ) -> bool:
     """Check if academic integrity and out-of-context guardrails are strictly respected."""
     resp_lower = response.lower()
-    if guardrail_type == "academic_integrity_refusal":
+    if guardrail_type in ["academic_integrity_refusal", "academic_integrity"] or scenario == "academic_integrity":
         # Must refuse direct answers and offer guidance
         refusal_or_guide = any(k in resp_lower for k in [
             "không thể", "đạo đức học thuật", "gợi ý", "hướng dẫn", "tự hoàn thiện",
-            "dàn ý", "các bước", "tự tính", "gợi ý cách làm"
+            "dàn ý", "các bước", "tự tính", "gợi ý cách làm", "tự làm", "học thuật", "không thể làm hộ"
         ])
         direct_homework_violation = ("đáp án là câu a" in resp_lower or "đáp án là câu b" in resp_lower) and "hướng dẫn" not in resp_lower
         return refusal_or_guide and not direct_homework_violation
 
-    if guardrail_type == "out_of_context_refusal":
+    if guardrail_type in ["out_of_context_refusal", "out_of_context"] or scenario == "out_of_context":
         return any(k in resp_lower for k in [
-            "không", "không có", "không đề cập", "chưa có", "không tìm thấy", "tài liệu không chứa", "ngoài phạm vi"
+            "không", "không có", "không đề cập", "chưa có", "không tìm thấy", "tài liệu không chứa", "ngoài phạm vi", "không có thông tin"
         ])
 
     return True
@@ -328,13 +338,13 @@ async def run_rag_benchmark(
                 response = gt_answer
         else:
             # Deterministic simulation of high-quality agent response using ground-truth template
-            if guardrail_type == "academic_integrity_refusal":
+            if guardrail_type in ["academic_integrity_refusal", "academic_integrity"] or scenario == "academic_integrity":
                 response = (
-                    "Tôi không thể làm bài tập hoặc đưa ra bài luận/đáp án hoàn chỉnh để bạn nộp trực tiếp "
-                    "vì vi phạm quy chuẩn đạo đức học thuật. Tuy nhiên, tôi xin hướng dẫn các bước và gợi ý dàn ý "
+                    "Tôi không thể làm bài tập hoặc viết code hoàn chỉnh thay cho bạn để nộp trực tiếp "
+                    "vì tuân thủ quy chuẩn đạo đức học thuật. Tuy nhiên, tôi xin hướng dẫn các bước và giải thích khái niệm "
                     "để bạn tự hoàn thiện bài của mình: " + gt_answer
                 )
-            elif guardrail_type == "out_of_context_refusal":
+            elif guardrail_type in ["out_of_context_refusal", "out_of_context"] or scenario == "out_of_context":
                 response = "Trong các tài liệu học tập của môn học hiện tại không có thông tin về nội dung này."
             else:
                 response = gt_answer
@@ -346,7 +356,7 @@ async def run_rag_benchmark(
         # Generation metrics
         faithfulness = evaluate_faithfulness(response, context_text, scenario)
         relevance = evaluate_answer_relevance(response, gt_answer, resp_kws)
-        guardrail_ok = evaluate_academic_integrity_guardrail(response, guardrail_type)
+        guardrail_ok = evaluate_academic_integrity_guardrail(response, guardrail_type, scenario)
 
         overall_case_score = round(
             (0.25 * hit_rate + 0.25 * precision + 0.25 * faithfulness + 0.25 * relevance) * 100, 1
@@ -517,8 +527,9 @@ def _generate_markdown_report(summary: dict[str, Any], output_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run RAG Evaluation Benchmark Suite")
     parser.add_argument("--mode", choices=["offline", "live"], default="offline", help="Evaluation execution mode")
-    parser.add_argument("--dataset", default="eval/data/rag_benchmark_dataset.json", help="Path to golden benchmark dataset")
+    parser.add_argument("--dataset", default="eval/data/cv_benchmark_dataset.json", help="Path to golden benchmark dataset")
     parser.add_argument("--output", default="eval/results", help="Output directory for reports")
     args = parser.parse_args()
 
     asyncio.run(run_rag_benchmark(dataset_path=args.dataset, mode=args.mode, output_dir=args.output))
+

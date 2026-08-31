@@ -56,7 +56,6 @@ dayjs.extend(duration);
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer, EntityContext } from '../components/MarkdownRenderer';
 import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
-import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -1487,7 +1486,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                   }`}>
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                      <BlockyRobotIcon size={18} className="text-white" />
+                      <RobotOutlined className="text-base text-white" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -1558,7 +1557,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                               : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                             }`}
                         >
-                          {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
+                          {isUser ? <UserOutlined className="text-xs" /> : <RobotOutlined className="text-xs text-white" />}
                         </div>
 
                         {/* Content Bubble */}
@@ -2134,7 +2133,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                 }`}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                    <BlockyRobotIcon size={18} className="text-white" />
+                    <RobotOutlined className="text-base text-white" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -2205,7 +2204,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                             : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                           }`}
                       >
-                        {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
+                        {isUser ? <UserOutlined className="text-xs" /> : <RobotOutlined className="text-xs text-white" />}
                       </div>
 
                       {/* Content Bubble */}
@@ -2476,7 +2475,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
         title={
           <div className="py-1 flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
-              <BlockyRobotIcon size={22} className="text-white" />
+              <RobotOutlined className="text-lg text-white" />
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white m-0">

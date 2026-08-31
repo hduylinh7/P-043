@@ -34,7 +34,6 @@ import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
-import { BlockyRobotIcon } from '../components/common/MinecraftIcons';
 import { materialService } from '../services/materialService';
 import { api, ChatSession, API_BASE_URL } from '../services/api';
 import { CourseMaterial } from '../types/material';
@@ -410,7 +409,7 @@ export const MaterialViewerPage: React.FC = () => {
               }`}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border border-orange-400/40 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                    <BlockyRobotIcon size={18} className="text-white" />
+                    <RobotOutlined className="text-base text-white" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -530,7 +529,7 @@ export const MaterialViewerPage: React.FC = () => {
                             : 'bg-gradient-to-tr from-[#EA580C] to-[#FB923C] border-orange-400/50 text-white font-bold'
                         }`}
                       >
-                        {isUser ? <UserOutlined className="text-xs" /> : <BlockyRobotIcon size={16} className="text-white" />}
+                        {isUser ? <UserOutlined className="text-xs" /> : <RobotOutlined className="text-xs text-white" />}
                       </div>
 
                       {/* Content Bubble */}
