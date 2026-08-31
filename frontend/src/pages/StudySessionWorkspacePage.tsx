@@ -211,117 +211,20 @@ export const StudySessionWorkspacePage: React.FC = () => {
   const [chatSessionId, setChatSessionId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Task & Companion Details
+  // Ref tracking to prevent duplicate fetching across tab switches
+  const materialLoadedRef = useRef<boolean>(false);
+  const assignmentLoadedRef = useRef<boolean>(false);
+
+  // 1. Fetch Core Task & Initialize Workspace Instantly (< 80ms)
   const fetchTaskDetails = async () => {
     if (!taskId) return;
     try {
       setLoading(true);
       const fetchedTask = await weeklyPlanService.getTaskById(taskId);
       setCompletedActivities(fetchedTask.completed_activities || []);
-
-      // Auto start session if status is todo
-      const isTodo = fetchedTask.status === 'todo' || fetchedTask.status === 'TODO';
-      if (isTodo) {
-        try {
-          const startedTask = await weeklyPlanService.startStudySession(taskId);
-          fetchedTask.status = startedTask.status;
-          fetchedTask.started_at = startedTask.started_at;
-        } catch (e) {
-          console.warn('Auto start study session failed:', e);
-        }
-      }
-
-      if (fetchedTask.course_id) {
-        let matId = fetchedTask.material_id;
-        if (!matId && fetchedTask.material_title && fetchedTask.material_title !== 'No matching course material was found.') {
-          try {
-            const courseMaterials = await materialService.getCourseMaterials(fetchedTask.course_id);
-            const matched = courseMaterials.find((m) =>
-              m.title.toLowerCase().includes(fetchedTask.material_title!.toLowerCase()) ||
-              m.file_name.toLowerCase().includes(fetchedTask.material_title!.toLowerCase()) ||
-              fetchedTask.material_title!.toLowerCase().includes(m.title.toLowerCase())
-            );
-            if (matched) {
-              matId = matched.id;
-              fetchedTask.material_id = matched.id;
-            }
-          } catch (e) {
-            console.warn('Course material lookup failed:', e);
-          }
-        }
-
-        if (matId) {
-          try {
-            const contentRes = await materialService.getMaterialContent(fetchedTask.course_id, matId);
-            setExtractedTextContent(contentRes.content);
-            if (contentRes.file_name) setMaterialFileName(contentRes.file_name);
-            if (contentRes.mime_type) setMaterialMimeType(contentRes.mime_type);
-          } catch (e) {
-            console.warn('Extracted text fetch failed:', e);
-          }
-        }
-      }
-
       setTask(fetchedTask);
 
-      // Fetch matching course assignment & quiz
-      let targetAssignId = fetchedTask.assignment_id || (fetchedTask.source_type === 'ASSIGNMENT' ? fetchedTask.source_id : null);
-      if (!targetAssignId && fetchedTask.course_id) {
-        try {
-          const courseAssignments = await assignmentService.getCourseAssignments(fetchedTask.course_id);
-          if (courseAssignments && courseAssignments.length > 0) {
-            const matched = courseAssignments.find(
-              (a) =>
-                a.title.toLowerCase().includes(fetchedTask.title.toLowerCase()) ||
-                (fetchedTask.topic && a.title.toLowerCase().includes(fetchedTask.topic.toLowerCase())) ||
-                fetchedTask.title.toLowerCase().includes(a.title.toLowerCase()) ||
-                a.title.toLowerCase().includes('trắc nghiệm') ||
-                a.title.toLowerCase().includes('tuần 2')
-            ) || courseAssignments[0];
-            if (matched) {
-              targetAssignId = matched.id;
-            }
-          }
-        } catch (e) {
-          console.warn('Failed finding course assignment:', e);
-        }
-      }
-
-      if (targetAssignId) {
-        try {
-          setLoadingAssignment(true);
-          const assignDetail = await assignmentService.getAssignmentDetail(targetAssignId);
-          setAssignment(assignDetail);
-          const sub = await assignmentService.getMySubmission(targetAssignId);
-          setMySubmission(sub);
-
-          if (sub?.submission_text && assignDetail.questions && assignDetail.questions.length > 0) {
-            const parsedAnswers: Record<string, string> = {};
-            const lines = sub.submission_text.split('\n');
-            assignDetail.questions.forEach((q, idx) => {
-              const prefix = `Câu ${idx + 1}:`;
-              const line = lines.find((l) => l.startsWith(prefix));
-              if (line) {
-                const ansContent = line.replace(prefix, '').trim();
-                if (q.question_type === 'MULTIPLE_CHOICE' && q.options) {
-                  const foundOpt = q.options.find((o) => o.option_text.trim() === ansContent || o.id === ansContent);
-                  if (foundOpt) parsedAnswers[q.id] = foundOpt.id;
-                  else parsedAnswers[q.id] = ansContent;
-                } else {
-                  parsedAnswers[q.id] = ansContent;
-                }
-              }
-            });
-            setStudentAnswers(parsedAnswers);
-          }
-        } catch (e) {
-          console.warn('Failed loading assignment details:', e);
-        } finally {
-          setLoadingAssignment(false);
-        }
-      }
-
-      // Calculate initial elapsed time if started
+      // Calculate initial elapsed time
       if (fetchedTask.started_at) {
         const startMs = new Date(fetchedTask.started_at).getTime();
         const endMs = fetchedTask.completed_at ? new Date(fetchedTask.completed_at).getTime() : Date.now();
@@ -329,7 +232,14 @@ export const StudySessionWorkspacePage: React.FC = () => {
         setElapsedSeconds(seconds);
       }
 
-      // Note: Companion Data is fetched in parallel in useEffect for faster response time
+      // Auto start study session in background if todo
+      const isTodo = fetchedTask.status === 'todo' || fetchedTask.status === 'TODO';
+      if (isTodo) {
+        weeklyPlanService.startStudySession(taskId).then((startedTask) => {
+          setTask((prev) => (prev ? { ...prev, status: startedTask.status, started_at: startedTask.started_at } : prev));
+        }).catch((e) => console.warn('Auto start study session failed:', e));
+      }
+
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tải thông tin buổi học.');
     } finally {
@@ -337,6 +247,95 @@ export const StudySessionWorkspacePage: React.FC = () => {
     }
   };
 
+  // 2. Lazy Load Course Material (Triggered ONLY when opening Material Tab)
+  const lazyLoadMaterial = async (targetTask?: PlanTask | null) => {
+    const currentTask = targetTask || task;
+    if (!currentTask?.course_id || materialLoadedRef.current) return;
+
+    try {
+      let matId = currentTask.material_id;
+      if (!matId && currentTask.material_title && currentTask.material_title !== 'No matching course material was found.') {
+        const courseMaterials = await materialService.getCourseMaterials(currentTask.course_id);
+        const matched = courseMaterials.find((m) =>
+          m.title.toLowerCase().includes(currentTask.material_title!.toLowerCase()) ||
+          m.file_name.toLowerCase().includes(currentTask.material_title!.toLowerCase()) ||
+          currentTask.material_title!.toLowerCase().includes(m.title.toLowerCase())
+        );
+        if (matched) matId = matched.id;
+      }
+
+      if (matId) {
+        const contentRes = await materialService.getMaterialContent(currentTask.course_id, matId);
+        setExtractedTextContent(contentRes.content);
+        if (contentRes.file_name) setMaterialFileName(contentRes.file_name);
+        if (contentRes.mime_type) setMaterialMimeType(contentRes.mime_type);
+        materialLoadedRef.current = true;
+      }
+    } catch (e) {
+      console.warn('Lazy loading material failed:', e);
+    }
+  };
+
+  // 3. Lazy Load Assignment & Quiz (Triggered ONLY when opening Assignment Tab)
+  const lazyLoadAssignment = async (targetTask?: PlanTask | null) => {
+    const currentTask = targetTask || task;
+    if (!currentTask?.course_id || assignmentLoadedRef.current || loadingAssignment) return;
+
+    try {
+      setLoadingAssignment(true);
+      let targetAssignId = currentTask.assignment_id || (currentTask.source_type === 'ASSIGNMENT' ? currentTask.source_id : null);
+      if (!targetAssignId && currentTask.course_id) {
+        const courseAssignments = await assignmentService.getCourseAssignments(currentTask.course_id);
+        if (courseAssignments && courseAssignments.length > 0) {
+          const matched = courseAssignments.find(
+            (a) =>
+              a.title.toLowerCase().includes(currentTask.title.toLowerCase()) ||
+              (currentTask.topic && a.title.toLowerCase().includes(currentTask.topic.toLowerCase())) ||
+              currentTask.title.toLowerCase().includes(a.title.toLowerCase()) ||
+              a.title.toLowerCase().includes('trắc nghiệm') ||
+              a.title.toLowerCase().includes('tuần 2')
+          ) || courseAssignments[0];
+          if (matched) targetAssignId = matched.id;
+        }
+      }
+
+      if (targetAssignId) {
+        const [assignDetail, sub] = await Promise.all([
+          assignmentService.getAssignmentDetail(targetAssignId),
+          assignmentService.getMySubmission(targetAssignId).catch(() => null),
+        ]);
+        setAssignment(assignDetail);
+        setMySubmission(sub);
+
+        if (sub?.submission_text && assignDetail.questions && assignDetail.questions.length > 0) {
+          const parsedAnswers: Record<string, string> = {};
+          const lines = sub.submission_text.split('\n');
+          assignDetail.questions.forEach((q, idx) => {
+            const prefix = `Câu ${idx + 1}:`;
+            const line = lines.find((l) => l.startsWith(prefix));
+            if (line) {
+              const ansContent = line.replace(prefix, '').trim();
+              if (q.question_type === 'MULTIPLE_CHOICE' && q.options) {
+                const foundOpt = q.options.find((o) => o.option_text.trim() === ansContent || o.id === ansContent);
+                if (foundOpt) parsedAnswers[q.id] = foundOpt.id;
+                else parsedAnswers[q.id] = ansContent;
+              } else {
+                parsedAnswers[q.id] = ansContent;
+              }
+            }
+          });
+          setStudentAnswers(parsedAnswers);
+        }
+        assignmentLoadedRef.current = true;
+      }
+    } catch (e) {
+      console.warn('Lazy loading assignment details failed:', e);
+    } finally {
+      setLoadingAssignment(false);
+    }
+  };
+
+  // 4. Fetch Companion Data (AI Study Guide, Objectives, Quick Self Check)
   const fetchCompanionData = async () => {
     if (!taskId) return;
     try {
@@ -353,10 +352,23 @@ export const StudySessionWorkspacePage: React.FC = () => {
     }
   };
 
+  // Mount: Fetch Core Task & Companion Data
   useEffect(() => {
     fetchTaskDetails();
     fetchCompanionData();
   }, [taskId]);
+
+  // Tab Switch: Trigger Lazy Loading for Material or Assignment tabs only when active
+  useEffect(() => {
+    if (task) {
+      if (knowledgeTab === 'material' || activeTab === 'material') {
+        lazyLoadMaterial(task);
+      }
+      if (activeTab === 'assignment') {
+        lazyLoadAssignment(task);
+      }
+    }
+  }, [knowledgeTab, activeTab, task?.id]);
 
   // Timer Tick Effect (only if session is in_progress)
   useEffect(() => {
