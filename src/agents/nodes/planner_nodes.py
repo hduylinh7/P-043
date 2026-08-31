@@ -458,7 +458,13 @@ def try_match_target_course(user_request: str, context_dict: dict[str, Any]) -> 
 
 
 def filter_context_to_course(context_dict: dict[str, Any], course_id: str) -> dict[str, Any]:
-    """Trims context_dict lists containing course_id down to only the entries belonging to that course_id."""
+    """Trims context_dict lists containing course_id down to only the entries belonging to that course_id.
+
+    NOTE: `fixed_course_schedules` is intentionally NOT filtered by course_id.
+    Even when planning for a specific course, the LLM must still see ALL fixed class
+    schedules (from every enrolled course) so it can avoid scheduling study sessions
+    during any occupied class hour.
+    """
     if not context_dict or not course_id:
         return context_dict
 
@@ -471,6 +477,10 @@ def filter_context_to_course(context_dict: dict[str, Any], course_id: str) -> di
                     item for item in val
                     if isinstance(item, dict) and (item.get("id") == course_id or item.get("course_id") == course_id)
                 ]
+            elif key == "fixed_course_schedules":
+                # FIX (Lỗi 3): Keep ALL fixed schedules regardless of target course so the
+                # LLM never places a study session during another course's class time.
+                pass
             else:
                 filtered[key] = [
                     item for item in val
@@ -697,10 +707,17 @@ def validate_scheduled_before_deadline(
     return decision
 
 
-def allocate_future_slots(tasks: list[dict[str, Any]], week_start: str = "") -> list[dict[str, Any]]:
+def allocate_future_slots(
+    tasks: list[dict[str, Any]],
+    week_start: str = "",
+    fixed_schedules: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     """
     Ensures ALL tasks are scheduled in non-overlapping, strictly FUTURE time slots
     relative to current local time (UTC+7).
+
+    FIX (Lỗi 1): Now accepts `fixed_schedules` (list of FixedCourseScheduleDTO dicts)
+    and blocks those time windows so study tasks are never placed during class time.
     """
     if not isinstance(tasks, list) or not tasks:
         return tasks
@@ -719,6 +736,27 @@ def allocate_future_slots(tasks: list[dict[str, Any]], week_start: str = "") -> 
         ("20:30", "22:00"),
     ]
 
+    # Build a map: weekday_index -> list of (start_min, end_min) occupied by fixed class schedules
+    fixed_occupied_by_weekday: dict[int, list[tuple[int, int]]] = {}
+    for fs in (fixed_schedules or []):
+        if not isinstance(fs, dict):
+            # Support both dict and object-style entries
+            day_raw = getattr(fs, "day_of_week", None)
+            s_time = getattr(fs, "start_time", None)
+            e_time = getattr(fs, "end_time", None)
+        else:
+            day_raw = fs.get("day_of_week")
+            s_time = fs.get("start_time")
+            e_time = fs.get("end_time")
+        day_idx = normalize_day_of_week_index(day_raw)
+        if day_idx is not None and s_time and e_time:
+            try:
+                fs_s_min = parse_time_to_minutes(s_time)
+                fs_e_min = parse_time_to_minutes(e_time)
+                fixed_occupied_by_weekday.setdefault(day_idx, []).append((fs_s_min, fs_e_min))
+            except Exception:
+                pass
+
     used_slots_by_date: dict[str, list[tuple[int, int]]] = {}
 
     def is_slot_available(date_str: str, s_min: int, e_min: int) -> bool:
@@ -728,6 +766,11 @@ def allocate_future_slots(tasks: list[dict[str, Any]], week_start: str = "") -> 
                 return False
             if d_obj == today_date and s_min <= now_minutes:
                 return False
+            # FIX: block slots that overlap with any fixed class schedule on that weekday
+            weekday = d_obj.weekday()
+            for fs_s, fs_e in fixed_occupied_by_weekday.get(weekday, []):
+                if s_min < fs_e and e_min > fs_s:
+                    return False
         except Exception:
             return False
 
@@ -922,8 +965,10 @@ PLANNER CONTEXT (Real database context - Assignments, Courses, Goals, Materials)
         decision = validate_scheduled_before_deadline(decision, context_dict, week_start, user_request)
 
         # Post-LLM validation 3: allocate strictly future non-overlapping time slots
+        # FIX (Lỗi 1): pass fixed_course_schedules so class hours are blocked during allocation
         if isinstance(decision, dict) and "tasks" in decision and isinstance(decision["tasks"], list):
-            decision["tasks"] = allocate_future_slots(decision["tasks"], week_start)
+            raw_fixed = context_dict.get("fixed_course_schedules", [])
+            decision["tasks"] = allocate_future_slots(decision["tasks"], week_start, fixed_schedules=raw_fixed)
 
         return {"plan_decision": decision}
     except Exception as e:
@@ -1169,6 +1214,28 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
 
     # 2. Track existing tasks & fixed university class schedules to avoid conflicts
     existing_tasks: list[dict[str, Any]] = []
+
+    # FIX (Lỗi 2): Load fixed schedules FIRST in a separate try/except so that even
+    # if fetching existing plan tasks fails, the class-hour blocks are never silently lost.
+    try:
+        context_for_fixed = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+        start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
+        for idx in range(7):
+            d_curr = start_d + timedelta(days=idx)
+            d_str = d_curr.strftime("%Y-%m-%d")
+            d_day_idx = d_curr.weekday()
+            for fs in (context_for_fixed.fixed_course_schedules or []):
+                fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
+                if fs_day_idx is not None and fs_day_idx == d_day_idx:
+                    existing_tasks.append({
+                        "title": f"Lịch học cố định: {getattr(fs, 'course_name', '')}",
+                        "scheduled_date": d_str,
+                        "start_time": fs.start_time,
+                        "end_time": fs.end_time,
+                    })
+    except Exception as e:
+        logger.warning(f"Could not load fixed class schedules for conflict checking: {e}")
+
     try:
         plan_tasks = await PlannerTools.get_weekly_plan_tasks(db, current_user, weekly_plan_id)
         for pt in plan_tasks:
@@ -1179,25 +1246,8 @@ async def execute_planner_tools_node(state: PlannerAgentState) -> dict[str, Any]
                 "start_time": pt.start_time,
                 "end_time": pt.end_time,
             })
-
-        # Load fixed class schedules and add as occupied slots
-        context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
-        start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
-        for idx in range(7):
-            d_curr = start_d + timedelta(days=idx)
-            d_str = d_curr.strftime("%Y-%m-%d")
-            d_day_idx = d_curr.weekday()
-            for fs in (context.fixed_course_schedules or []):
-                fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
-                if fs_day_idx is not None and fs_day_idx == d_day_idx:
-                    existing_tasks.append({
-                        "title": f"Lịch học cố định: {fs.course_name}",
-                        "scheduled_date": d_str,
-                        "start_time": fs.start_time,
-                        "end_time": fs.end_time,
-                    })
     except Exception as e:
-        logger.warning(f"Could not load existing tasks/fixed schedules for conflict checking: {e}")
+        logger.warning(f"Could not load existing plan tasks for conflict checking: {e}")
 
     user_request = state.get("user_request")
     req_dates, req_start, req_end, req_duration = parse_user_time_and_days(user_request, week_start)
@@ -1314,6 +1364,27 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
     existing_tasks: list[dict[str, Any]] = []
 
     if db and current_user and week_start:
+        # FIX (Lỗi 2): Load fixed schedules FIRST in a separate try/except so class-hour
+        # blocks are preserved even if fetching existing plan tasks raises an exception.
+        try:
+            context_for_fixed = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
+            start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
+            for idx in range(7):
+                d_curr = start_d + timedelta(days=idx)
+                d_str = d_curr.strftime("%Y-%m-%d")
+                d_day_idx = d_curr.weekday()
+                for fs in (context_for_fixed.fixed_course_schedules or []):
+                    fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
+                    if fs_day_idx is not None and fs_day_idx == d_day_idx:
+                        existing_tasks.append({
+                            "title": f"Lịch học cố định: {getattr(fs, 'course_name', '')}",
+                            "scheduled_date": d_str,
+                            "start_time": fs.start_time,
+                            "end_time": fs.end_time,
+                        })
+        except Exception as e:
+            logger.warning(f"Could not load fixed class schedules for preview conflict checking: {e}")
+
         try:
             # Check existing plan tasks
             plan = await PlannerTools.get_current_weekly_plan(db, current_user, week_start=week_start)
@@ -1327,25 +1398,8 @@ async def resolve_proposed_tasks_for_preview(state: PlannerAgentState) -> dict[s
                         "start_time": pt.start_time,
                         "end_time": pt.end_time,
                     })
-
-            # Check fixed course schedules
-            context = await PlannerTools.get_planner_context(db, current_user, week_start=week_start)
-            start_d = datetime.strptime(week_start, "%Y-%m-%d").date()
-            for idx in range(7):
-                d_curr = start_d + timedelta(days=idx)
-                d_str = d_curr.strftime("%Y-%m-%d")
-                d_day_idx = d_curr.weekday()
-                for fs in (context.fixed_course_schedules or []):
-                    fs_day_idx = normalize_day_of_week_index(getattr(fs, "day_of_week", None))
-                    if fs_day_idx is not None and fs_day_idx == d_day_idx:
-                        existing_tasks.append({
-                            "title": f"Lịch học cố định: {fs.course_name}",
-                            "scheduled_date": d_str,
-                            "start_time": fs.start_time,
-                            "end_time": fs.end_time,
-                        })
         except Exception as e:
-            logger.warning(f"Could not load existing schedule for preview conflict checking: {e}")
+            logger.warning(f"Could not load existing plan tasks for preview conflict checking: {e}")
 
     user_request = state.get("user_request")
     req_dates, req_start, req_end, req_duration = parse_user_time_and_days(user_request, week_start)

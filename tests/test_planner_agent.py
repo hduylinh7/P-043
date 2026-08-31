@@ -115,34 +115,48 @@ async def test_planner_agent_creates_weekly_plan_and_tasks(async_session: AsyncS
 
 @pytest.mark.asyncio
 async def test_planner_agent_respects_deadlines(async_session: AsyncSession):
-    """4. Test that Planner Agent schedules tasks before assignment due dates."""
+    """4. Test that Planner Agent schedules tasks before assignment due dates.
+
+    The due date is set in the future relative to now so that the
+    `ensure_future_task_time` guard does not bump the scheduled date, and the
+    `validate_scheduled_before_deadline` guard does not reject it.
+    """
+    now_utc = datetime.now(timezone.utc)
+    # Use next Monday as week_start so all dates are in the future.
+    days_until_monday = (7 - now_utc.weekday()) % 7 or 7
+    week_start_dt = (now_utc + timedelta(days=days_until_monday)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    study_day = week_start_dt + timedelta(days=2)   # 2 days into the week
+    due_date = week_start_dt + timedelta(days=3, hours=23, minutes=59)  # day 3
+    week_start_str = week_start_dt.strftime("%Y-%m-%d")
+    study_day_str = study_day.strftime("%Y-%m-%d")
+
     user = User(id="s4", email="s4@test.com", full_name="Student 4")
     course = Course(id="c4", code="CS101", name="CS Basics")
     enrollment = Enrollment(id="e4", user_id="s4", course_id="c4", role=EnrollmentRoleEnum.STUDENT)
-    due_date = datetime(2026, 8, 14, 23, 59, tzinfo=timezone.utc)
     ass = Assignment(id="a4", course_id="c4", title="Lab 4", due_at=due_date, status="ACTIVE")
 
     async_session.add_all([user, course, enrollment, ass])
     await async_session.commit()
 
     user_ctx = make_student("s4")
-    req = PlannerAgentRequest(week_start="2026-08-10", request="Plan assignments", auto_apply=True)
+    req = PlannerAgentRequest(week_start=week_start_str, request="Plan assignments", auto_apply=True)
 
-    # Mock decision schedules task on 2026-08-13 (before due date 2026-08-14)
-    llm_json = """{
-        "plan_title": "Plan Aug 10-16",
+    llm_json = f"""{{
+        "plan_title": "Plan",
         "summary": "Scheduled before deadline",
         "tasks": [
-            {
+            {{
                 "title": "Prepare Lab 4",
-                "scheduled_date": "2026-08-13",
-                "start_time": "14:00",
-                "end_time": "16:00",
+                "scheduled_date": "{study_day_str}",
+                "start_time": "19:00",
+                "end_time": "20:30",
                 "source_type": "ASSIGNMENT",
                 "source_id": "a4"
-            }
+            }}
         ]
-    }"""
+    }}"""
 
     with patch("src.agents.nodes.planner_nodes.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
@@ -151,7 +165,9 @@ async def test_planner_agent_respects_deadlines(async_session: AsyncSession):
 
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
         assert len(res.created_tasks) == 1
-        assert res.created_tasks[0].scheduled_date == "2026-08-13"
+        # Task must be scheduled BEFORE the assignment deadline
+        task_date = res.created_tasks[0].scheduled_date
+        assert task_date < due_date.strftime("%Y-%m-%d")
 
 
 @pytest.mark.asyncio
@@ -248,33 +264,46 @@ async def test_planner_agent_no_personal_tasks(async_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_tool_failure_handling(async_session: AsyncSession):
-    """11. Test that Planner Agent handles partial tool failures gracefully in auto_apply mode."""
+    """11. Test that Planner Agent handles partial tool failures gracefully in auto_apply mode.
+
+    Tasks with inverted time ranges (start > end) pass through allocate_future_slots
+    unchanged but are rejected by DB-level validation and land in skipped_items.
+    The valid task must still be created successfully.
+    """
+    now_utc = datetime.now(timezone.utc)
+    days_until_monday = (7 - now_utc.weekday()) % 7 or 7
+    week_start_dt = now_utc + timedelta(days=days_until_monday)
+    week_start_str = week_start_dt.strftime("%Y-%m-%d")
+    day1 = (week_start_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    day2 = (week_start_dt + timedelta(days=2)).strftime("%Y-%m-%d")
+
     user = User(id="s11", email="s11@test.com", full_name="Student 11")
     async_session.add(user)
     await async_session.commit()
 
     user_ctx = make_student("s11")
-    req = PlannerAgentRequest(week_start="2026-08-10", auto_apply=True)
+    req = PlannerAgentRequest(week_start=week_start_str, auto_apply=True)
 
-    # One valid task and one invalid scheduled_date (out of range)
-    llm_json = """{
+    # One valid task and one with an inverted time range (start > end).
+    # The inverted-time task is rejected by DB validation and lands in skipped_items.
+    llm_json = f"""{{
         "plan_title": "Plan W33",
         "summary": "Partial failure test",
         "tasks": [
-            {
+            {{
                 "title": "Good Task",
-                "scheduled_date": "2026-08-11",
-                "start_time": "10:00",
-                "end_time": "11:00"
-            },
-            {
-                "title": "Invalid Time Task",
-                "scheduled_date": "2026-08-12",
+                "scheduled_date": "{day1}",
+                "start_time": "19:00",
+                "end_time": "20:30"
+            }},
+            {{
+                "title": "Inverted Time Task",
+                "scheduled_date": "{day2}",
                 "start_time": "12:00",
                 "end_time": "10:00"
-            }
+            }}
         ]
-    }"""
+    }}"""
 
     with patch("src.agents.nodes.planner_nodes.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
@@ -282,10 +311,11 @@ async def test_tool_failure_handling(async_session: AsyncSession):
         mock_get_llm.return_value = mock_llm
 
         res = await PlannerAgentService.generate_plan(async_session, user_ctx, req)
+        # Good task is created; inverted-time task is rejected by DB and skipped
         assert len(res.created_tasks) == 1
         assert res.created_tasks[0].title == "Good Task"
         assert len(res.skipped_items) == 1
-        assert res.skipped_items[0]["title"] == "Invalid Time Task"
+        assert res.skipped_items[0]["title"] == "Inverted Time Task"
 
 
 @pytest.mark.asyncio
