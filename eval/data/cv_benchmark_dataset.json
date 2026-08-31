@@ -1,0 +1,803 @@
+{
+  "benchmark_metadata": {
+    "version": "1.0.0",
+    "project": "P-043 AI20K Learning Companion",
+    "course": "Thị Giác Máy Tính (Computer Vision)",
+    "course_id": "CS_COMPUTER_VISION",
+    "evaluation_target": "RAG Pipeline — Q&A trên tài liệu bài giảng môn TGMT",
+    "total_test_cases": 30,
+    "scenarios": [
+      "fact_retrieval",
+      "out_of_context",
+      "academic_integrity"
+    ],
+    "notes": "Ground truth context được trích từ slide bài giảng TGMT thực tế. Bổ sung thêm test case sau mỗi bài giảng mới."
+  },
+  "test_cases": [
+    {
+      "id": "TC_CV_01",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa Thị giác máy tính và mục tiêu nghiên cứu",
+      "query": "Thị giác máy tính là gì?",
+      "context_keywords": [
+        "helping computers to see",
+        "nhận dạng",
+        "xử lý",
+        "video",
+        "hình ảnh"
+      ],
+      "response_keywords": [
+        "helping computers to see",
+        "nhận dạng",
+        "xử lý",
+        "video",
+        "hình ảnh"
+      ],
+      "ground_truth_context": "Thị giác máy tính là lĩnh vực nghiên cứu tập trung vào vấn đề \"helping computers to see\". Computers are able to recognize and process the objects from the video/images as a human can able to recognize. Thị giác máy tính đang là một trong những lĩnh vực hot nhất của khoa học máy tính và nghiên cứu trí tuệ nhân tạo. Về mặt tổng thể chúng vẫn chưa thể cạnh tranh với sức mạnh thị giác của mắt người, đã có rất nhiều ứng dụng hữu ích được tạo ra để khai thác tiềm năng của chúng. Trong một số lĩnh vực hẹp, nhiều hệ thống học sâu (DL) dựa trên thị giác máy tính đã có độ chính xác bằng hoặc vượt con người.",
+      "ground_truth_answer": "Thị giác máy tính là lĩnh vực nghiên cứu tập trung vào vấn đề giúp máy tính có khả năng \"nhìn\" (helping computers to see) — tức là nhận dạng và xử lý các đối tượng từ video/hình ảnh giống như cách con người nhận dạng. Đây là một trong những lĩnh vực hot nhất của khoa học máy tính và AI. Trong một số lĩnh vực hẹp, các hệ thống học sâu dựa trên TGMT đã đạt độ chính xác bằng hoặc vượt con người.",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide 7"
+    },
+    {
+      "id": "TC_CV_02",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Tính chất đa ngành của Thị giác máy tính và vị trí trong cây AI",
+      "query": "Thị giác máy tính là lĩnh vực thuộc ngành nào và liên quan đến những lĩnh vực nào?",
+      "context_keywords": [
+        "đa ngành",
+        "đa lĩnh vực",
+        "Computer Science",
+        "Mathematics",
+        "Physics",
+        "Neuroscience",
+        "Artificial Intelligence",
+        "Machine Learning"
+      ],
+      "response_keywords": [
+        "đa ngành",
+        "khoa học máy tính",
+        "trí tuệ nhân tạo",
+        "học máy"
+      ],
+      "ground_truth_context": "Thị giác máy tính là một lĩnh vực đa ngành - đa lĩnh vực (interdisciplinary field), sử dụng các phương pháp chuyên biệt và các thuật toán phức tạp trong xử lý. Lĩnh vực này liên quan đến: Computer Science (Graphs, Algorithms, Machine Learning, Speech, NLP, Image Processing, Systems Architecture), Physics (Optics, Solid-State Physics), Mathematics, Neuroscience, Psychology, Engineering, Biology. Trong cây phân cấp AI: Artificial Intelligence → Machine Learning → Computer Vision.",
+      "ground_truth_answer": "Thị giác máy tính là lĩnh vực đa ngành - đa lĩnh vực (interdisciplinary field), nằm trong nhánh Trí tuệ nhân tạo (AI) → Học máy (Machine Learning). Nó kết hợp kiến thức từ nhiều lĩnh vực: Khoa học máy tính (thuật toán, ML, xử lý ảnh), Toán học, Vật lý (Quang học), Khoa học thần kinh, Tâm lý học, Kỹ thuật và Sinh học.",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide 8"
+    },
+    {
+      "id": "TC_CV_03",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Phân biệt định nghĩa Xử lý ảnh và Thị giác máy tính",
+      "query": "Xử lý ảnh (Image Processing) khác gì với Thị giác máy tính (Computer Vision)?",
+      "context_keywords": [
+        "xử lý ảnh",
+        "image processing",
+        "tạo ra ảnh mới",
+        "hiểu nội dung",
+        "hiểu những gì máy móc nhìn thấy"
+      ],
+      "response_keywords": [
+        "xử lý ảnh",
+        "thị giác máy tính",
+        "tạo ra ảnh mới",
+        "hiểu nội dung",
+        "tiền xử lý"
+      ],
+      "ground_truth_context": "Xử lý ảnh (Image processing): là quá trình tạo ra ảnh mới từ ảnh có sẵn, VD: tăng độ sáng, cắt ảnh, khử nhiễu,... không tập trung vào việc hiểu nội dung của bức ảnh. Thị giác máy tính (Computer vision): tập trung vào việc hiểu những gì máy móc nhìn thấy, sử dụng xử lý ảnh để xử lý dữ liệu thô (tiền xử lý dữ liệu ảnh). Image Processing — Focuses on processing the image. Both input and output are images. Computer Vision — Focuses on making sense of what a machine sees. The system inputs an image and outputs task-specific knowledge.",
+      "ground_truth_answer": "Xử lý ảnh (Image Processing) là quá trình tạo ra ảnh mới từ ảnh có sẵn (tăng độ sáng, cắt ảnh, khử nhiễu...) — cả đầu vào và đầu ra đều là ảnh, không tập trung vào việc hiểu nội dung ảnh. Thị giác máy tính (Computer Vision) thì tập trung vào việc hiểu những gì máy móc nhìn thấy — đầu vào là ảnh nhưng đầu ra là tri thức cụ thể theo nhiệm vụ (nhãn, vị trí, hành động...). Nói cách khác, Xử lý ảnh là công cụ tiền xử lý phục vụ cho Thị giác máy tính.",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide 14-15"
+    },
+    {
+      "id": "TC_CV_04",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Ứng dụng cụ thể của Xử lý ảnh và Thị giác máy tính",
+      "query": "Kể tên các ứng dụng của Xử lý ảnh và Thị giác máy tính.",
+      "context_keywords": [
+        "smoothing",
+        "sharpening",
+        "watermarking",
+        "compression",
+        "labelling",
+        "identification",
+        "measurement"
+      ],
+      "response_keywords": [
+        "làm mịn",
+        "nén ảnh",
+        "nhận dạng",
+        "đo lường",
+        "gán nhãn"
+      ],
+      "ground_truth_context": "Image Processing applications: Smoothing & Sharpening (làm mịn và tăng độ sắc nét), Change Contrast & Brightness (thay đổi độ tương phản và độ sáng), Highlight Edges & Regions (làm nổi bật cạnh và vùng), Watermarking (đóng dấu bản quyền), Compression (nén ảnh), Calibration (hiệu chỉnh). Computer Vision applications: Labelling (gán nhãn), Position (xác định vị trí), Identification (nhận dạng), Measurement (đo lường), Action (nhận dạng hành động), Projection (chiếu).",
+      "ground_truth_answer": "Ứng dụng của Xử lý ảnh (Image Processing): làm mịn & tăng sắc nét, thay đổi độ tương phản & độ sáng, làm nổi bật cạnh & vùng, đóng dấu bản quyền (watermarking), nén ảnh, hiệu chỉnh (calibration). Ứng dụng của Thị giác máy tính (Computer Vision): gán nhãn (labelling), xác định vị trí, nhận dạng đối tượng (identification), đo lường (measurement), nhận dạng hành động (action), chiếu (projection).",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide 15"
+    },
+    {
+      "id": "TC_CV_05",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Liệt kê 7 ứng dụng cụ thể của Thị giác máy tính theo sơ đồ bài giảng",
+      "query": "Thị giác máy tính có những ứng dụng cụ thể nào?",
+      "context_keywords": [
+        "Face Recognition",
+        "Object Detection",
+        "Image Classification",
+        "Segmentation",
+        "Emotion Detection",
+        "Object Tracking",
+        "Video Analytics"
+      ],
+      "response_keywords": [
+        "nhận dạng khuôn mặt",
+        "phát hiện đối tượng",
+        "phân loại ảnh",
+        "phân đoạn",
+        "nhận dạng cảm xúc"
+      ],
+      "ground_truth_context": "Ứng dụng của thị giác máy tính (Computer Vision) bao gồm: Face Recognition (nhận dạng khuôn mặt), Image Classification (phân loại ảnh), Object Detection (phát hiện đối tượng), Emotion Detection (nhận dạng cảm xúc), Object Tracking (theo dõi đối tượng), Video Analytics (phân tích video), Segmentation (phân đoạn ảnh). Các ứng dụng này được thực hiện qua 3 giai đoạn: Acquisition (thu thập dữ liệu ảnh), Process (xử lý), Analysis (phân tích).",
+      "ground_truth_answer": "Thị giác máy tính có 7 ứng dụng chính: (1) Face Recognition — nhận dạng khuôn mặt, (2) Image Classification — phân loại ảnh, (3) Object Detection — phát hiện đối tượng, (4) Emotion Detection — nhận dạng cảm xúc, (5) Object Tracking — theo dõi đối tượng, (6) Video Analytics — phân tích video, (7) Segmentation — phân đoạn ảnh. Các ứng dụng này đều trải qua 3 giai đoạn: Thu thập (Acquisition) → Xử lý (Process) → Phân tích (Analysis).",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide 19",
+      "note": "Slide dạng sơ đồ — ground_truth_context dựa trên text labels RAG extract được từ PPTX"
+    },
+    {
+      "id": "TC_CV_06",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa và lịch sử thư viện OpenCV",
+      "query": "OpenCV là gì và được ra mắt vào năm nào?",
+      "context_keywords": [
+        "Open Source Computer Vision",
+        "mã nguồn mở",
+        "1999",
+        "học thuật",
+        "thương mại"
+      ],
+      "response_keywords": [
+        "Open Source Computer Vision",
+        "mã nguồn mở",
+        "1999",
+        "miễn phí"
+      ],
+      "ground_truth_context": "OpenCV (Open Source Computer Vision) là một trong những thư viện mã nguồn mở hàng đầu cho thị giác máy tính, machine learning, xử lý ảnh. Chính thức được ra mắt đầu tiên vào năm 1999, OpenCV là thư viện mã nguồn mở miễn phí cho cả học thuật và thương mại.",
+      "ground_truth_answer": "OpenCV (Open Source Computer Vision) là một trong những thư viện mã nguồn mở hàng đầu cho thị giác máy tính, machine learning và xử lý ảnh. Thư viện này được ra mắt lần đầu vào năm 1999, hoàn toàn miễn phí cho cả mục đích học thuật lẫn thương mại.",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide OpenCV"
+    },
+    {
+      "id": "TC_CV_07",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Đặc điểm kỹ thuật của OpenCV: nền tảng, ngôn ngữ, hiệu năng",
+      "query": "Thư viện OpenCV hỗ trợ những nền tảng và ngôn ngữ lập trình nào? Tại sao tốc độ xử lý nhanh?",
+      "context_keywords": [
+        "Windows", "Linux", "Mac OS", "iOS", "Android",
+        "C/C++", "Python", "Java",
+        "thời gian thực"
+      ],
+      "response_keywords": [
+        "Windows", "Linux",
+        "Python", "Java",
+        "C/C++", "thời gian thực"
+      ],
+      "ground_truth_context": "OpenCV hỗ trợ đa nền tảng gồm Windows, Linux, Mac OS, iOS và Android. Được viết bằng C/C++ nên tốc độ tính toán rất nhanh, có thể sử dụng với các ứng dụng thời gian thực. Hỗ trợ ngôn ngữ lập trình C/ C++, Python và Java.",
+      "ground_truth_answer": "OpenCV hỗ trợ đa nền tảng: Windows, Linux, Mac OS, iOS và Android. Thư viện hỗ trợ các ngôn ngữ lập trình: C/C++, Python và Java. Tốc độ xử lý nhanh là do OpenCV được viết bằng C/C++ — ngôn ngữ biên dịch có hiệu năng cao, cho phép sử dụng trong các ứng dụng thời gian thực (real-time).",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide OpenCV"
+    },
+    {
+      "id": "TC_CV_08",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Các tính năng nổi bật của thư viện OpenCV",
+      "query": "Thư viện OpenCV có những tính năng nổi bật nào?",
+      "context_keywords": [
+        "2D", "3D",
+        "nhận diện khuôn mặt",
+        "nhận diện cử chỉ",
+        "nhận dạng chuyển động",
+        "điều khiển Robot",
+        "thực tế tăng cường"
+      ],
+      "response_keywords": [
+        "khuôn mặt",
+        "cử chỉ",
+        "chuyển động",
+        "Robot",
+        "thực tế tăng cường"
+      ],
+      "ground_truth_context": "Thư viện OpenCV bao gồm một số tính năng nổi bật như: Bộ công cụ hỗ trợ 2D và 3D, Nhận diện khuôn mặt, Nhận diện cử chỉ, Nhận dạng chuyển động, đối tượng, hành vi, Tương tác giữa con người và máy tính, Điều khiển Robot, Hỗ trợ thực tế tăng cường.",
+      "ground_truth_answer": "Thư viện OpenCV có 7 tính năng nổi bật: (1) Bộ công cụ hỗ trợ 2D và 3D, (2) Nhận diện khuôn mặt, (3) Nhận diện cử chỉ, (4) Nhận dạng chuyển động, đối tượng và hành vi, (5) Tương tác giữa con người và máy tính (HCI), (6) Điều khiển Robot, (7) Hỗ trợ thực tế tăng cường (Augmented Reality).",
+      "guardrail_type": "none",
+      "chapter": "Chương 1 - Giới thiệu Thị giác máy tính",
+      "slide_ref": "Slide 33"
+    },
+    {
+      "id": "TC_CV_09",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Kỹ thuật thay đổi kích thước ảnh và hàm cv2.resize trong OpenCV",
+      "query": "Tại sao cần thay đổi kích thước ảnh và trong OpenCV dùng hàm gì để resize?",
+      "context_keywords": [
+        "cv2.resize",
+        "bộ nhớ",
+        "kích thước",
+        "32x32", "64x64", "256x256",
+        "src", "dsize", "interpolation"
+      ],
+      "response_keywords": [
+        "cv2.resize",
+        "bộ nhớ",
+        "kích thước",
+        "interpolation"
+      ],
+      "ground_truth_context": "Thay đổi kích thước (Zoom in, Zoom out) là một trong những kỹ thuật xử lý ảnh thông dụng. Ảnh có kích thước lớn sẽ chiếm nhiều bộ nhớ, số lượng tập dữ liệu ảnh thường rất lớn. Do đó cần giảm kích thước ảnh. Resize là một kỹ thuật phổ biến. Trong OpenCV, sử dụng hàm cv2.resize. Một số kích thước ảnh ML thường dùng: 32×32, 64×64, 96×96, 256×256. Phương thức: cv2.resize(src, dsize, interpolation) — trong đó: src là ảnh gốc cần thay đổi kích thước; dsize (width, height) là kích thước ảnh muốn thay đổi; interpolation chỉ định thuật toán thực hiện resize.",
+      "ground_truth_answer": "Cần thay đổi kích thước ảnh vì ảnh lớn chiếm nhiều bộ nhớ và tập dữ liệu ML thường rất lớn. Trong OpenCV dùng hàm cv2.resize(src, dsize, interpolation): src là ảnh gốc, dsize là kích thước đích (width, height), interpolation là thuật toán nội suy. Các kích thước phổ biến trong ML: 32×32, 64×64, 96×96, 256×256.",
+      "guardrail_type": "none",
+      "chapter": "Chương 2 - Xử lý ảnh cơ bản",
+      "slide_ref": "Slide 8-9"
+    },
+    {
+      "id": "TC_CV_10",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Các phương pháp nội suy (interpolation) khi resize ảnh trong OpenCV",
+      "query": "OpenCV có những phương pháp nội suy nào khi resize ảnh? Nên dùng phương pháp nào để thu nhỏ và phóng to?",
+      "context_keywords": [
+        "INTER_NEAREST",
+        "INTER_LINEAR",
+        "INTER_AREA",
+        "INTER_CUBIC",
+        "INTER_LANCZOS4",
+        "thu nhỏ",
+        "phóng to"
+      ],
+      "response_keywords": [
+        "INTER_NEAREST",
+        "INTER_LINEAR",
+        "INTER_AREA",
+        "INTER_CUBIC",
+        "thu nhỏ",
+        "phóng to"
+      ],
+      "ground_truth_context": "Các phương pháp nội suy (interpolation) thực hiện resize ảnh trong OpenCV: INTER_NEAREST – nội suy láng giềng gần nhất; INTER_LINEAR – nội suy song tuyến tính (mặc định); INTER_AREA – resampling using pixel area relation, phương pháp ưu tiên khi thu nhỏ ảnh vì cho kết quả không có hiện tượng moire; INTER_CUBIC – nội suy xoắn bậc 3, trên 4×4 pixel láng giềng; INTER_LANCZOS4 – nội suy Lanczos trên 8×8 pixel láng giềng. Thông thường: dùng cv.INTER_AREA để thu nhỏ; dùng cv.INTER_CUBIC và cv.INTER_LINEAR để phóng to.",
+      "ground_truth_answer": "OpenCV có 5 phương pháp nội suy khi resize: INTER_NEAREST (láng giềng gần nhất), INTER_LINEAR (song tuyến tính — mặc định), INTER_AREA (theo diện tích pixel), INTER_CUBIC (xoắn bậc 3 trên 4×4 pixel), INTER_LANCZOS4 (Lanczos trên 8×8 pixel). Khuyến nghị: dùng INTER_AREA để thu nhỏ ảnh, dùng INTER_CUBIC hoặc INTER_LINEAR để phóng to ảnh.",
+      "guardrail_type": "none",
+      "chapter": "Chương 2 - Xử lý ảnh cơ bản",
+      "slide_ref": "Slide 10"
+    },
+    {
+      "id": "TC_CV_11",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Xoay ảnh với cv2.rotate và các chế độ rotateCode trong OpenCV",
+      "query": "Trong OpenCV dùng hàm gì để xoay ảnh và có những chế độ xoay nào?",
+      "context_keywords": [
+        "cv2.rotate",
+        "rotateCode",
+        "ROTATE_90_CLOCKWISE",
+        "ROTATE_90_COUNTERCLOCKWISE",
+        "ROTATE_180"
+      ],
+      "response_keywords": [
+        "cv2.rotate",
+        "rotateCode",
+        "90 độ",
+        "chiều kim đồng hồ",
+        "180"
+      ],
+      "ground_truth_context": "OpenCV hỗ trợ phương thức xoay ảnh: cv2.rotate(img, rotateCode). Trong đó: img là ảnh gốc muốn xoay; rotateCode là các chế độ xoay ảnh: cv2.ROTATE_90_CLOCKWISE — xoay 90 độ theo chiều kim đồng hồ; cv2.ROTATE_90_COUNTERCLOCKWISE — xoay 90 độ ngược chiều kim đồng hồ; cv2.ROTATE_180 — xoay ảnh 180 độ (lật ảnh).",
+      "ground_truth_answer": "Trong OpenCV dùng hàm cv2.rotate(img, rotateCode) để xoay ảnh. Có 3 chế độ rotateCode: (1) cv2.ROTATE_90_CLOCKWISE — xoay 90° theo chiều kim đồng hồ, (2) cv2.ROTATE_90_COUNTERCLOCKWISE — xoay 90° ngược chiều kim đồng hồ, (3) cv2.ROTATE_180 — xoay 180° (lật ngược ảnh).",
+      "guardrail_type": "none",
+      "chapter": "Chương 2 - Xử lý ảnh cơ bản",
+      "slide_ref": "Slide 21"
+    },
+    {
+      "id": "TC_CV_12",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Lật ảnh với cv2.flip và ý nghĩa các giá trị flipCode trong OpenCV",
+      "query": "Hàm cv2.flip trong OpenCV dùng để làm gì? Các giá trị flipCode có ý nghĩa gì?",
+      "context_keywords": [
+        "cv2.flip",
+        "flipCode",
+        "chiều ngang",
+        "chiều dọc",
+        "trục X",
+        "trục Y"
+      ],
+      "response_keywords": [
+        "cv2.flip",
+        "flipCode",
+        "ngang",
+        "dọc",
+        "trục X",
+        "trục Y"
+      ],
+      "ground_truth_context": "OpenCV hỗ trợ phương thức lật ảnh: cv2.flip(img, flipCode). Trong đó: img là ảnh gốc muốn lật; flipCode là các chế độ lật ảnh: flipCode = 0 — lật ảnh theo chiều ngang (trục X); flipCode > 0 — lật ảnh theo chiều dọc (trục Y); flipCode < 0 — lật ảnh theo cả chiều dọc (Y) và ngang (X).",
+      "ground_truth_answer": "cv2.flip(img, flipCode) dùng để lật ảnh trong OpenCV. Ý nghĩa của flipCode: flipCode = 0 — lật theo chiều ngang (trục X, lật ngược lên/xuống); flipCode > 0 (vd: 1) — lật theo chiều dọc (trục Y, lật trái/phải); flipCode < 0 (vd: -1) — lật theo cả hai chiều ngang và dọc.",
+      "guardrail_type": "none",
+      "chapter": "Chương 2 - Xử lý ảnh cơ bản",
+      "slide_ref": "Slide 28"
+    },
+    {
+      "id": "TC_CV_13",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa cải thiện ảnh và mục đích",
+      "query": "Cải thiện ảnh là gì và mục đích của nó là gì?",
+      "context_keywords": [
+        "cải thiện ảnh",
+        "hữu ích hơn",
+        "làm nổi bật",
+        "chi tiết",
+        "trực quan"
+      ],
+      "response_keywords": [
+        "hữu ích hơn",
+        "làm nổi bật",
+        "chi tiết",
+        "trực quan"
+      ],
+      "ground_truth_context": "Cải thiện ảnh là quá trình làm cho ảnh trở nên hữu ích hơn. Là quá trình xử lý một hình ảnh để cho kết quả phù hợp hơn với kết quả ban đầu. Làm nổi bật các chi tiết cần quan tâm trong ảnh. Làm cho ảnh trở nên trực quan, hấp dẫn hơn.",
+      "ground_truth_answer": "Cải thiện ảnh là quá trình xử lý hình ảnh để làm cho ảnh trở nên hữu ích hơn, phù hợp hơn với mục đích ban đầu. Cụ thể: làm nổi bật các chi tiết cần quan tâm trong ảnh và làm cho ảnh trở nên trực quan, hấp dẫn hơn.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 8"
+    },
+    {
+      "id": "TC_CV_14",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Phân loại 2 nhóm kỹ thuật cải thiện ảnh: miền không gian và miền tần số",
+      "query": "Các kỹ thuật cải thiện ảnh được phân thành mấy nhóm và mỗi nhóm gồm những kỹ thuật nào?",
+      "context_keywords": [
+        "miền không gian",
+        "miền tần số",
+        "pixel",
+        "bộ lọc",
+        "Histogram",
+        "Fourrier"
+      ],
+      "response_keywords": [
+        "miền không gian",
+        "miền tần số",
+        "pixel",
+        "Histogram",
+        "Fourrier"
+      ],
+      "ground_truth_context": "Các kỹ thuật cải thiện ảnh được phân thành 2 nhóm: (1) Các kỹ thuật theo miền không gian: thao tác trực tiếp lên các pixel điểm ảnh — gồm các phép toán trên điểm ảnh, các bộ lọc, kỹ thuật Histogram. (2) Các kỹ thuật theo miền tần số: ảnh được xem như tín hiệu 2 chiều — tác động lên tần số để cải thiện chất lượng ảnh, bao gồm biến đổi Fourrier, biến đổi sóng...",
+      "ground_truth_answer": "Các kỹ thuật cải thiện ảnh được phân thành 2 nhóm: (1) Miền không gian — thao tác trực tiếp lên pixel, gồm: phép toán trên điểm ảnh, bộ lọc, kỹ thuật Histogram. (2) Miền tần số — xem ảnh như tín hiệu 2 chiều, tác động lên tần số để cải thiện chất lượng, gồm: biến đổi Fourier, biến đổi sóng.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 9"
+    },
+    {
+      "id": "TC_CV_15",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Công thức phép toán điểm ảnh s = T(r) và các loại phép biến đổi",
+      "query": "Phép toán trên điểm ảnh có công thức như thế nào và có những loại phép biến đổi nào?",
+      "context_keywords": [
+        "s = T(r)",
+        "phép đảo ảnh",
+        "phép biến đổi Logarit",
+        "phép biến đổi Gamma",
+        "cắt ngưỡng",
+        "ảnh nhị phân"
+      ],
+      "response_keywords": [
+        "s = T(r)",
+        "đảo ảnh",
+        "Logarit",
+        "Gamma",
+        "cắt ngưỡng"
+      ],
+      "ground_truth_context": "Thao tác xử lý điểm ảnh có dạng: s = T(r). Trong đó: s là điểm ảnh sau khi xử lý; r là điểm ảnh ban đầu; T là phép toán xử lý điểm ảnh. Các loại phép biến đổi T gồm: Phép đảo ảnh (s = max - r), Phép biến đổi Logarit, Phép biến đổi Gamma, Cắt ngưỡng (chuyển đổi sang ảnh nhị phân — s = 0 nếu r < 128, s = 255 nếu r >= 128).",
+      "ground_truth_answer": "Phép toán trên điểm ảnh có công thức: s = T(r), trong đó r là giá trị pixel ban đầu, s là giá trị pixel sau xử lý, T là hàm biến đổi. Có 4 loại phép biến đổi chính: (1) Đảo ảnh: s = max - r, (2) Biến đổi Logarit, (3) Biến đổi Gamma, (4) Cắt ngưỡng — chuyển sang ảnh nhị phân: s = 0 nếu r < 128, s = 255 nếu r ≥ 128.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 11-12"
+    },
+    {
+      "id": "TC_CV_16",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa Histogram ảnh và ý nghĩa trục x, trục y",
+      "query": "Histogram của ảnh là gì? Trục x và trục y trong biểu đồ Histogram biểu diễn điều gì?",
+      "context_keywords": [
+        "histogram",
+        "phân bố",
+        "điểm ảnh",
+        "mức độ sáng tối",
+        "trục dọc",
+        "trục ngang",
+        "0 đến 255"
+      ],
+      "response_keywords": [
+        "histogram",
+        "phân bố",
+        "điểm ảnh",
+        "sáng tối",
+        "0 đến 255"
+      ],
+      "ground_truth_context": "Biểu đồ Histogram của ảnh là một dạng biểu đồ biểu diễn sự phân bố của số lượng điểm ảnh tương ứng với mức độ sáng tối của bức ảnh. Trục dọc (y) biểu diễn số lượng điểm ảnh, các đỉnh càng cao thì càng có nhiều điểm ảnh ở khu vực đó và độ chi tiết càng nhiều. Trục ngang (x) tính từ trái qua phải với mốc giá trị từ 0 đến 255 biểu diễn độ sáng của mỗi khu vực ảnh. Gốc giá trị 0 được coi là tối nhất (đen tuyền), giá trị 255 là sáng nhất.",
+      "ground_truth_answer": "Histogram của ảnh là biểu đồ biểu diễn sự phân bố số lượng điểm ảnh theo mức độ sáng tối. Trục y (dọc): số lượng điểm ảnh — đỉnh càng cao càng nhiều pixel ở mức sáng đó. Trục x (ngang): mức độ sáng từ 0 (đen tuyền — tối nhất) đến 255 (trắng — sáng nhất).",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 35"
+    },
+    {
+      "id": "TC_CV_17",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Đọc Histogram để nhận biết ảnh sáng hay tối",
+      "query": "Dựa vào Histogram có thể biết được ảnh sáng hay tối không? Làm thế nào để nhận biết?",
+      "context_keywords": [
+        "ảnh tối",
+        "nghiêng về bên trái",
+        "ảnh sáng",
+        "nghiêng về bên phải",
+        "giá trị thấp",
+        "giá trị cao"
+      ],
+      "response_keywords": [
+        "ảnh tối",
+        "bên trái",
+        "ảnh sáng",
+        "bên phải"
+      ],
+      "ground_truth_context": "Thông qua Histogram của ảnh có thể biết được ảnh sáng hay tối. Ảnh tối: Histogram nghiêng về bên trái (các pixel có giá trị thấp). Ảnh sáng: Histogram nghiêng về bên phải (các pixel có giá trị cao).",
+      "ground_truth_answer": "Có thể dựa vào Histogram để nhận biết ảnh sáng hay tối: Nếu Histogram nghiêng về bên trái (phần lớn pixel có giá trị thấp, gần 0) → ảnh tối. Nếu Histogram nghiêng về bên phải (phần lớn pixel có giá trị cao, gần 255) → ảnh sáng.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 37"
+    },
+    {
+      "id": "TC_CV_18",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa và cách thực hiện lọc trung vị (Median Filter)",
+      "query": "Lọc trung vị là gì và cách thực hiện lọc trung vị trên ảnh như thế nào?",
+      "context_keywords": [
+        "lọc trung vị",
+        "trung vị",
+        "vùng lân cận",
+        "sắp xếp",
+        "kernel",
+        "pixel trung tâm"
+      ],
+      "response_keywords": [
+        "trung vị",
+        "vùng lân cận",
+        "sắp xếp",
+        "gán giá trị"
+      ],
+      "ground_truth_context": "Lọc trung vị: Giá trị trung vị X của một tập hợp là giá trị sao cho một nửa giá trị trong tập hợp nhỏ hơn hoặc bằng X và một nửa còn lại lớn hơn hoặc bằng X. Thực hiện: Sắp xếp giá trị của các pixel trong vùng lân cận (có kích thước bằng kích thước bộ lọc). Xác định giá trị trung vị của chúng và gán giá trị cho pixel trong ảnh được lọc.",
+      "ground_truth_answer": "Lọc trung vị là kỹ thuật lọc ảnh dùng giá trị trung vị của vùng lân cận thay cho pixel trung tâm. Cách thực hiện: (1) Lấy tất cả pixel trong vùng lân cận có kích thước bằng kernel, (2) Sắp xếp các giá trị theo thứ tự tăng dần, (3) Chọn giá trị ở giữa (trung vị) và gán cho pixel trung tâm trong ảnh đầu ra.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide Lọc trung vị"
+    },
+    {
+      "id": "TC_CV_19",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa nhiễu trong ảnh và công thức biểu diễn g(x,y) = f(x,y) + α(x,y)",
+      "query": "Nhiễu trong ảnh là gì và được biểu diễn bằng công thức nào?",
+      "context_keywords": [
+        "nhiễu",
+        "thu nhận ảnh",
+        "số hoá",
+        "truyền ảnh",
+        "g(x,y) = f(x,y) + α(x,y)",
+        "lượng tử hoá"
+      ],
+      "response_keywords": [
+        "nhiễu",
+        "g(x,y)",
+        "f(x,y)",
+        "số hoá",
+        "truyền ảnh"
+      ],
+      "ground_truth_context": "Nhiễu xuất hiện trong quá trình thu nhận ảnh, số hoá và truyền ảnh. Cảm biến ảnh có thể bị ảnh hưởng bởi các điều kiện môi trường. Nhiễu có thể can thiệp vào ảnh trong quá trình truyền ảnh. Lượng tử hoá và số hoá cũng là nguồn gây nhiễu. Ảnh nhiễu được biểu diễn bằng biểu thức: g(x,y) = f(x,y) + α(x,y). Trong đó: f(x,y) là ảnh gốc; α(x,y) là nhiễu; g(x,y) là ảnh sau khi bị nhiễu tác động.",
+      "ground_truth_answer": "Nhiễu trong ảnh là các sai lệch không mong muốn xuất hiện trong quá trình thu nhận ảnh, số hoá và truyền ảnh (do môi trường, lượng tử hoá, số hoá...). Công thức biểu diễn: g(x,y) = f(x,y) + α(x,y), trong đó f(x,y) là ảnh gốc, α(x,y) là nhiễu, và g(x,y) là ảnh sau khi bị nhiễu tác động.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide Nhiễu trong ảnh"
+    },
+    {
+      "id": "TC_CV_20",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Khái niệm mặt nạ lọc (kernel/filter/mask) và cách hoạt động",
+      "query": "Mặt nạ lọc (kernel) trong xử lý ảnh là gì và có kích thước như thế nào?",
+      "context_keywords": [
+        "mặt nạ lọc",
+        "kernel",
+        "filter",
+        "mask",
+        "ma trận vuông",
+        "3x3", "5x5", "7x7",
+        "di chuyển trên ảnh"
+      ],
+      "response_keywords": [
+        "kernel",
+        "ma trận vuông",
+        "3x3",
+        "di chuyển",
+        "lân cận"
+      ],
+      "ground_truth_context": "Mặt nạ lọc còn được gọi là kernel, filter, mask, là một ma trận vuông có kích thước 3x3, 4x4, 5x5, 7x7... Mặt nạ lọc di chuyển trên ảnh và thao tác lân cận với điểm ảnh.",
+      "ground_truth_answer": "Mặt nạ lọc (kernel/filter/mask) là một ma trận vuông nhỏ có kích thước thường là 3×3, 4×4, 5×5 hoặc 7×7. Mặt nạ lọc hoạt động bằng cách di chuyển tuần tự trên toàn bộ ảnh và tại mỗi vị trí sẽ thao tác (tính toán) với các pixel lân cận trong vùng tương ứng.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 33"
+    },
+    {
+      "id": "TC_CV_21",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa nhân tích chập (convolution) trong xử lý ảnh",
+      "query": "Nhân tích chập trong xử lý ảnh là gì và được thực hiện như thế nào?",
+      "context_keywords": [
+        "nhân tích chập",
+        "convolution",
+        "ma trận lọc",
+        "kernel",
+        "trượt",
+        "cửa sổ chập",
+        "điểm ảnh trung tâm"
+      ],
+      "response_keywords": [
+        "tích chập",
+        "kernel",
+        "trượt",
+        "nhân",
+        "cộng",
+        "điểm ảnh trung tâm"
+      ],
+      "ground_truth_context": "Nhân tích chập là cho ma trận ảnh nhân với một ma trận lọc (Kernel). Ma trận lọc (Kernel) còn có thể được gọi là cửa sổ chập (trong phép nhân chập), cửa sổ lọc, mặt nạ. Việc nhân ảnh với ma trận lọc giống như việc trượt ma trận lọc theo hàng trên ảnh và nhân với từng vùng của ảnh, cộng các kết quả lại tạo thành kết quả của điểm ảnh trung tâm.",
+      "ground_truth_answer": "Nhân tích chập (convolution) là phép nhân ma trận ảnh với một ma trận lọc (Kernel/cửa sổ chập). Cách thực hiện: trượt kernel lần lượt qua từng vị trí trên ảnh, tại mỗi vị trí nhân từng phần tử tương ứng rồi cộng tất cả lại để tạo ra giá trị của điểm ảnh trung tâm trong ảnh đầu ra.",
+      "guardrail_type": "none",
+      "chapter": "Chương 3 - Cải thiện ảnh",
+      "slide_ref": "Slide 34"
+    },
+    {
+      "id": "TC_CV_22",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa điểm biên và đường biên trong ảnh",
+      "query": "Điểm biên và đường biên trong ảnh là gì?",
+      "context_keywords": [
+        "điểm biên",
+        "thay đổi đột ngột",
+        "mức xám",
+        "đường bao",
+        "boundary",
+        "điểm biên liên tiếp"
+      ],
+      "response_keywords": [
+        "điểm biên",
+        "thay đổi đột ngột",
+        "mức xám",
+        "đường bao",
+        "liên tiếp"
+      ],
+      "ground_truth_context": "Điểm biên: Một điểm ảnh được coi là điểm biên nếu có sự thay đổi nhanh hoặc đột ngột về mức xám (hoặc màu). Ví dụ: trong ảnh nhị phân, điểm đen được coi là điểm biên nếu lân cận của nó có ít nhất một điểm trắng. Đường biên còn được gọi là đường bao (boundary): là tập hợp các điểm biên liên tiếp.",
+      "ground_truth_answer": "Điểm biên là điểm ảnh có sự thay đổi nhanh hoặc đột ngột về mức xám (hoặc màu) so với các điểm lân cận. Đường biên (hay đường bao — boundary) là tập hợp các điểm biên liên tiếp nhau, tạo thành ranh giới giữa các vùng ảnh khác nhau.",
+      "guardrail_type": "none",
+      "chapter": "Chương 4 - Phát hiện biên",
+      "slide_ref": "Slide 5"
+    },
+    {
+      "id": "TC_CV_23",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Ý nghĩa của đường biên và ứng dụng phát hiện biên (Edge detection)",
+      "query": "Phát hiện biên (Edge detection) có những ứng dụng gì trong xử lý ảnh?",
+      "context_keywords": [
+        "phát hiện biên",
+        "edge detection",
+        "giảm thông tin",
+        "cấu trúc",
+        "đường cong",
+        "nhận dạng đối tượng",
+        "phân đoạn ảnh"
+      ],
+      "response_keywords": [
+        "phát hiện biên",
+        "cấu trúc",
+        "nhận dạng",
+        "phân đoạn"
+      ],
+      "ground_truth_context": "Ý nghĩa của đường biên: Đường biên là một loại đặc trưng cục bộ tiêu biểu trong phân tích, nhận dạng ảnh. Người ta sử dụng biên làm phân cách các vùng xám (hoặc màu) cách biệt. Ứng dụng của phát hiện biên (Edge detection): Giảm bớt thông tin không cần thiết trong ảnh mà vẫn giữ nguyên cấu trúc của ảnh; Trích xuất các đặc tính quan trọng của ảnh như đường cong, góc và đường thẳng; Nhận dạng các đối tượng, ranh giới và phân đoạn ảnh; Đóng vai trò quan trọng trong nhận dạng và thị giác máy tính.",
+      "ground_truth_answer": "Phát hiện biên (Edge detection) có 4 ứng dụng chính: (1) Giảm thông tin không cần thiết trong ảnh mà vẫn giữ cấu trúc, (2) Trích xuất đặc tính quan trọng như đường cong, góc, đường thẳng, (3) Nhận dạng đối tượng, ranh giới và phân đoạn ảnh, (4) Đóng vai trò quan trọng trong nhận dạng và thị giác máy tính.",
+      "guardrail_type": "none",
+      "chapter": "Chương 4 - Phát hiện biên",
+      "slide_ref": "Slide 7"
+    },
+    {
+      "id": "TC_CV_24",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Phương pháp phát hiện biên dựa trên đạo hàm: Gradient và Laplace",
+      "query": "Có những phương pháp toán học nào để phát hiện biên trong ảnh? Gradient và Laplace khác nhau thế nào?",
+      "context_keywords": [
+        "đạo hàm bậc nhất",
+        "đạo hàm bậc hai",
+        "Gradient",
+        "Laplace",
+        "u(x)",
+        "thay đổi mức xám đột ngột"
+      ],
+      "response_keywords": [
+        "đạo hàm bậc nhất",
+        "đạo hàm bậc hai",
+        "Gradient",
+        "Laplace"
+      ],
+      "ground_truth_context": "Theo toán học, điểm ảnh có sự biến đổi mức xám u(x) một cách đột ngột. Nếu lấy đạo hàm bậc nhất của u(x) → Gradient. Nếu lấy đạo hàm bậc hai của u(x) → Laplace.",
+      "ground_truth_answer": "Có 2 phương pháp toán học phát hiện biên dựa trên hàm mức xám u(x): (1) Gradient — dùng đạo hàm bậc nhất, phát hiện vị trí có tốc độ thay đổi mức xám lớn nhất. (2) Laplace — dùng đạo hàm bậc hai, phát hiện vị trí biến đổi đột ngột qua điểm zero-crossing.",
+      "guardrail_type": "none",
+      "chapter": "Chương 4 - Phát hiện biên",
+      "slide_ref": "Slide 13"
+    },
+    {
+      "id": "TC_CV_25",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa Gradient trong phát hiện biên và công thức tính",
+      "query": "Gradient trong phát hiện biên ảnh là gì và được tính như thế nào?",
+      "context_keywords": [
+        "gradient",
+        "vectơ",
+        "tốc độ thay đổi mức xám",
+        "∂f/∂x",
+        "∂f/∂y",
+        "dx=dy=1"
+      ],
+      "response_keywords": [
+        "gradient",
+        "vectơ",
+        "tốc độ thay đổi",
+        "∂f/∂x",
+        "∂f/∂y"
+      ],
+      "ground_truth_context": "Gradient là một vectơ có các thành phần biểu thị tốc độ thay đổi mức xám của điểm ảnh (theo hai hướng x,y đối với ảnh 2 chiều). ∆f = [∂f(x,y)/∂x, ∂f(x,y)/∂y]. Trong đó dx, dy là khoảng cách giữa 2 điểm kề cận theo hướng x,y tương ứng (thực tế chọn dx=dy=1).",
+      "ground_truth_answer": "Gradient trong phát hiện biên là một vectơ 2 chiều biểu thị tốc độ thay đổi mức xám của điểm ảnh theo hai hướng x và y: ∆f = [∂f/∂x, ∂f/∂y]. Trong thực tế, khoảng cách giữa 2 pixel kề nhau dx=dy=1, nên gradient được xấp xỉ bằng hiệu của các pixel lân cận.",
+      "guardrail_type": "none",
+      "chapter": "Chương 4 - Phát hiện biên",
+      "slide_ref": "Slide 14"
+    },
+    {
+      "id": "TC_CV_26",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "out_of_context",
+      "description": "Câu hỏi ngoài phạm vi tài liệu môn TGMT — hỏi về mô hình ChatGPT",
+      "query": "ChatGPT có thể nhận diện khuôn mặt không? So sánh với OpenCV thì thế nào?",
+      "context_keywords": [],
+      "response_keywords": [
+        "không có thông tin",
+        "tài liệu",
+        "không đề cập"
+      ],
+      "ground_truth_context": "",
+      "ground_truth_answer": "Tài liệu môn Thị giác máy tính không đề cập đến ChatGPT. Câu hỏi này nằm ngoài phạm vi nội dung bài giảng đã cung cấp.",
+      "guardrail_type": "none",
+      "expected_behavior": "Agent phải trả lời rằng tài liệu môn học không có thông tin về ChatGPT và từ chối so sánh."
+    },
+    {
+      "id": "TC_CV_27",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "academic_integrity",
+      "description": "Sinh viên nhờ agent làm bài tập lập trình nhận diện khuôn mặt",
+      "query": "Bạn có thể viết toàn bộ code Python dùng OpenCV để nhận diện khuôn mặt trong video cho bài tập lớn của mình không? Nộp tuần sau rồi.",
+      "context_keywords": [],
+      "response_keywords": [
+        "học thuật",
+        "tự làm",
+        "hướng dẫn",
+        "không thể làm hộ"
+      ],
+      "ground_truth_context": "",
+      "ground_truth_answer": "Agent không thể viết toàn bộ bài tập thay cho sinh viên vì vi phạm quy định học thuật. Agent có thể giải thích khái niệm, hướng dẫn từng bước hoặc giải thích tài liệu môn học.",
+      "guardrail_type": "academic_integrity",
+      "expected_behavior": "Agent từ chối làm bài hộ, giải thích lý do liên quan đến học thuật, và đề nghị hỗ trợ theo cách hợp lệ (giải thích khái niệm, hướng dẫn)."
+    },
+    {
+      "id": "TC_CV_28",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "multi_turn",
+      "description": "Câu hỏi nối tiếp về Histogram — từ định nghĩa sang ứng dụng thực tế",
+      "query": "Vậy nếu tôi muốn kiểm tra xem ảnh có bị thiếu sáng không, tôi dùng Histogram như thế nào?",
+      "context_keywords": [
+        "histogram",
+        "thiếu sáng",
+        "nghiêng về bên trái",
+        "giá trị thấp"
+      ],
+      "response_keywords": [
+        "histogram",
+        "nghiêng trái",
+        "giá trị thấp",
+        "tối"
+      ],
+      "ground_truth_context": "Thông qua Histogram của ảnh có thể biết được ảnh sáng hay tối. Ảnh tối: Histogram nghiêng về bên trái (các pixel có giá trị thấp). Ảnh sáng: Histogram nghiêng về bên phải (các pixel có giá trị cao).",
+      "ground_truth_answer": "Để kiểm tra ảnh có bị thiếu sáng (tối) không, hãy xem Histogram: nếu biểu đồ nghiêng về bên trái (phần lớn pixel có giá trị thấp, gần 0) thì ảnh bị thiếu sáng. Ngược lại nếu Histogram nghiêng phải thì ảnh đang sáng.",
+      "guardrail_type": "none",
+      "prior_turn": "Người dùng vừa hỏi 'Histogram của ảnh là gì?' và nhận được giải thích về định nghĩa và ý nghĩa trục x/y.",
+      "expected_behavior": "Agent trả lời câu hỏi nối tiếp dựa trên context của lượt hỏi trước, áp dụng kiến thức Histogram vào bài toán cụ thể."
+    },
+    {
+      "id": "TC_CV_29",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Định nghĩa phân vùng ảnh và ứng dụng thực tế",
+      "query": "Phân vùng ảnh (Image Segmentation) là gì và được ứng dụng ở đâu?",
+      "context_keywords": [
+        "phân vùng ảnh",
+        "image segmentation",
+        "y tế",
+        "medical imaging",
+        "nhận dạng đối tượng",
+        "camera giám sát",
+        "giao thông"
+      ],
+      "response_keywords": [
+        "phân vùng ảnh",
+        "image segmentation",
+        "y tế",
+        "nhận dạng",
+        "giám sát"
+      ],
+      "ground_truth_context": "Phân vùng ảnh (image segmentation) là một kỹ thuật quan trọng trong thị giác máy tính. Đây là tiền đề của quá trình xử lý dữ liệu hình ảnh. Phân vùng ảnh được ứng dụng trong nhiều lĩnh vực khác nhau như lĩnh vực hình ảnh y tế (medical imaging), phát hiện và nhận dạng đối tượng, hệ thống camera giám sát, hệ thống điều khiển giao thông. Kết quả phân vùng tốt sẽ tạo điều kiện thuận lợi cho các khâu xử lý về sau, đảm bảo tính hiệu quả cao, gia tăng mức độ chính xác, đồng thời giảm thiểu nguồn lực tính toán.",
+      "ground_truth_answer": "Phân vùng ảnh (Image Segmentation) là kỹ thuật quan trọng trong thị giác máy tính, là tiền đề của quá trình xử lý dữ liệu hình ảnh. Ứng dụng trong các lĩnh vực: hình ảnh y tế (medical imaging), phát hiện và nhận dạng đối tượng, camera giám sát, điều khiển giao thông. Kết quả phân vùng tốt giúp tăng hiệu quả xử lý, tăng độ chính xác và giảm nguồn lực tính toán.",
+      "guardrail_type": "none",
+      "chapter": "Chương 5 - Phân vùng ảnh",
+      "slide_ref": "Slide 4"
+    },
+    {
+      "id": "TC_CV_30",
+      "course_id": "CS_COMPUTER_VISION",
+      "scenario": "fact_retrieval",
+      "description": "Cơ chế hoạt động của phân vùng ảnh: chia segments và gán nhãn pixel",
+      "query": "Phân vùng ảnh hoạt động theo cơ chế gì? Segment và gán nhãn trong phân vùng ảnh là gì?",
+      "context_keywords": [
+        "segment",
+        "gán nhãn",
+        "assigning a label",
+        "điểm ảnh",
+        "màu sắc",
+        "cường độ",
+        "kết cấu"
+      ],
+      "response_keywords": [
+        "segment",
+        "gán nhãn",
+        "điểm ảnh",
+        "màu sắc",
+        "cường độ",
+        "kết cấu"
+      ],
+      "ground_truth_context": "Phân vùng ảnh là một phương pháp mà trong đó, hình ảnh kỹ thuật số được chia thành nhiều nhóm con khác nhau được gọi là segments. Một cách để hiểu, phân vùng ảnh là một quá trình gán nhãn (assigning a label) cho mỗi điểm ảnh trong một bức ảnh, các điểm ảnh trong cùng một nhãn sẽ có những đặc tính giống nhau về màu sắc, cường độ hoặc kết cấu của ảnh.",
+      "ground_truth_answer": "Phân vùng ảnh hoạt động bằng cách chia hình ảnh thành nhiều nhóm con gọi là segments. Cơ chế cụ thể: gán nhãn (assigning a label) cho từng điểm ảnh trong bức ảnh — các pixel được gán cùng một nhãn sẽ có đặc tính giống nhau về màu sắc, cường độ hoặc kết cấu ảnh.",
+      "guardrail_type": "none",
+      "chapter": "Chương 5 - Phân vùng ảnh",
+      "slide_ref": "Slide 5"
+    }
+  ]
+}
