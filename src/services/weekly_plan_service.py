@@ -999,15 +999,22 @@ class WeeklyPlanService:
         if cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
             guide = cached_comp.get("ai_study_guide") or {}
             concepts = guide.get("key_concepts") or []
+            focus = guide.get("focus_area") or ""
+            # Treat as empty cache: no key_concepts AND no focus_area (LLM previously failed)
+            is_empty_guide = not concepts and not focus
             is_poor = (
-                len(concepts) < 2
+                is_empty_guide
+                or len(concepts) < 2
                 or any(
                     c.get("title", "").strip().lower() in ["học và làm", "làm bài tập", "ôn tập", "chuẩn bị", "tự học"]
                     or "học & làm" in c.get("title", "").strip().lower()
                     for c in concepts
                 )
             )
-            if not is_poor:
+            if is_poor:
+                # Clear stale empty cache so next request retries the generation
+                existing_meta.pop("companion_data", None)
+            else:
                 try:
                     return StudySessionCompanionResponse(**cached_comp)
                 except Exception as e:
@@ -1217,17 +1224,23 @@ class WeeklyPlanService:
             "sources": sources_list,
         }
 
+        llm_success = False
         try:
             from src.services.llm import get_llm
             from langchain_core.messages import SystemMessage, HumanMessage
+            import re as _re
             llm = get_llm(temperature=0.2)
             res_msg = await llm.ainvoke([
                 SystemMessage(content=system_instruction),
                 HumanMessage(content=user_prompt),
             ])
             res_text = str(res_msg.content)
+            # Strip markdown code fences (```json ... ```) if present
+            res_text = _re.sub(r"```(?:json)?\s*", "", res_text).strip()
             if "{" in res_text and "}" in res_text:
                 j_str = res_text[res_text.find("{"):res_text.rfind("}")+1]
+                # Remove trailing commas before closing brackets/braces (common LLM mistake)
+                j_str = _re.sub(r",\s*([}\]])", r"\1", j_str)
                 parsed = json.loads(j_str)
                 if parsed.get("learning_objectives"):
                     comp_data_dict["learning_objectives"] = parsed["learning_objectives"]
@@ -1235,6 +1248,9 @@ class WeeklyPlanService:
                     parsed_guide = parsed["ai_study_guide"]
                     parsed_guide["sources"] = sources_list
                     comp_data_dict["ai_study_guide"] = parsed_guide
+                    llm_success = bool(
+                        parsed_guide.get("key_concepts") or parsed_guide.get("focus_area")
+                    )
                 if parsed.get("reading_roadmap"):
                     comp_data_dict["reading_roadmap"] = parsed["reading_roadmap"]
                 if parsed.get("quick_self_check"):
@@ -1243,8 +1259,10 @@ class WeeklyPlanService:
             import logging
             logging.getLogger(__name__).warning(f"LLM study session companion generation failed: {llm_err}")
 
-        # Save companion_data into task description JSON metadata for instant reload
-        existing_meta["companion_data"] = comp_data_dict
+        # Only cache companion_data when LLM actually produced useful content.
+        # If LLM failed, skip saving so next request retries the generation.
+        if llm_success:
+            existing_meta["companion_data"] = comp_data_dict
         task.description = pack_task_description(
             description=existing_meta.get("description"),
             topic=existing_meta.get("topic"),
