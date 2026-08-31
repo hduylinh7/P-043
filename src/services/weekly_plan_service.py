@@ -1226,9 +1226,15 @@ class WeeklyPlanService:
                 HumanMessage(content=user_prompt),
             ])
             res_text = str(res_msg.content)
+            # Strip markdown code fences (```json ... ```) if present
+            import re as _re
+            res_text = _re.sub(r"```(?:json)?\s*", "", res_text).strip()
             if "{" in res_text and "}" in res_text:
                 j_str = res_text[res_text.find("{"):res_text.rfind("}")+1]
-                parsed = json.loads(j_str)
+                # Use json_repair to auto-fix common LLM JSON mistakes:
+                # missing commas, trailing commas, unescaped characters, etc.
+                from json_repair import repair_json
+                parsed = json.loads(repair_json(j_str))
                 if parsed.get("learning_objectives"):
                     comp_data_dict["learning_objectives"] = parsed["learning_objectives"]
                 if parsed.get("ai_study_guide"):
@@ -1242,6 +1248,7 @@ class WeeklyPlanService:
         except Exception as llm_err:
             import logging
             logging.getLogger(__name__).warning(f"LLM study session companion generation failed: {llm_err}")
+
 
         # Save companion_data into task description JSON metadata for instant reload
         existing_meta["companion_data"] = comp_data_dict

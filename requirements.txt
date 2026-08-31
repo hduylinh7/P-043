@@ -14,6 +14,7 @@ email-validator>=2.0.0
 langchain>=0.3.0
 langchain-openai>=0.3.0
 langgraph>=0.2.0
+json-repair>=0.30.0
 
 # Database (PostgreSQL & SQLite async)
 sqlalchemy[asyncio]>=2.0.0
