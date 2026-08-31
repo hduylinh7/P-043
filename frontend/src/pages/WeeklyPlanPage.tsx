@@ -46,6 +46,7 @@ dayjs.extend(isBetween);
 dayjs.extend(isoWeek);
 
 import { Sidebar } from '../components/Sidebar';
+import { InlinePlanningLoadingOrb } from '../components/common/InlinePlanningLoadingOrb';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -1517,12 +1518,10 @@ export const WeeklyPlanPage: React.FC = () => {
           </div>
 
           {isGeneratingAI && (
-            <div className="p-4 rounded-2xl bg-emerald-500/15 border-2 border-minecraft-grassBorder flex items-center gap-3">
-              <Spin size="small" />
-              <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                AI đang phân tích bài tập, tài liệu môn học và tự động lập Study Plan cho bạn...
-              </span>
-            </div>
+            <InlinePlanningLoadingOrb
+              isLoading={isGeneratingAI}
+              assignmentTitle={selectedAssignment?.title}
+            />
           )}
 
           <div className="flex justify-end gap-3 pt-3 border-t">

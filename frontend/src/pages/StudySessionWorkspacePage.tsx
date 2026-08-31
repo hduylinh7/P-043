@@ -56,6 +56,7 @@ dayjs.extend(duration);
 import { Sidebar } from '../components/Sidebar';
 import { MarkdownRenderer, EntityContext } from '../components/MarkdownRenderer';
 import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
+import { KnowledgeLoadingOrb } from '../components/common/KnowledgeLoadingOrb';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -328,9 +329,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
         setElapsedSeconds(seconds);
       }
 
-      // Fetch Companion Data (Objectives, AI Study Guide, Quick Self Check)
-      fetchCompanionData();
-
+      // Note: Companion Data is fetched in parallel in useEffect for faster response time
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Không thể tải thông tin buổi học.');
     } finally {
@@ -356,6 +355,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
   useEffect(() => {
     fetchTaskDetails();
+    fetchCompanionData();
   }, [taskId]);
 
   // Timer Tick Effect (only if session is in_progress)
@@ -910,10 +910,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                 {/* Loading state */}
                 {companionLoading && (
-                  <div className="flex flex-col items-center justify-center py-16 gap-4">
-                    <Spin size="large" />
-                    <p className="text-slate-400 font-medium text-sm">Đang tổng hợp kiến thức trọng tâm bài học...</p>
-                  </div>
+                  <KnowledgeLoadingOrb isLoading={companionLoading} topicTitle={task?.title || task?.topic} />
                 )}
 
                 {!companionLoading && (

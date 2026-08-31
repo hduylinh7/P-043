@@ -52,6 +52,7 @@ dayjs.extend(isBetween);
 dayjs.extend(isoWeek);
 
 import { Sidebar } from '../components/Sidebar';
+import { InlinePlanningLoadingOrb } from '../components/common/InlinePlanningLoadingOrb';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -1681,6 +1682,16 @@ export const LearningCalendarPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Inline Glowing Progress Orb when generating AI plan */}
+              {generatingAI && (
+                <InlinePlanningLoadingOrb
+                  isLoading={generatingAI}
+                  assignmentTitle={
+                    availableAssignments.find((a) => a.id === selectedAssignmentId)?.title
+                  }
+                />
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
