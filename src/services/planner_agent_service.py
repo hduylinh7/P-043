@@ -83,7 +83,7 @@ class PlannerAgentService:
                     start_time=t.get("start_time"),
                     end_time=t.get("end_time"),
                     priority=t.get("priority", "medium"),
-                    source_type=t.get("source_type", "AI_PLAN") or "AI_PLAN",
+                    source_type=t.get("source_type", "MANUAL"),
                     source_id=t.get("source_id"),
                 )
                 for t in final_state.get("created_tasks", [])
