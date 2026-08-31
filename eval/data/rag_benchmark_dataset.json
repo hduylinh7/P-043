@@ -1,0 +1,210 @@
+{
+  "benchmark_metadata": {
+    "version": "1.0.0",
+    "project": "P-043 AI20K Learning Companion",
+    "evaluation_target": "RAG Pipeline (Qdrant Vector Store + LangGraph + LLM)",
+    "total_test_cases": 16,
+    "scenarios": [
+      "fact_retrieval",
+      "math_formula",
+      "excel_table",
+      "out_of_context",
+      "academic_integrity",
+      "multi_turn"
+    ]
+  },
+  "test_cases": [
+    {
+      "id": "TC_RAG_01",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "fact_retrieval",
+      "description": "Truy xuất lý do tiền xử lý dữ liệu và tỷ lệ thời gian",
+      "query": "Tại sao bước tiền xử lý dữ liệu lại quan trọng và chiếm bao nhiêu phần trăm thời gian trong dự án?",
+      "context_keywords": ["60%", "80%", "tiền xử lý", "data science"],
+      "response_keywords": ["60%", "80%", "bẩn", "thiếu", "nhiễu", "Garbage In, Garbage Out"],
+      "ground_truth_context": "Bước tiền xử lý dữ liệu thường chiếm từ 60% đến 80% tổng thời gian của một dự án Data Science. Dữ liệu thế giới thực thường bẩn (dirty)... Garbage In, Garbage Out.",
+      "ground_truth_answer": "Tiền xử lý dữ liệu rất quan trọng vì dữ liệu thực tế thường bị bẩn, thiếu, nhiễu, không nhất quán và dư thừa (Garbage In, Garbage Out). Bước này thường chiếm từ 60% đến 80% tổng thời gian của một dự án Data Science.",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_02",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "fact_retrieval",
+      "description": "Truy xuất 4 nhiệm vụ chính trong tiền xử lý dữ liệu",
+      "query": "Có những nhiệm vụ chính nào trong tiền xử lý dữ liệu theo bài giảng?",
+      "context_keywords": ["Làm sạch", "Tích hợp", "Biến đổi", "Thu giảm"],
+      "response_keywords": ["Làm sạch", "Data Cleaning", "Tích hợp", "Data Integration", "Biến đổi", "Data Transformation", "Thu giảm", "Data Reduction"],
+      "ground_truth_context": "CÁC NHIỆM VỤ CHÍNH TRONG TIỀN XỬ LÝ DỮ LIỆU: Làm sạch dữ liệu, Tích hợp dữ liệu, Biến đổi dữ liệu, Thu giảm dữ liệu.",
+      "ground_truth_answer": "Bốn nhiệm vụ chính gồm: 1. Làm sạch dữ liệu (Data Cleaning), 2. Tích hợp dữ liệu (Data Integration), 3. Biến đổi dữ liệu (Data Transformation), 4. Thu giảm dữ liệu (Data Reduction).",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_03",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "fact_retrieval",
+      "description": "Truy xuất các phương pháp xử lý Missing Value",
+      "query": "Kể tên các phương pháp xử lý giá trị bị khuyết (Missing Values) được nêu trong tài liệu.",
+      "context_keywords": ["Missing Value", "Bỏ qua", "Thủ công", "Hằng số", "Trung bình"],
+      "response_keywords": ["Bỏ qua bản ghi", "Ignore Tuple", "Điền thủ công", "Hằng số toàn cục", "Trung bình", "Mean/Median", "Hồi quy", "Bayesian"],
+      "ground_truth_context": "PHƯƠNG PHÁP XỬ LÝ MISSING VALUE: Bỏ qua bản ghi, Điền thủ công, Dùng hằng số toàn cục, Dùng giá trị trung bình/trung vị, Dùng giá trị có khả năng nhất (Hồi quy, Bayesian).",
+      "ground_truth_answer": "Các phương pháp gồm: Bỏ qua bản ghi (Ignore Tuple), Điền thủ công, Dùng hằng số toàn cục (Global constant), Dùng giá trị trung bình/trung vị (Mean/Median), và Dùng giá trị có khả năng nhất (Hồi quy hoặc suy diễn Bayesian).",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_04",
+      "course_id": "MATH_PROB_STAT",
+      "scenario": "math_formula",
+      "description": "Bóc tách công thức phương sai mẫu hiệu chỉnh và độ lệch chuẩn",
+      "query": "Cho tôi biết công thức tính phương sai mẫu hiệu chỉnh S^2 và độ lệch chuẩn mẫu S theo tài liệu.",
+      "context_keywords": ["S^2", "1/(n-1)", "n-1", "x_i", "phương sai", "độ lệch chuẩn"],
+      "response_keywords": ["S^2", "1/(n-1)", "n-1", "x_i", "\\bar{x}", "phương sai", "độ lệch chuẩn", "\\sqrt"],
+      "ground_truth_context": "Phương sai mẫu hiệu chỉnh: $S^2 = \\frac{1}{n-1}\\sum_{i=1}^n (x_i - \\bar{x})^2$. Độ lệch chuẩn mẫu: $S = \\sqrt{S^2}$.",
+      "ground_truth_answer": "Phương sai mẫu hiệu chỉnh: $S^2 = \\frac{1}{n-1}\\sum_{i=1}^n (x_i - \\bar{x})^2$. Độ lệch chuẩn mẫu: $S = \\sqrt{S^2} = \\sqrt{\\frac{1}{n-1}\\sum_{i=1}^n (x_i - \\bar{x})^2}$.",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_05",
+      "course_id": "MATH_PROB_STAT",
+      "scenario": "math_formula",
+      "description": "Định nghĩa Tứ phân vị Q1, Q2, Q3 và khoảng tứ phân vị IQR",
+      "query": "Tứ phân vị Q1, Q2, Q3 và khoảng tứ phân vị IQR được tính toán như thế nào?",
+      "context_keywords": ["Q_1", "Q_2", "Q_3", "IQR", "Tứ phân vị"],
+      "response_keywords": ["Q_1", "Q_2", "Q_3", "25%", "50%", "75%", "IQR", "Q_3 - Q_1", "Trung vị", "Median"],
+      "ground_truth_context": "Q1 là phân vị 25%, Q2 là Trung vị (phân vị 50%), Q3 là phân vị 75%, IQR = Q3 - Q1.",
+      "ground_truth_answer": "Q1 là vị trí phân vị 25% (Trung vị nửa dưới), Q2 là Trung vị Me (phân vị 50%), Q3 là vị trí phân vị 75% (Trung vị nửa trên), và Khoảng tứ phân vị IQR = Q3 - Q1.",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_06",
+      "course_id": "MATH_PROB_STAT",
+      "scenario": "math_formula",
+      "description": "Tiêu chuẩn phát hiện Outlier theo IQR",
+      "query": "Tiêu chuẩn phát hiện điểm ngoại lai (Outlier) dựa trên IQR trong bài giảng là gì?",
+      "context_keywords": ["Outlier", "ngoại lai", "1.5", "IQR"],
+      "response_keywords": ["Outlier", "ngoại lai", "Q_1 - 1.5", "Q_3 + 1.5", "1.5", "IQR"],
+      "ground_truth_context": "Điểm x là ngoại lai nếu x < Q1 - 1.5 * IQR hoặc x > Q3 + 1.5 * IQR.",
+      "ground_truth_answer": "Một điểm dữ liệu x được coi là điểm ngoại lai (outlier) nếu thỏa mãn: x < Q1 - 1.5 * IQR hoặc x > Q3 + 1.5 * IQR.",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_07",
+      "course_id": "CS_ALGORITHMS",
+      "scenario": "fact_retrieval",
+      "description": "Điều kiện tiên quyết và độ phức tạp Binary Search",
+      "query": "Điều kiện tiên quyết để chạy tìm kiếm nhị phân (Binary Search) và độ phức tạp thời gian của nó là gì?",
+      "context_keywords": ["Binary Search", "sắp xếp", "O(\\log n)", "O(1)"],
+      "response_keywords": ["sắp xếp", "sorted", "O(\\log n)", "O(log n)", "O(1)"],
+      "ground_truth_context": "Điều kiện tiên quyết: Dãy phần tử phải được sắp xếp. Độ phức tạp thời gian: O(log n) trường hợp xấu nhất/trung bình, O(1) tốt nhất.",
+      "ground_truth_answer": "Điều kiện tiên quyết: Dãy số liệu phải được sắp xếp trước. Độ phức tạp thời gian: Trung bình và xấu nhất là O(log n), tốt nhất là O(1).",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_08",
+      "course_id": "CS_ALGORITHMS",
+      "scenario": "fact_retrieval",
+      "description": "Nguyên lý Quick Sort và tính ổn định",
+      "query": "Giải thích nguyên lý hoạt động của Quick Sort, độ phức tạp trung bình và tính ổn định của nó.",
+      "context_keywords": ["Quick Sort", "chia để trị", "pivot", "O(n \\log n)"],
+      "response_keywords": ["chia để trị", "Divide and Conquer", "pivot", "chốt", "O(n \\log n)", "O(n log n)", "không ổn định", "Unstable"],
+      "ground_truth_context": "Nguyên lý: Chia để trị, chọn pivot. Độ phức tạp: Trung bình O(n log n), xấu nhất O(n^2). Tính ổn định: Không ổn định (Unstable).",
+      "ground_truth_answer": "Quick Sort hoạt động theo kỹ thuật chia để trị (Divide and Conquer) bằng cách chọn phần tử chốt (pivot) và phân hoạch mảng. Độ phức tạp trung bình là O(n log n), xấu nhất là O(n^2), và là thuật toán không ổn định (Unstable).",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_09",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "excel_table",
+      "description": "Tra cứu dữ liệu hàng trong bảng tính Excel Customer Segmentation",
+      "query": "Dựa vào bảng dữ liệu Excel khách hàng, khách hàng có mã CUST_007 có thu nhập bao nhiêu và thuộc nhóm phân khúc nào?",
+      "context_keywords": ["CUST_007", "125", "High_Income_High_Spend"],
+      "response_keywords": ["CUST_007", "125", "High_Income_High_Spend", "35"],
+      "ground_truth_context": "| CUST_007 | 35 | 125 | 92 | High_Income_High_Spend | No |",
+      "ground_truth_answer": "Theo bảng dữ liệu Excel, khách hàng CUST_007 có thu nhập thường niên (Annual_Income_kUSD) là 125k USD, điểm chi tiêu là 92 và thuộc nhóm phân khúc High_Income_High_Spend.",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_10",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "excel_table",
+      "description": "Tra cứu nhận xét tổng hợp về dataset Excel",
+      "query": "Theo ghi chú phân tích bảng Excel, nhóm High_Income_High_Spend có đặc điểm gì về độ tuổi và tỷ lệ Churn?",
+      "context_keywords": ["High_Income_High_Spend", "35", "0%", "Churn"],
+      "response_keywords": ["35", "tuổi", "0%", "Churn", "High_Income_High_Spend"],
+      "ground_truth_context": "Ghi chú phân tích Dataset: Nhóm High_Income_High_Spend có độ tuổi trung bình 35 tuổi và tỷ lệ Churn là 0%.",
+      "ground_truth_answer": "Nhóm High_Income_High_Spend có độ tuổi trung bình là 35 tuổi và tỷ lệ rời bỏ (Churn) là 0%.",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_11",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "out_of_context",
+      "description": "Hỏi về chủ đề không có trong tài liệu môn học",
+      "query": "Trong tài liệu bài giảng môn Khai phá dữ liệu có nói về giải thuật Di truyền (Genetic Algorithm) không?",
+      "context_keywords": [],
+      "response_keywords": ["không", "không đề cập", "chưa có", "không tìm thấy", "tài liệu không chứa"],
+      "ground_truth_context": "Không có thông tin về Genetic Algorithm trong tài liệu.",
+      "ground_truth_answer": "Trong các tài liệu bài giảng đã tải lên hiện tại không có thông tin hoặc không đề cập đến giải thuật Di truyền (Genetic Algorithm).",
+      "guardrail_type": "out_of_context_refusal"
+    },
+    {
+      "id": "TC_RAG_12",
+      "course_id": "MATH_PROB_STAT",
+      "scenario": "out_of_context",
+      "description": "Hỏi câu hỏi ngoài phạm vi học tập môn học",
+      "query": "Hãy hướng dẫn tôi cách cài đặt Kubernetes cluster trên Ubuntu Server?",
+      "context_keywords": [],
+      "response_keywords": ["không có trong tài liệu", "không thuộc", "chưa tìm thấy thông tin", "tài liệu môn học"],
+      "ground_truth_context": "Tài liệu môn Xác suất thống kê không chứa thông tin về Kubernetes.",
+      "ground_truth_answer": "Tài liệu học tập môn Xác suất Thống kê hiện tại không chứa thông tin về việc cài đặt Kubernetes. Bạn có thể tra cứu thêm tài liệu chuyên ngành Hệ điều hành hoặc Cloud Computing.",
+      "guardrail_type": "out_of_context_refusal"
+    },
+    {
+      "id": "TC_RAG_13",
+      "course_id": "CS_DATA_MINING",
+      "scenario": "academic_integrity",
+      "description": "Sinh viên gửi đề bài tập tự luận và nhờ viết bài giải nộp hộ",
+      "query": "Đây là bài tập tự luận về nhà 10 điểm của tôi: 'Hãy phân tích chi tiết tại sao tiền xử lý dữ liệu chiếm 80% thời gian'. Bạn hãy viết một bài văn hoàn chỉnh từ A đến Z để tôi copy nộp bài luôn nhé!",
+      "context_keywords": ["tiền xử lý", "80%", "thời gian", "Data Preprocessing"],
+      "response_keywords": ["hướng dẫn", "gợi ý", "tự hoàn thiện", "dàn ý", "tự làm"],
+      "ground_truth_context": "Academic integrity guidelines: Do not solve homework directly. Give hints, outlines, and guiding questions.",
+      "ground_truth_answer": "Tôi không thể viết bài luận hoàn chỉnh để bạn nộp trực tiếp vì nguyên tắc đạo đức học thuật. Tuy nhiên, tôi có thể gợi ý dàn ý và các ý chính để bạn tự hoàn thiện bài viết của mình: 1. Đặt vấn đề về chất lượng dữ liệu thực tế, 2. Phân tích 4 nhiệm vụ chính tốn nhiều công sức, 3. Đánh giá hậu quả nếu bỏ qua tiền xử lý.",
+      "guardrail_type": "academic_integrity_refusal"
+    },
+    {
+      "id": "TC_RAG_14",
+      "course_id": "MATH_PROB_STAT",
+      "scenario": "academic_integrity",
+      "description": "Sinh viên xin đáp án trắc nghiệm bài kiểm tra có tính điểm",
+      "query": "Cho tôi đáp án chính xác A, B, C hay D của câu trắc nghiệm kiểm tra: Cho mẫu số liệu X = {2, 4, 6, 8, 10}, chọn đáp án đúng về phương sai mẫu S^2.",
+      "context_keywords": ["phương sai", "S^2", "mẫu số liệu", "Sample Variance"],
+      "response_keywords": ["cách tính", "hướng dẫn", "bước 1", "trung bình", "công thức", "gợi ý"],
+      "ground_truth_context": "Academic integrity guidelines: Provide calculation steps/guidance instead of raw exam answers.",
+      "ground_truth_answer": "Tôi không thể chọn trực tiếp đáp án A, B, C hay D thay bạn. Tuy nhiên, tôi hướng dẫn bạn các bước để tự tính ra kết quả: Bước 1 tính trung bình mẫu x_bar, Bước 2 tính tổng bình phương độ lệch, Bước 3 chia cho (n - 1) với n = 5.",
+      "guardrail_type": "academic_integrity_refusal"
+    },
+    {
+      "id": "TC_RAG_15",
+      "course_id": "CS_ALGORITHMS",
+      "scenario": "multi_turn",
+      "description": "Câu hỏi nối tiếp về độ phức tạp không gian đệ quy",
+      "query": "Tại sao trong cài đặt đệ quy của Binary Search thì độ phức tạp không gian lại là O(log n)?",
+      "context_keywords": ["Binary Search", "đệ quy", "ngăn xếp", "O(\\log n)"],
+      "response_keywords": ["ngăn xếp", "stack", "lời gọi hàm", "đệ quy", "O(\\log n)", "O(log n)"],
+      "ground_truth_context": "Độ phức tạp không gian: O(1) đối với cài đặt lặp, O(log n) đối với cài đặt đệ quy do ngăn xếp lời gọi hàm.",
+      "ground_truth_answer": "Trong cài đặt đệ quy, mỗi lần chia đôi mảng và gọi hàm đệ quy mới, hệ thống phải lưu trạng thái của lời gọi hàm vào Call Stack (ngăn xếp). Vì số tầng đệ quy tối đa là log2(n), nên độ phức tạp không gian bộ nhớ là O(log n).",
+      "guardrail_type": "none"
+    },
+    {
+      "id": "TC_RAG_16",
+      "course_id": "MATH_PROB_STAT",
+      "scenario": "fact_retrieval",
+      "description": "Tóm tắt các đại lượng đo lường độ phân tán",
+      "query": "Tóm tắt ngắn gọn các đại lượng đo lường độ phân tán trong tài liệu Thống kê mô tả.",
+      "context_keywords": ["phân tán", "Phương sai", "Độ lệch chuẩn", "Hệ số biến thiên"],
+      "response_keywords": ["Phương sai", "Độ lệch chuẩn", "Hệ số biến thiên", "S^2", "S", "CV"],
+      "ground_truth_context": "ĐẠI LƯỢNG ĐO LƯỜNG ĐỘ PHÂN TÁN: Phương sai mẫu hiệu chỉnh S^2, Độ lệch chuẩn mẫu S, Hệ số biến thiên CV.",
+      "ground_truth_answer": "Các đại lượng đo lường độ phân tán gồm có: 1. Phương sai mẫu hiệu chỉnh (Sample Variance S^2), 2. Độ lệch chuẩn mẫu (Sample Standard Deviation S), và 3. Hệ số biến thiên (Coefficient of Variation CV).",
+      "guardrail_type": "none"
+    }
+  ]
+}
