@@ -216,6 +216,8 @@ export const StudySessionWorkspacePage: React.FC = () => {
   const materialLoadedRef = useRef<boolean>(false);
   const assignmentLoadedRef = useRef<boolean>(false);
   const [materialLoading, setMaterialLoading] = useState<boolean>(false);
+  // Companion data retry tracking
+  const companionRetryRef = useRef<number>(0);
 
   // 1. Fetch Core Task & Initialize Workspace Instantly (< 80ms)
   const fetchTaskDetails = async () => {
@@ -339,7 +341,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
   };
 
   // 4. Fetch Companion Data (AI Study Guide, Objectives, Quick Self Check)
-  const fetchCompanionData = async () => {
+  const fetchCompanionData = async (isRetry = false) => {
     if (!taskId) return;
     try {
       setCompanionLoading(true);
@@ -347,6 +349,16 @@ export const StudySessionWorkspacePage: React.FC = () => {
       setCompanionData(data);
       if (data?.learning_objectives) {
         setCheckedObjectives(data.learning_objectives.filter((o) => o.checked).map((o) => o.id));
+      }
+
+      // Auto-retry once if data is empty (e.g. LLM timed out on first generation)
+      const isEmpty =
+        !data?.learning_objectives?.length &&
+        !data?.ai_study_guide?.key_concepts?.length;
+      if (isEmpty && !isRetry && companionRetryRef.current < 1) {
+        companionRetryRef.current += 1;
+        console.warn('Companion data returned empty, retrying once in 3s...');
+        setTimeout(() => fetchCompanionData(true), 3000);
       }
     } catch (err) {
       console.warn('Failed loading companion data:', err);
@@ -930,10 +942,34 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
                 {!companionLoading && (
                   <>
+                    {/* Empty state with retry when companion data failed to generate */}
+                    {!companionData?.ai_study_guide?.key_concepts?.length && !companionData?.learning_objectives?.length && (
+                      <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 flex flex-col items-center justify-center gap-3 text-center">
+                        <span className="text-2xl">🤖</span>
+                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400 m-0">
+                          AI đang chuẩn bị nội dung học tập...
+                        </p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 m-0">
+                          Lần đầu mở buổi học, AI cần thêm vài giây để phân tích tài liệu và tạo hướng dẫn.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            companionRetryRef.current = 0;
+                            fetchCompanionData();
+                          }}
+                          className="btn-voxel-green text-xs px-4 py-2 rounded-xl font-bold shadow-voxel-sky active:translate-y-0.5 transition-all cursor-pointer mt-1"
+                        >
+                          Tải lại nội dung học
+                        </button>
+                      </div>
+                    )}
+
                     {/* ══════════════════════════════════════════════════════════════
                         BLOCK 1: AI STUDY GUIDE (HƯỚNG DẪN TRỌNG TÂM BÀI HỌC)
                        ══════════════════════════════════════════════════════════════ */}
-                    {companionData?.ai_study_guide && (
+                    {companionData?.ai_study_guide?.key_concepts?.length ? (
+
                       <div className="p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-minecraft-obsidianCard shadow-sm space-y-5">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -1094,12 +1130,12 @@ export const StudySessionWorkspacePage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    )}
+                    ) : null}
 
                     {/* ══════════════════════════════════════════════════════════════
                         BLOCK 2: BẢN ĐỒ ĐỌC TÀI LIỆU (Reading Roadmap)
                        ══════════════════════════════════════════════════════════════ */}
-                    {(() => {
+                    {companionData && (() => {
                       const roadmap = companionData?.reading_roadmap;
                       const focusList = roadmap?.focus_sections?.length
                         ? roadmap.focus_sections

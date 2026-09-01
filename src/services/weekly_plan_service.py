@@ -999,20 +999,28 @@ class WeeklyPlanService:
         if cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
             guide = cached_comp.get("ai_study_guide") or {}
             concepts = guide.get("key_concepts") or []
-            is_poor = (
-                len(concepts) < 2
-                or any(
-                    c.get("title", "").strip().lower() in ["học và làm", "làm bài tập", "ôn tập", "chuẩn bị", "tự học"]
-                    or "học & làm" in c.get("title", "").strip().lower()
-                    for c in concepts
+            roadmap = cached_comp.get("reading_roadmap") or {}
+            roadmap_focus = roadmap.get("focus_sections") or []
+            # Reject cache if key_concepts or reading_roadmap focus_sections are empty (LLM failed previously)
+            if not concepts or not roadmap_focus:
+                import logging
+                logging.getLogger(__name__).info(f"Rejecting stale/empty companion_data cache for task {task_id}, regenerating...")
+            else:
+                is_poor = (
+                    len(concepts) < 2
+                    or any(
+                        c.get("title", "").strip().lower() in ["học và làm", "làm bài tập", "ôn tập", "chuẩn bị", "tự học"]
+                        or "học & làm" in c.get("title", "").strip().lower()
+                        for c in concepts
+                    )
                 )
-            )
-            if not is_poor:
-                try:
-                    return StudySessionCompanionResponse(**cached_comp)
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
+                if not is_poor:
+                    try:
+                        return StudySessionCompanionResponse(**cached_comp)
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
+
 
         # Retrieve course material chunks via RAGService
         course_id = existing_meta.get("course_id")
