@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     qdrant_api_key: str = Field(default="", validation_alias="QDRANT_API_KEY")
     qdrant_collection_name: str = Field(default="course_materials", validation_alias="QDRANT_COLLECTION_NAME")
 
+    # Google OAuth
+    google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
+
     # Role & Institution Verification
     instructor_invite_code: str = Field(default="VINUNI-2026-AI", validation_alias="INSTRUCTOR_INVITE_CODE")
 

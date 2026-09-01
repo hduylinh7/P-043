@@ -1,6 +1,6 @@
 ﻿# Báo Cáo Tổng Quan Nâng Cấp Hệ Thống RAG & AI Agent (RAG_Upgrade_Summary.md)
 
-> **Nguồn file gốc trong dự án:** \RAG_Upgrade_Summary.md\ & \src/services/rag_service.py\  
+> **Nguồn file gốc trong dự án:** `RAG_Upgrade_Summary.md` & `src/services/rag_service.py`  
 ---
 
 ## 1. TỔNG QUAN CÁC THAY ĐỔI & NÂNG CẤP KỸ THUẬT
@@ -67,4 +67,5 @@ Các nâng cấp RAG ở trên **ĐÓNG VAI TRÒ CỰC KỲ QUAN TRỌNG VÀ LÀ
 
 ### 4. Tốc độ sinh đề trắc nghiệm tức thì (1-2 giây) với Groq
 - Khi sinh một bộ đề ôn tập gồm 10 - 20 câu hỏi trắc nghiệm kèm 4 lựa chọn A/B/C/D và lời giải thích, mô hình cũ có thể mất 15-20 giây. Với **Groq Llama 3.3 70B**, toàn bộ đề ôn tập được tạo ra chỉ trong **1-2 giây**, đem lại trải nghiệm học tập cực kỳ mượt mà cho sinh viên.
+
 
