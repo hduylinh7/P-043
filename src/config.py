@@ -25,12 +25,33 @@ class Settings(BaseSettings):
     llm_provider: str = Field(default="groq", validation_alias="LLM_PROVIDER")
     openai_api_key: str = ""
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
+    groq_api_key_1: str = Field(default="", validation_alias="GROQ_API_KEY_1")
+    groq_api_key_2: str = Field(default="", validation_alias="GROQ_API_KEY_2")
+    groq_api_key_3: str = Field(default="", validation_alias="GROQ_API_KEY_3")
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     google_api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
     openrouter_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL")
     embedding_model_name: str = Field(default="models/gemini-embedding-2", validation_alias="EMBEDDING_MODEL_NAME")
     model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
+
+    def get_groq_api_keys(self) -> list[tuple[str, str]]:
+        """Return list of configured Groq API keys as (key_name, key_value) tuples."""
+        import os
+        keys: list[tuple[str, str]] = []
+        for i in range(1, 10):
+            name = f"GROQ_API_KEY_{i}"
+            val = getattr(self, f"groq_api_key_{i}", "") or os.getenv(name, "")
+            val = val.strip() if val else ""
+            if val and not val.startswith("gsk_your") and not any(k[0] == name for k in keys):
+                keys.append((name, val))
+
+        # Fallback to GROQ_API_KEY if none of indexed keys or add if unique
+        fallback_val = (self.groq_api_key or os.getenv("GROQ_API_KEY") or "").strip()
+        if fallback_val and not fallback_val.startswith("gsk_your"):
+            if not any(k[1] == fallback_val for k in keys):
+                keys.append(("GROQ_API_KEY", fallback_val))
+        return keys
 
 
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)

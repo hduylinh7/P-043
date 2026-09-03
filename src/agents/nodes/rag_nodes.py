@@ -153,9 +153,10 @@ async def generate_rag_response_node(state: AgentState) -> dict[str, Any]:
         err_str = str(e)
         if "invalid_api_key" in err_str.lower() or "401" in err_str or "Invalid API Key" in err_str:
             response_text = (
-                "GROQ_API_KEY chưa hợp lệ hoặc chưa được điền trong file .env!\n"
+                "Groq API Key chưa hợp lệ hoặc chưa được điền trong file .env!\n"
                 "👉 Bạn hãy truy cập https://console.groq.com/keys để tạo API Key miễn phí, sau đó dán vào file .env:\n"
-                "GROQ_API_KEY=gsk_..."
+                "GROQ_API_KEY_1=gsk_...\n"
+                "GROQ_API_KEY_2=gsk_..."
             )
         else:
             response_text = (
