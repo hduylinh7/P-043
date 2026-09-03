@@ -163,11 +163,12 @@ async def save_task_reflection(
 @router.get("/tasks/{id}/study-companion", response_model=StudySessionCompanionResponse)
 async def get_study_session_companion_data(
     id: str,
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    force_refresh: bool = False,
+    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Fetch grounded Learning Objectives, AI Study Guide, Sources, Related Assignment, and Quick Self-Check questions for a study session."""
-    return await WeeklyPlanService.get_study_session_companion_data(db, id, current_user)
+    return await WeeklyPlanService.get_study_session_companion_data(db, id, current_user, force_refresh=force_refresh)
 
 
 @router.post("/tasks/{id}/self-check/evaluate", response_model=SelfCheckEvalResponse)

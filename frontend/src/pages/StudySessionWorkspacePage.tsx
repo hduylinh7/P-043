@@ -47,6 +47,7 @@ import {
   ThunderboltOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
@@ -58,6 +59,7 @@ import { MarkdownRenderer, EntityContext } from '../components/MarkdownRenderer'
 import { MinecraftAIFloatingButton } from '../components/common/MinecraftAIFloatingButton';
 import { KnowledgeLoadingOrb } from '../components/common/KnowledgeLoadingOrb';
 import { DocumentLoadingOrb } from '../components/common/DocumentLoadingOrb';
+import { QuizLoadingOrb } from '../components/common/QuizLoadingOrb';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { weeklyPlanService } from '../services/weeklyPlanService';
@@ -341,11 +343,11 @@ export const StudySessionWorkspacePage: React.FC = () => {
   };
 
   // 4. Fetch Companion Data (AI Study Guide, Objectives, Quick Self Check)
-  const fetchCompanionData = async (isRetry = false) => {
+  const fetchCompanionData = async (isRetry = false, forceRefresh = false) => {
     if (!taskId) return;
     try {
       setCompanionLoading(true);
-      const data = await weeklyPlanService.getStudySessionCompanionData(taskId);
+      const data = await weeklyPlanService.getStudySessionCompanionData(taskId, forceRefresh);
       setCompanionData(data);
       if (data?.learning_objectives) {
         setCheckedObjectives(data.learning_objectives.filter((o) => o.checked).map((o) => o.id));
@@ -673,10 +675,28 @@ export const StudySessionWorkspacePage: React.FC = () => {
     try {
       setSubmittingReflection(true);
 
+      const questions = companionData?.quick_self_check || [];
+      const quizDetailsList = questions.map((q, idx) => {
+        const studentAns = (selfCheckAnswers[q.id] || '').trim();
+        const evalRes = selfCheckEvalResults[q.id];
+        const qTypeStr = q.type === 'multiple_choice' ? 'Trắc nghiệm' : 'Tự luận';
+
+        if (!studentAns) {
+          return `- Câu ${idx + 1} (${qTypeStr}): [CHƯA LÀM] - Đề bài: "${q.question}"`;
+        }
+        if (evalRes) {
+          const statusStr = evalRes.is_correct ? 'ĐÚNG' : 'CHƯA CHÍNH XÁC';
+          return `- Câu ${idx + 1} (${qTypeStr}): [${statusStr}] - Đề bài: "${q.question}". Sinh viên trả lời: "${studentAns}". AI nhận xét: "${evalRes.feedback || ''}${evalRes.explanation ? ` - ${evalRes.explanation}` : ''}".`;
+        }
+        return `- Câu ${idx + 1} (${qTypeStr}): [ĐÃ TRẢ LỜI] - Đề bài: "${q.question}". Sinh viên trả lời: "${studentAns}" (Chưa bấm gửi AI nhận xét câu đơn lẻ).`;
+      });
+
+      const answeredCount = Object.keys(selfCheckAnswers).filter((k) => (selfCheckAnswers[k] || '').trim().length > 0).length;
       const evalCount = Object.keys(selfCheckEvalResults).length;
-      const totalPracticeCount = ((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).length;
-      const practiceSummaryStr = evalCount > 0
-        ? `Đã thực hiện ${evalCount}/${totalPracticeCount} câu luyện tập và nhận được phản hồi AI.`
+      const totalCount = questions.length;
+
+      const practiceSummaryStr = quizDetailsList.length > 0
+        ? `Tổng quan làm bài: Đã trả lời ${answeredCount}/${totalCount} câu (Trong đó có ${evalCount} câu đã nhận xét riêng).\nChi tiết từng câu:\n${quizDetailsList.join('\n')}`
         : `Sinh viên đã hoàn thành đọc và luyện tập bài học.`;
 
       const reflectionPayload: TaskReflectionData = {
@@ -769,54 +789,6 @@ export const StudySessionWorkspacePage: React.FC = () => {
     }
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }, [elapsedSeconds]);
-
-  // Compute Material Stream URL
-  const defaultPracticeQuestions: QuickSelfCheckQuestion[] = useMemo(() => {
-    const topic = task?.topic || task?.title || 'nội dung bài học';
-    const course = task?.course_name || 'môn học';
-    const studyItems = task?.what_to_study || [];
-    const mainItem = studyItems[0] || topic;
-
-    return [
-      {
-        id: 'prac-q1',
-        question: `Đâu là nguyên lý hoặc khái niệm cốt lõi quan trọng nhất của "${mainItem}" trong môn ${course}?`,
-        type: 'multiple_choice',
-        options: [
-          `Nắm vững định nghĩa, quy trình và điều kiện áp dụng của ${mainItem}`,
-          `Bỏ qua các bước phân tích và kiểm định lý thuyết`,
-          `Chỉ ghi nhớ kết quả mẫu mà không hiểu cách thực hiện`,
-          `Áp dụng công thức ngẫu nhiên cho mọi dạng bài tập`,
-        ],
-        hint: `Xem lại các định nghĩa và nguyên lý cốt lõi của ${mainItem} trong slide bài giảng.`,
-        sample_answer: `Lựa chọn A: Nắm vững định nghĩa, quy trình và điều kiện áp dụng của ${mainItem}`,
-        explanation: `Hiểu rõ bản chất và điều kiện áp dụng giúp bạn giải quyết tốt mọi dạng bài tập liên quan đến ${mainItem}.`,
-      },
-      {
-        id: 'prac-q2',
-        question: `Dựa trên nội dung bài học "${topic}", hãy giải thích ngắn gọn cách áp dụng ${mainItem} vào thực tế?`,
-        type: 'short_answer',
-        options: [],
-        hint: `Liên hệ kiến thức lý thuyết với ví dụ thực tiễn hoặc các bước giải bài tập mẫu.`,
-        sample_answer: `Vận dụng ${mainItem} để xử lý dữ liệu, kiểm định giả thuyết và đưa ra kết luận logic.`,
-        explanation: `Việc diễn đạt câu trả lời bằng ngôn ngữ của bản thân chứng minh mức độ thấu hiểu kiến thức.`,
-      },
-      {
-        id: 'prac-q3',
-        question: `Khi thực hiện phân tích bài tập thuộc chủ đề "${topic}", tiêu chuẩn nào đóng vai trò quan trọng nhất để đánh giá kết quả?`,
-        type: 'multiple_choice',
-        options: [
-          'Độ tin cậy của dữ liệu và tính logic của các bước lập luận',
-          'Tốc độ hoàn thành bài tập mà không cần kiểm tra lại',
-          'Sử dụng nhiều thuật ngữ phức tạp không liên quan',
-          'Bỏ qua các giả định ban đầu của bài toán',
-        ],
-        hint: 'Nhớ lại các tiêu chí đánh giá độ tin cậy và chính xác của mô hình.',
-        sample_answer: 'Lựa chọn A: Độ tin cậy của dữ liệu và tính logic của các bước lập luận',
-        explanation: 'Tính logic và độ tin cậy của lập luận là thước đo hàng đầu trong đánh giá kết quả bài tập.',
-      },
-    ];
-  }, [task]);
 
   if (loading) {
     return (
@@ -1904,22 +1876,46 @@ export const StudySessionWorkspacePage: React.FC = () => {
 
               {/* 🧠 BÀI TẬP LUYỆN TẬP DO AI TẠO */}
               <div className="p-6 rounded-2xl border-2 border-emerald-500/30 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                      🧠 AI Agent & RAG Grounded
+                      🧠 AI Agent &amp; RAG Grounded
                     </span>
                     <span className="px-3 py-1 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                       {task.course_name || 'Khóa học'}
                     </span>
                     <span className="px-3 py-1 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
-                      {((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).length} câu luyện tập
+                      {companionData?.quick_self_check?.length || 0} câu luyện tập
                     </span>
                   </div>
 
-                  <span className="badge-voxel-green text-xs">
-                    Tự Luyện Tập Non-Graded
-                  </span>
+                  <div className="flex items-center gap-3 ml-auto">
+                    <span className="badge-voxel-green text-xs hidden sm:inline-flex">
+                      Tự Luyện Tập Non-Graded
+                    </span>
+
+                    <Popconfirm
+                      title="Tạo bộ câu hỏi mới từ bài giảng?"
+                      description="AI sẽ trích xuất 5 câu hỏi ôn tập mới bám sát tài liệu buổi học."
+                      onConfirm={() => {
+                        setSelfCheckAnswers({});
+                        setSelfCheckEvalResults({});
+                        fetchCompanionData(false, true);
+                      }}
+                      okText="Tạo mới"
+                      cancelText="Hủy"
+                    >
+                      <button
+                        type="button"
+                        disabled={companionLoading || isCompleted}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-purple-500/25 border border-purple-400/40 cursor-pointer transition-all active:translate-y-0.5 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        title="Tạo lại bộ 5 câu hỏi mới từ tài liệu bài giảng"
+                      >
+                        <SyncOutlined spin={companionLoading} />
+                        <span>Tạo bộ câu hỏi mới</span>
+                      </button>
+                    </Popconfirm>
+                  </div>
                 </div>
 
                 <div>
@@ -1946,13 +1942,27 @@ export const StudySessionWorkspacePage: React.FC = () => {
               </div>
 
               {companionLoading ? (
-                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800 space-y-3">
-                  <Spin size="large" />
-                  <p className="text-xs text-slate-400 font-semibold">AI Agent đang tổng hợp bài tập luyện tập từ tài liệu...</p>
+                <QuizLoadingOrb
+                  isLoading={companionLoading}
+                  topicTitle={task?.title || task?.topic}
+                  courseName={task?.course_name}
+                />
+              ) : !companionData?.quick_self_check || companionData.quick_self_check.length === 0 ? (
+                <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold m-0">
+                    Chưa có bộ câu hỏi ôn tập cho buổi học này.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => fetchCompanionData(false, true)}
+                    className="btn-voxel-green text-xs px-5 py-2.5 rounded-xl font-bold active:translate-y-0.5 transition-all cursor-pointer inline-flex items-center gap-2"
+                  >
+                    <span>✨ AI Tạo 5 Câu Hỏi Ôn Tập Từ Bài Giảng</span>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).map((q, qIdx) => {
+                  {companionData.quick_self_check.map((q, qIdx) => {
                     const studentAns = selfCheckAnswers[q.id] || '';
                     const isAnswered = studentAns.trim().length > 0;
                     const evalResult = selfCheckEvalResults[q.id];
@@ -2149,7 +2159,7 @@ export const StudySessionWorkspacePage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Tiến độ tự luyện tập:</span>
                         <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">
-                          {Object.keys(selfCheckEvalResults).length} / {((companionData?.quick_self_check && companionData.quick_self_check.length > 0) ? companionData.quick_self_check : defaultPracticeQuestions).length} câu được AI nhận xét
+                          {Object.keys(selfCheckEvalResults).length} / {companionData.quick_self_check.length} câu được AI nhận xét
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-400 font-medium m-0 truncate">

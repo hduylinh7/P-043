@@ -98,8 +98,10 @@ export const weeklyPlanService = {
     return response.data;
   },
 
-  async getStudySessionCompanionData(taskId: string): Promise<StudySessionCompanionData> {
-    const response = await api.get<StudySessionCompanionData>(`/tasks/${taskId}/study-companion`);
+  async getStudySessionCompanionData(taskId: string, forceRefresh: boolean = false): Promise<StudySessionCompanionData> {
+    const response = await api.get<StudySessionCompanionData>(`/tasks/${taskId}/study-companion`, {
+      params: forceRefresh ? { force_refresh: true } : undefined,
+    });
     return response.data;
   },
 

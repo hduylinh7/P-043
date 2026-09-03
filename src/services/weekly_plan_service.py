@@ -865,6 +865,10 @@ class WeeklyPlanService:
         topic = existing_meta.get("topic") or task.title
         course_name = existing_meta.get("course_name") or "Khóa học"
         what_to_study = existing_meta.get("what_to_study") or []
+        cached_comp = existing_meta.get("companion_data") or {}
+        comp_guide = cached_comp.get("ai_study_guide") or {}
+        key_concepts_list = comp_guide.get("key_concepts") or []
+        concepts_summary = ", ".join([c.get("title", "") for c in key_concepts_list if c.get("title")])
 
         ai_insight = f"Bạn đã nắm khá tốt nội dung bài học về '{topic}'. Cần chú ý thêm phần: {payload.struggling_with or 'các khái niệm phức tạp'}."
         suggested_next_focus = f"Nên ôn lại các phần vướng mắc và làm thêm bài tập luyện tập trước khi chuyển sang chủ đề tiếp theo."
@@ -873,40 +877,56 @@ class WeeklyPlanService:
 
         try:
             from src.services.llm import get_llm
-            from langchain_core.messages import HumanMessage
-            llm = get_llm(temperature=0.3)
-            prompt = (
-                f"You are a Personal Learning Companion AI. Analyze the student's completed study session and generate comprehensive AI feedback (Nhận xét tổng quan từ AI) in Vietnamese.\n\n"
-                f"Study Session Context:\n"
+            from langchain_core.messages import SystemMessage, HumanMessage
+            llm = get_llm(temperature=0.2)
+            
+            system_instruction = (
+                "You are an expert Pedagogical AI Mentor and Personal Learning Companion.\n"
+                "Your role is to analyze the student's study session performance and generate DEEP, SPECIFIC, ACTIONABLE feedback in Vietnamese.\n\n"
+                "CRITICAL RULES FOR HIGH-VALUE FEEDBACK:\n"
+                "1. DO NOT write generic or cliché statements like 'Bạn đã nắm khá tốt lý thuyết cơ bản và hoàn thành bài tập...'.\n"
+                "2. Directly analyze the student's actual practice quiz results (AI Practice Results) and reflection responses:\n"
+                "   - Specifically name the exact concepts/methods the student answered correctly (e.g. K-Means, Silhouette, P-value, T-test, v.v.).\n"
+                "   - Specifically point out the exact concept, question, or calculation where the student made a mistake, selected the wrong option, or left unanswered.\n"
+                "   - If they struggled with something in reflection, directly address that topic.\n"
+                "3. 'ai_insight': 2-3 precise sentences providing diagnostic feedback on their mastery level and exact knowledge gap.\n"
+                "4. 'suggested_next_focus': 1-2 concrete, actionable next steps (e.g. 'Xem lại công thức X ở slide bài giảng và giải lại câu 3 trước khi làm Assignment').\n"
+                "5. 'strengths': 1-2 specific concepts/skills they proved mastery on.\n"
+                "6. 'weaknesses': 1-2 specific points or question topics that need correction.\n"
+                "7. Return JSON ONLY matching schema:\n"
+                "{\n"
+                '  "ai_insight": "...",\n'
+                '  "suggested_next_focus": "...",\n'
+                '  "strengths": "...",\n'
+                '  "weaknesses": "..."\n'
+                "}"
+            )
+
+            user_prompt = (
+                f"Study Session Information:\n"
                 f"- Course: {course_name}\n"
                 f"- Topic: {topic}\n"
-                f"- Covered items: {', '.join(what_to_study) if what_to_study else topic}\n"
-                f"- AI Practice Results: {payload.practice_summary or 'Đã hoàn thành các câu tự kiểm tra'}\n\n"
-                f"Student Reflection Answers:\n"
+                f"- Key Concepts in Lesson: {concepts_summary or topic}\n"
+                f"- Covered Items: {', '.join(what_to_study) if what_to_study else topic}\n\n"
+                f"Detailed AI Practice Quiz Results:\n"
+                f"{payload.practice_summary or 'Chưa có dữ liệu bài tập luyện tập cụ thể'}\n\n"
+                f"Student Self-Reflection Input:\n"
                 f"- What they learned: {payload.what_learned or 'Đã xem qua nội dung bài học'}\n"
                 f"- What they understood well: {payload.understood_well or 'Nội dung lý thuyết cơ bản'}\n"
-                f"- Areas still struggling with: {payload.struggling_with or 'Không ghi nhận vướng mắc lớn'}\n"
-                f"- Understanding level: {payload.understanding_level}\n"
-                f"- Achieved goal: {payload.achieved_goal}\n\n"
-                f"INSTRUCTIONS:\n"
-                f"Generate a helpful, empathetic, and actionable feedback in Vietnamese strictly adhering to JSON:\n"
-                f"1. ai_insight: Overall learning assessment summarizing what they did well and highlighting their main knowledge gap (2-3 concise sentences).\n"
-                f"2. suggested_next_focus: Short, practical recommendation for what they should study or practice next (1-2 sentences).\n"
-                f"3. strengths: Concise list/sentence of concepts they understood well.\n"
-                f"4. weaknesses: Concise list/sentence of concepts that still need improvement or review.\n\n"
-                f"Return JSON strictly matching format:\n"
-                f'{{\n'
-                f'  "ai_insight": "Bạn đã nắm khá tốt các khái niệm cơ bản và hoàn thành phần luyện tập...",\n'
-                f'  "suggested_next_focus": "Nên ôn lại phần... và làm thêm câu luyện tập trước khi chuyển bài tiếp.",\n'
-                f'  "strengths": "Nắm vững lý thuyết cơ bản...",\n'
-                f'  "weaknesses": "Còn lúng túng ở phần..."\n'
-                f'}}'
+                f"- Areas still struggling with: {payload.struggling_with or 'Chưa ghi nhận vướng mắc riêng'}\n"
+                f"- Self-rated understanding level: {payload.understanding_level}\n"
+                f"- Achieved goal: {payload.achieved_goal}\n"
             )
-            response = await llm.ainvoke([HumanMessage(content=prompt)])
+
+            response = await llm.ainvoke([
+                SystemMessage(content=system_instruction),
+                HumanMessage(content=user_prompt),
+            ])
             text = str(response.content)
             if "{" in text and "}" in text:
                 json_str = text[text.find("{"):text.rfind("}")+1]
-                parsed = json.loads(json_str)
+                from json_repair import repair_json
+                parsed = json.loads(repair_json(json_str))
                 if parsed.get("ai_insight"):
                     ai_insight = parsed.get("ai_insight")
                 if parsed.get("suggested_next_focus"):
@@ -962,10 +982,126 @@ class WeeklyPlanService:
         return serialize_task(task)
 
     @staticmethod
+    async def _generate_grounded_quiz(
+        course_name: str,
+        topic: str,
+        learning_objectives: list[dict],
+        key_concepts: list[dict],
+        context_text: str,
+    ) -> list[dict]:
+        """
+        Dedicated generator to produce exactly 5 high-quality academic practice questions:
+        - 4 multiple choice questions (with 4 distinct, plausible options A, B, C, D; only 1 correct answer)
+        - 1 short answer question (concept application / scenario analysis)
+        Grounded strictly in the retrieved lecture notes and key concepts.
+        """
+        try:
+            from src.services.llm import get_llm
+            from langchain_core.messages import SystemMessage, HumanMessage
+            import re as _re
+            from json_repair import repair_json
+
+            objectives_text = "\n".join([f"- {o.get('text', '')}" for o in learning_objectives if o.get('text')])
+            concepts_text = "\n".join([f"- {c.get('title', '')}: {c.get('definition', '')}" for c in key_concepts if c.get('title')])
+
+            system_instruction = (
+                "You are an expert academic educator and exam creator for university courses.\n"
+                "Your task is to generate EXACTLY 5 grounded, high-quality practice questions for students based strictly on the course topic and provided lecture materials.\n\n"
+                "RULES:\n"
+                "1. Generate EXACTLY 5 questions in total:\n"
+                "   - Questions 1 to 4: type = 'multiple_choice'. Must have EXACTLY 4 distinct, plausible options (A, B, C, D) with only 1 correct option. Options must test real subject-matter knowledge (formulas, algorithms, principles, steps, definitions, advantages/disadvantages).\n"
+                "   - Question 5: type = 'short_answer'. Options MUST be []. Tests practical application, algorithm comparison, or scenario reasoning.\n"
+                "2. All questions, options, hints, sample answers, and explanations MUST be written in Vietnamese.\n"
+                "3. Ground all questions strictly in the provided lecture materials and topic. DO NOT invent generic template questions like 'What is the core concept of Ôn lại slide...'. NEVER use the phrases 'Ôn lại slide bài giảng' or 'môn môn học' in question content.\n"
+                "4. Return ONLY a valid JSON array of 5 question objects.\n\n"
+                "Expected JSON Schema:\n"
+                "[\n"
+                "  {\n"
+                "    \"id\": \"q1\",\n"
+                "    \"question\": \"Câu hỏi trắc nghiệm 1...\",\n"
+                "    \"type\": \"multiple_choice\",\n"
+                "    \"options\": [\"Đáp án A...\", \"Đáp án B...\", \"Đáp án C...\", \"Đáp án D...\"],\n"
+                "    \"hint\": \"Gợi ý 1 câu ngắn gọn...\",\n"
+                "    \"sample_answer\": \"Lựa chọn đúng là A: ...\",\n"
+                "    \"explanation\": \"Giải thích chi tiết vì sao A đúng và các phương án khác sai...\"\n"
+                "  },\n"
+                "  {\n"
+                "    \"id\": \"q2\",\n"
+                "    \"question\": \"Câu hỏi trắc nghiệm 2...\",\n"
+                "    \"type\": \"multiple_choice\",\n"
+                "    \"options\": [\"Đáp án A...\", \"Đáp án B...\", \"Đáp án C...\", \"Đáp án D...\"],\n"
+                "    \"hint\": \"Gợi ý suy luận...\",\n"
+                "    \"sample_answer\": \"Lựa chọn đúng: ...\",\n"
+                "    \"explanation\": \"Giải thích chi tiết...\"\n"
+                "  },\n"
+                "  {\n"
+                "    \"id\": \"q3\",\n"
+                "    \"question\": \"Câu hỏi trắc nghiệm 3...\",\n"
+                "    \"type\": \"multiple_choice\",\n"
+                "    \"options\": [\"Đáp án A...\", \"Đáp án B...\", \"Đáp án C...\", \"Đáp án D...\"],\n"
+                "    \"hint\": \"Gợi ý suy luận...\",\n"
+                "    \"sample_answer\": \"Lựa chọn đúng: ...\",\n"
+                "    \"explanation\": \"Giải thích chi tiết...\"\n"
+                "  },\n"
+                "  {\n"
+                "    \"id\": \"q4\",\n"
+                "    \"question\": \"Câu hỏi trắc nghiệm 4...\",\n"
+                "    \"type\": \"multiple_choice\",\n"
+                "    \"options\": [\"Đáp án A...\", \"Đáp án B...\", \"Đáp án C...\", \"Đáp án D...\"],\n"
+                "    \"hint\": \"Gợi ý suy luận...\",\n"
+                "    \"sample_answer\": \"Lựa chọn đúng: ...\",\n"
+                "    \"explanation\": \"Giải thích chi tiết...\"\n"
+                "  },\n"
+                "  {\n"
+                "    \"id\": \"q5\",\n"
+                "    \"question\": \"Câu hỏi tự luận/vận dụng ngắn...\",\n"
+                "    \"type\": \"short_answer\",\n"
+                "    \"options\": [],\n"
+                "    \"hint\": \"Gợi ý hướng giải quyết tình huống...\",\n"
+                "    \"sample_answer\": \"Nêu các bước hoặc phương án xử lý tiêu chuẩn...\",\n"
+                "    \"explanation\": \"Giải thích nguyên lý áp dụng...\"\n"
+                "  }\n"
+                "]"
+            )
+
+            user_prompt = (
+                f"Course: {course_name}\n"
+                f"Topic: {topic}\n"
+                f"Learning Objectives:\n{objectives_text or topic}\n\n"
+                f"Key Concepts:\n{concepts_text or topic}\n\n"
+                f"Retrieved Course Material Snippets:\n"
+                f"{context_text if context_text else 'Generate grounded subject questions based on the course and topic.'}\n"
+            )
+
+            llm = get_llm(temperature=0.2)
+            res_msg = await llm.ainvoke([
+                SystemMessage(content=system_instruction),
+                HumanMessage(content=user_prompt),
+            ])
+            res_text = str(res_msg.content)
+            res_text = _re.sub(r"```(?:json)?\s*", "", res_text).strip()
+            if "[" in res_text and "]" in res_text:
+                j_str = res_text[res_text.find("["):res_text.rfind("]")+1]
+                questions = json.loads(repair_json(j_str))
+                if isinstance(questions, list) and len(questions) >= 3:
+                    for idx, q in enumerate(questions):
+                        if not q.get("id"):
+                            q["id"] = f"q{idx + 1}"
+                        if not q.get("type"):
+                            q["type"] = "multiple_choice" if q.get("options") and len(q.get("options")) > 0 else "short_answer"
+                    return questions
+        except Exception as q_err:
+            import logging
+            logging.getLogger(__name__).warning(f"Dedicated quiz generation failed: {q_err}")
+
+        return []
+
+    @staticmethod
     async def get_study_session_companion_data(
         db: AsyncSession,
         task_id: str,
         current_user: UserResponse,
+        force_refresh: bool = False,
     ) -> StudySessionCompanionResponse:
         """
         Generate or fetch cached grounded companion data for a Study Session:
@@ -973,7 +1109,7 @@ class WeeklyPlanService:
         - AI Study Guide (Key Concepts, Focus Areas, Important Points, Sources)
         - Source Traceability
         - Related Assignment Info
-        - Quick Self-Check Questions (Non-graded)
+        - Quick Self-Check Questions (Non-graded, exactly 5 questions)
         """
         WeeklyPlanService._ensure_student(current_user)
 
@@ -994,15 +1130,25 @@ class WeeklyPlanService:
             except Exception:
                 existing_meta = {}
 
-        # If companion_data is already generated and saved in metadata, return it (unless poor cache)
+        # If companion_data is already generated and saved in metadata, return it (unless poor cache or force_refresh)
         cached_comp = existing_meta.get("companion_data")
-        if cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
+        if not force_refresh and cached_comp and isinstance(cached_comp, dict) and cached_comp.get("learning_objectives"):
             guide = cached_comp.get("ai_study_guide") or {}
             concepts = guide.get("key_concepts") or []
             roadmap = cached_comp.get("reading_roadmap") or {}
             roadmap_focus = roadmap.get("focus_sections") or []
-            # Reject cache if key_concepts or reading_roadmap focus_sections are empty (LLM failed previously)
-            if not concepts or not roadmap_focus:
+            quiz = cached_comp.get("quick_self_check") or []
+
+            # Check if quiz has empty or boilerplate template questions
+            is_quiz_boilerplate = any(
+                "ôn lại slide" in (q.get("question", "") + " ".join(q.get("options", []))).lower()
+                or "môn môn học" in q.get("question", "").lower()
+                or q.get("id", "").startswith("prac-q")
+                for q in quiz
+            ) if quiz else False
+
+            # Reject cache if key_concepts or roadmap_focus or quiz are empty or poor
+            if not concepts or not roadmap_focus or not quiz or len(quiz) < 3 or is_quiz_boilerplate:
                 import logging
                 logging.getLogger(__name__).info(f"Rejecting stale/empty companion_data cache for task {task_id}, regenerating...")
             else:
@@ -1020,7 +1166,6 @@ class WeeklyPlanService:
                     except Exception as e:
                         import logging
                         logging.getLogger(__name__).warning(f"Could not parse cached companion_data: {e}")
-
 
         # Retrieve course material chunks via RAGService
         course_id = existing_meta.get("course_id")
@@ -1162,13 +1307,12 @@ class WeeklyPlanService:
             "- skip_sections: 1-2 optional/secondary sections ONLY if such content actually exists in the material.\n"
             "- NEVER invent section names that are not represented in the retrieved materials.\n\n"
             "QUICK SELF-CHECK:\n"
-            "1. Generate 3-4 lightweight, non-graded practice questions based directly on the current Study Session Topic and retrieved course materials.\n"
-            "2. DO NOT use fixed question templates. DO NOT repeatedly generate generic questions such as 'What is the core concept?', 'Explain the concept...', 'What should be checked first?' unless genuinely appropriate.\n"
-            "3. Questions must test different aspects of understanding (concept understanding, comparison, application, reasoning, result interpretation, formula/method application, algorithm/process tracing, error identification).\n"
-            "4. For technical/mathematical/programming subjects, prefer concrete technical/code/calculation questions over vague theoretical questions.\n"
-            "5. For multiple_choice: provide exactly 4 plausible options with only 1 correct answer.\n"
-            "6. For short_answer: options MUST be [].\n"
-            "7. Each question MUST contain: id, question, type ('multiple_choice' or 'short_answer'), options, hint, sample_answer, explanation.\n\n"
+            "1. Generate EXACTLY 5 lightweight, non-graded practice questions based directly on the current Study Session Topic and retrieved course materials:\n"
+            "   - Questions 1 to 4: multiple_choice (with exactly 4 distinct options A, B, C, D and 1 correct answer).\n"
+            "   - Question 5: short_answer (options MUST be []).\n"
+            "2. DO NOT use fixed question templates. DO NOT generate generic questions like 'What is the core concept of Ôn lại slide...'. NEVER use the phrases 'Ôn lại slide bài giảng' or 'môn môn học'.\n"
+            "3. Questions must test different aspects of understanding (concept definition, algorithm comparison, practical application, reasoning, interpreting results).\n"
+            "4. Each question MUST contain: id, question, type ('multiple_choice' or 'short_answer'), options, hint, sample_answer, explanation.\n\n"
             "OUTPUT REQUIREMENTS:\n"
             "Return valid JSON only. Do not wrap in markdown or return extra text. All student-facing text must be in Vietnamese."
         )
@@ -1202,7 +1346,11 @@ class WeeklyPlanService:
             f'    "skip_sections": ["..."]\n'
             f'  }},\n'
             f'  "quick_self_check": [\n'
-            f'    {{"id": "...", "question": "...", "type": "...", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
+            f'    {{"id": "q1", "question": "...", "type": "multiple_choice", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}},\n'
+            f'    {{"id": "q2", "question": "...", "type": "multiple_choice", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}},\n'
+            f'    {{"id": "q3", "question": "...", "type": "multiple_choice", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}},\n'
+            f'    {{"id": "q4", "question": "...", "type": "multiple_choice", "options": ["..."], "hint": "...", "sample_answer": "...", "explanation": "..."}},\n'
+            f'    {{"id": "q5", "question": "...", "type": "short_answer", "options": [], "hint": "...", "sample_answer": "...", "explanation": "..."}}\n'
             f'  ]\n'
             f'}}'
         )
@@ -1240,7 +1388,6 @@ class WeeklyPlanService:
             if "{" in res_text and "}" in res_text:
                 j_str = res_text[res_text.find("{"):res_text.rfind("}")+1]
                 # Use json_repair to auto-fix common LLM JSON mistakes:
-                # missing commas, trailing commas, unescaped characters, etc.
                 from json_repair import repair_json
                 parsed = json.loads(repair_json(j_str))
                 if parsed.get("learning_objectives"):
@@ -1257,6 +1404,17 @@ class WeeklyPlanService:
             import logging
             logging.getLogger(__name__).warning(f"LLM study session companion generation failed: {llm_err}")
 
+        # If quick_self_check is missing or fewer than 4 questions, run dedicated quiz generator
+        if not comp_data_dict.get("quick_self_check") or len(comp_data_dict["quick_self_check"]) < 4:
+            dedicated_quiz = await WeeklyPlanService._generate_grounded_quiz(
+                course_name=course_name,
+                topic=clean_topic,
+                learning_objectives=comp_data_dict.get("learning_objectives", []),
+                key_concepts=comp_data_dict.get("ai_study_guide", {}).get("key_concepts", []),
+                context_text=context_text,
+            )
+            if dedicated_quiz:
+                comp_data_dict["quick_self_check"] = dedicated_quiz
 
         # Save companion_data into task description JSON metadata for instant reload
         existing_meta["companion_data"] = comp_data_dict
